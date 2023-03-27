@@ -1,0 +1,8 @@
+*.exe
+*.out
+*.in
+Debuginput/*
+.vscode/*
+build/*
+CMakeLists.txt
+debug/*
