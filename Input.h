@@ -200,9 +200,9 @@ int sxinput(string fname, Polycs::polycrystal &pcrys)
         //pcrys.check_gmode();
 
         //the normal and direction of each system
-        int modeflag = 0;
+        int modeflag = 0; vector<int> mode_count;
         bool f = 1;
-        for(int i = 0; i < nmodesx(0); i++)
+        for(int imode = 0; imode < nmodesx(0);)
         {
             getline(sxinp, tp);  //skip a line;
             getline(sxinp, tp);
@@ -225,12 +225,14 @@ int sxinput(string fname, Polycs::polycrystal &pcrys)
             }
             //cout << "normal and direction:\n" << nor_dir << "\n"; 
             //
-            f = (mode_i.array() == i+1).any();
+            f = (mode_i.array() == modeflag+1).any();
             if(f)
             {
-                pcrys.ini_sn(nor_dir, int(mode_info(2)), int(mode_info(1)), modeflag);
-                modeflag++;
+                pcrys.ini_sn(nor_dir, int(mode_info(2)), int(mode_info(1)), imode);
+	        imode += int(mode_info(1));
+		mode_count.push_back(int(mode_info(1)));
             }                
+            modeflag++;
             //
         }
         //pcrys.check_sn();
@@ -238,10 +240,10 @@ int sxinput(string fname, Polycs::polycrystal &pcrys)
         getline(sxinp, tp);  //skip a line;
         //hardening law selection
         getline(sxinp, tp); 
-        VectorXd Hlaw = getnum(tp, 1); 
+        int iharden = int(getnum(tp, 1)(0)); 
         //flag of rate sensitive model (1: yes; 0: no)
         getline(sxinp, tp); 
-        VectorXd Irate = getnum(tp, 1);
+        VectorXd Irate = getnum(tp, 1);// where to use?
         //grain siez: um
         getline(sxinp, tp); 
         VectorXd GZ = getnum(tp, 1);
@@ -249,8 +251,8 @@ int sxinput(string fname, Polycs::polycrystal &pcrys)
         pcrys.ini_GZ(GZ(0));
         //
         //hardening parameters of modes
-        VectorXd nrsx, CRSS_p, hst;
-        for(int i = 0; i < int(nmodes(0)); i++)
+        VectorXd nrsx, CRSS_p, hst; int crt_modes = 0;
+        for(int imode = 0; imode < nmodesx(0); ++crt_modes)
         {
             getline(sxinp, tp);  //skip a line;
             //cout << tp << "\n";
@@ -259,12 +261,14 @@ int sxinput(string fname, Polycs::polycrystal &pcrys)
             nrsx = getnum(tp, 1);
             //CRSS parameters
             getline(sxinp, tp);
-            CRSS_p = getnum(tp, 4);
+	    if (iharden == 1) CRSS_p = getnum(tp, 13);
+	    else CRSS_p = getnum(tp, 4);
             //hst
             getline(sxinp, tp);
-            hst = getnum(tp, int(nmodes(0)));
+            hst = getnum(tp, 5); //5 types of hardening
             //cout << "hst:\n" << hst.transpose() << "\n";
-            pcrys.ini_hardening(nrsx(0), CRSS_p, hst, i);
+            pcrys.ini_hardening(nrsx(0), CRSS_p, hst, imode, mode_count[crt_modes]);
+	    imode += mode_count[crt_modes];
         }
         sxinp.close(); //close the file object.
         return 0;

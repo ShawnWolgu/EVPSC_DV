@@ -1,5 +1,4 @@
 #include "Grains.h"
-using namespace Grains;
 
 grain::grain()
 {
@@ -42,7 +41,7 @@ void grain::set_weight_g(double w){weight = w;}
 int grain::ini_gmode_g(int n)
 {
     modes_num = n;
-    gmode = new Modes::mode[n];
+    gmode = new Slip[n];
     gamma_delta_gmode = new double[n];
     return 1;
 }
@@ -51,7 +50,10 @@ int grain::check_gmode_g(){return modes_num;}
 
 int grain::ini_sn_g(MatrixXd Min, int flag, int system_n, int modei)
 {
-    gmode[modei].ini_sn_mode(Min, flag, system_n);
+    for(int i = modei; i < modei+system_n; i++)
+    {
+	gmode[i].ini_sn_mode(Min.row(i-modei), flag, i);
+    }
     return 0;
 }
 
@@ -65,10 +67,13 @@ int grain::check_sn_g()
     return 0;
 }
 
-int grain::ini_hardening_g(double nrsx_in, VectorXd CRSS_p_in, VectorXd hst_in, int modei)
+int grain::ini_hardening_g(double nrsx_in, VectorXd CRSS_p_in, VectorXd hst_in, int modei, int modes_num)
 {
-
-    gmode[modei].ini_hardening_mode(nrsx_in, CRSS_p_in, hst_in);
+    //create a loop to input the hardening parameters from 0 to modes_num
+    for(int i = modei; i < modei+modes_num; i++)
+    {
+	gmode[i].ini_hardening_mode(nrsx_in, CRSS_p_in, hst_in);
+    }
     return 0;
 }
 
@@ -432,7 +437,7 @@ double grain::cal_RSSxmax(Matrix3d Min)
     double RSSxmax = 0;
     for(int i = 0; i < modes_num; i++)
     {
-        double temp = gmode[i].get_RSSxM(X);
+        double temp = gmode[i].cal_relative_rss(X);
         if(RSSxmax < temp) RSSxmax = temp;
     }
     return RSSxmax;
@@ -542,14 +547,14 @@ void grain::Update_shear_strain(double Tincr)
     gamma_delta = 0;
     for(int i = 0; i < modes_num; i++)
     {         
-        temp = Tincr * gmode[i].Update_shear_strain_m();
+        temp = Tincr * gmode[i].update_shear_strain_m();
         gamma_delta_gmode[i] = temp;
         gamma_delta += temp;
     }    
 }
 
 
-void grain::Update_orientation(double Tincr, Matrix3d Wij_m, Matrix3d Dije_AV, Matrix3d Dijp_AV)
+void grain::update_orientation(double Tincr, Matrix3d Wij_m, Matrix3d Dije_AV, Matrix3d Dijp_AV)
 {
     Wij_g = Wij_m + mult_4th(RSinv_C,Dije_g-Dije_AV) + mult_4th(RSinv_VP,Dijp_g-Dijp_AV);
 
@@ -561,9 +566,10 @@ void grain::Update_orientation(double Tincr, Matrix3d Wij_m, Matrix3d Dije_AV, M
     Euler_M = Euler_M_new;
 }
 
-void grain::Update_CRSS(double Tincr)
+void grain::update_modes(double Tincr)
 {
-    for(int i = 0; i < modes_num; i++)
-        gmode[i].Update_CRSS_m(Tincr, gamma_total, gamma_delta, gamma_delta_gmode, modes_num);
+    for(int i = 0; i < modes_num; i++)	gmode[i].update_ssd(Dij_g, Tincr);
+    for(int i = 0; i < modes_num; i++)	gmode[i].update_lhparams(Dij_g);
+    for(int i = 0; i < modes_num; i++)	gmode[i].update_status(*this, Tincr);
     gamma_total += gamma_delta;
 }

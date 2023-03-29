@@ -18,7 +18,7 @@ namespace Polycs{
 class polycrystal
 {
     private:
-        Grains::grain* g  = NULL; 
+        grain* g  = NULL; 
         int grains_num = 0;
 
         double GZ = 30; //grain size (um)
@@ -136,7 +136,7 @@ class polycrystal
         int ini_GZ(double);
         //input the grain size;
 
-        int ini_hardening(double, VectorXd, VectorXd, int);
+        int ini_hardening(double, VectorXd, VectorXd, int, int);
         //input the hardening parameters
         //input parameters:
         //double nrsx_in; VectorXd CRSS_p_in; VectorXd hst_in; int modei

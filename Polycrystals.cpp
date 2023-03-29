@@ -174,7 +174,7 @@ void polycrystal::set_ISdot(Vector6i Min){ISdot = Min;}
 int polycrystal::grains_n(int n)
 {
     grains_num = n;
-    g = new Grains::grain[n];
+    g = new grain[n];
     //change the number of grains
     for(int i = 0; i < n; i++)  g[i].grain_i = i;
     return 0;
@@ -312,11 +312,11 @@ int polycrystal::ini_sn(MatrixXd Min, int flag, int system_n, int modei)
     Min_s = Min_s*Mabc.transpose();
 
     //normalization
-    for(int i = 0; i < system_n; i++)
-    {
-        Min_n.row(i) = Min_n.row(i).normalized();
-        Min_s.row(i) = Min_s.row(i).normalized();
-    }
+ //   for(int i = 0; i < system_n; i++)
+ //   {
+ //       Min_n.row(i) = Min_n.row(i).normalized();
+ //       Min_s.row(i) = Min_s.row(i).normalized();
+ //   }
 
     MatrixXd Min_ns(system_n,6);
     Min_ns.block(0,0,system_n,3) = Min_n;
@@ -349,11 +349,11 @@ int polycrystal::ini_GZ(double x)
     return 0;
 }
 
-int polycrystal::ini_hardening(double nrsx_in, VectorXd CRSS_p_in, VectorXd hst_in, int modei)
+int polycrystal::ini_hardening(double nrsx_in, VectorXd CRSS_p_in, VectorXd hst_in, int modei, int modes_count)
 {
     for(int i = 0; i < grains_num; i++)
     {
-        g[i].ini_hardening_g(nrsx_in, CRSS_p_in, hst_in, modei);
+        g[i].ini_hardening_g(nrsx_in, CRSS_p_in, hst_in, modei, modes_count);
     }
     return 0;
 }
@@ -972,8 +972,8 @@ int polycrystal::EVPSC(int istep, double Tincr,\
      for(int G_n = 0; G_n < grains_num; ++G_n)
     {
         g[G_n].Update_shear_strain(Tincr);
-        if(Iupdate_ori) g[G_n].Update_orientation(Tincr, Wij_m, Dije_AV, Dijp_AV);
-        if(Iupdate_CRSS) g[G_n].Update_CRSS(Tincr);
+        if(Iupdate_ori) g[G_n].update_orientation(Tincr, Wij_m, Dije_AV, Dijp_AV);
+        if(Iupdate_CRSS) g[G_n].update_modes(Tincr);
         if(Ishape == 1)
         {
             g[G_n].Update_Fij_g(Tincr);

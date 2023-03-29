@@ -4,8 +4,7 @@
 #include "Modes.h"
 #include "Toolbox.h"
 
-namespace Grains{
-
+class Slip;
 class grain
 {
     private:
@@ -46,8 +45,6 @@ class grain
         Matrix3d Euler_M;
         double weight;
 
-        Modes::mode* gmode = NULL; // deformation modes
-        int modes_num = 0;
         double* gamma_delta_gmode = NULL;
 
         double gamma_total = 0;
@@ -56,8 +53,11 @@ class grain
     public:
     
         int grain_i; // The Number
+        int modes_num = 0;
 
         grain();
+        //move from private to public
+	Slip* gmode = NULL; // deformation modes
     
         //input the euler angle and weights
         void ini_euler_g(Vector4d);
@@ -78,7 +78,7 @@ class grain
         //input the hardening parameters
         //input parameters:
         //double nrsx_in; VectorXd CRSS_p_in; VectorXd hst_in; int modei
-        int ini_hardening_g(double, VectorXd, VectorXd, int);
+        int ini_hardening_g(double, VectorXd, VectorXd, int, int);
         int check_hardening_g();
 
         //calculate Eshelby tensor in ESC
@@ -157,14 +157,15 @@ class grain
         //parameters:
         //double Tincr, Matrix3d Wij_m
         //Matrix3d Dije_AV, Matrix3d Dijp_AV
-        void Update_orientation(double, Matrix3d, Matrix3d, Matrix3d);
+        void update_orientation(double, Matrix3d, Matrix3d, Matrix3d);
 
         //update the CRSS in the deformation systems
         //parameter:
         //double Tincr
-        void Update_CRSS(double);
+        void update_modes(double);
 
+	//add from SXCpp
+	MatrixXd lat_hard_mat;
+	void set_lat_hard_mat(); // wait to be finished
 };
-
-}
 #endif
