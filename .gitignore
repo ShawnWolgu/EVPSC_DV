@@ -6,3 +6,5 @@ Debuginput/*
 build/*
 CMakeLists.txt
 debug/*
+.vimspector.json
+.DS*
