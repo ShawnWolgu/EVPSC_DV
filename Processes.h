@@ -35,6 +35,7 @@ class Process
         //Output files
         fstream ss_out; //output of the macro stress-strain curves
         fstream tex_out; //output of the texture
+	fstream grain_out; //output of the grain information
 
         int texctrl; //print the texture every n steps(0 means only print at the end)
 
@@ -74,6 +75,10 @@ class Process
         //output of texture
         void Out_texture(Polycs::polycrystal &, int);
         void Out_texset(int);
+
+	//output of grain information
+        void init_grain_info(Polycs::polycrystal &, int);
+        void Out_grain_info(Polycs::polycrystal &, int);
 
 };
 

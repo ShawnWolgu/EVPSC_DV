@@ -9,6 +9,8 @@
 #include <iostream>
 #include <Eigen/Dense>
 #include <cmath>
+#include <vector>
+#include <nlohmann/json.hpp>
 
 #define SQR2 1.41421356237309
 #define RSQ2 0.70710678118654744
@@ -17,6 +19,7 @@
 
 using namespace std;
 using namespace Eigen;
+using json = nlohmann::json;
 
 //
 #define Intn 10 //number of integral points in Eshelby calculation
@@ -165,4 +168,6 @@ Matrix3d Rodrigues(Matrix3d);
 
 int Jacobi(Matrix3d A,Vector3d &D,Matrix3d &V);
 
+MatrixXd to_matrix(json &j, string key, int n, int m);
+VectorXd to_vector(json &j, string key, int n);
 #endif

@@ -1,4 +1,5 @@
 #include "Grains.h"
+#include "func.h"
 
 grain::grain()
 {
@@ -46,13 +47,30 @@ int grain::ini_gmode_g(int n)
     return 1;
 }
 
+int grain::ini_gmode_g(json &j)
+{
+    modes_num = j["modes_num"];
+    gmode = new Slip[modes_num];
+    int i = 0;
+    for (json &j_mode: j["sx_per_mode"]){
+	gmode[i] = Slip(j_mode); ++i;
+    }
+    gamma_delta_gmode = new double[modes_num];
+    return 1;
+}
+
 int grain::check_gmode_g(){return modes_num;}
 
-int grain::ini_sn_g(MatrixXd Min, int flag, int system_n, int modei)
+int grain::ini_sn_g(MatrixXd Min, int flag, int system_n, int modei, Matrix6d elastic_modulus)
 {
+    cout << "Min" << Min << "\n";
     for(int i = modei; i < modei+system_n; i++)
     {
-	gmode[i].ini_sn_mode(Min.row(i-modei), flag, i);
+	VectorXd Min_temp = Min(i-modei,all);
+	cout << "line number: " << i-modei << "\n";
+	cout << "Min_temp: " << Min_temp.transpose() << "\n";
+	gmode[i].ini_sn_mode(Min_temp, flag, i);
+	gmode[i].cal_shear_modulus(elastic_modulus);
     }
     return 0;
 }
@@ -69,7 +87,6 @@ int grain::check_sn_g()
 
 int grain::ini_hardening_g(double nrsx_in, VectorXd CRSS_p_in, VectorXd hst_in, int modei, int modes_num)
 {
-    //create a loop to input the hardening parameters from 0 to modes_num
     for(int i = modei; i < modei+modes_num; i++)
     {
 	gmode[i].ini_hardening_mode(nrsx_in, CRSS_p_in, hst_in);
@@ -242,13 +259,40 @@ Vector3d axis_t, Matrix6d C66,Integralpoint6 aa6, Integralpoint6 aaww6, Integral
 }
 
 Matrix3d grain::get_stress_g(){return sig_g;}
-
-void grain::save_sig_g_old(){sig_g_old = sig_g;}
+Matrix3d grain::get_strain_g(){return eps_g;}
 
 Matrix3d grain::get_Dije_g(){return Dije_g;}
 Matrix3d grain::get_Dijp_g(){return Dijp_g;}
 Matrix3d grain::get_Udot_g(){return Udot_g;}
 
+void grain::save_status_g(){
+    sig_g_old = sig_g;
+    Mij6_J_g_old = Mij6_J_g;  Metilde_g_old = Metilde_g;
+    Mpij6_g_old = Mpij6_g;    Mptilde_g_old = Mptilde_g;
+    Cij6_SA_g_old = Cij6_SA_g;
+    Dij_g_old = Dij_g;        
+    Dije_g_old = Dije_g;      Dijp_g_old = Dijp_g;
+    save_RSinv_g();
+}
+
+void grain::save_RSinv_g(){
+    for(int i = 0; i < 3; i++)  for(int j = 0; j < 3; j++)
+    for(int m = 0; m < 3; m++)  for(int n = 0; n < 3; n++){
+        RSinv_C_old[i][j][m][n] = RSinv_C[i][j][m][n];
+        RSinv_VP_old[i][j][m][n] = RSinv_VP[i][j][m][n];
+    }
+}
+
+void grain::restore_status_g(){
+    sig_g = sig_g_old;
+    Mij6_J_g = Mij6_J_g_old;  Metilde_g = Metilde_g_old;
+    Mpij6_g = Mpij6_g_old;    Mptilde_g = Mptilde_g_old;
+    Cij6_SA_g = Cij6_SA_g_old;
+    Dij_g = Dij_g_old;
+    Dije_g = Dije_g_old;      Dijp_g = Dijp_g_old;
+    Update_RSinv_C_g(RSinv_C_old);
+    Update_RSinv_VP_g(RSinv_VP_old);
+}
 //elastic consistent
 void grain::Update_Cij6_SA_g(Matrix6d Min){Cij6_SA_g = Min;}
 void grain::Update_Mij6_J_g(Matrix6d Min){Mij6_J_g = Min;}
@@ -458,16 +502,13 @@ double grain::cal_RSSxlim(Matrix3d D)
 void grain::grain_stress(double Tincr, Matrix3d Wij_m, Matrix3d Dij_m,\
  Matrix3d Dije_AV, Matrix3d Dijp_AV, Matrix3d Sig_m, Matrix3d Sig_m_old)
 {
+    //cout << "sig_g_before = " << endl << sig_g << endl;
     Matrix3d X = sig_g; 
-
     //06.31
     //double RSSxlim = cal_RSSxlim(Dij_m);
     //double RSSxm = cal_RSSxmax(X);
     //if(cal_RSSxmax(X) > RSSxlim) X = X/RSSxm; 
     //06.31
-
-
-
     //-1
     //according to Equ[5-30] in manual
     //calculate the wij~
@@ -532,6 +573,7 @@ void grain::grain_stress(double Tincr, Matrix3d Wij_m, Matrix3d Dij_m,\
     //Newton-Rapthon iteration
 
     sig_g = Chg_basis(Xv);
+    //cout << "sig_g = " << endl << sig_g << endl;
 
     Vector6d dijegv =  Mij6_J_g *((Xv - Chg_basis6(sig_g_old))/Tincr - Chg_basis6(Xjau)); 
     Dije_g = Chg_basis(dijegv);
@@ -553,6 +595,11 @@ void grain::Update_shear_strain(double Tincr)
     }    
 }
 
+void grain::update_strain(double Tincr)
+{
+    eps_g += Dij_g * Tincr;
+}
+
 
 void grain::update_orientation(double Tincr, Matrix3d Wij_m, Matrix3d Dije_AV, Matrix3d Dijp_AV)
 {
@@ -572,4 +619,39 @@ void grain::update_modes(double Tincr)
     for(int i = 0; i < modes_num; i++)	gmode[i].update_lhparams(Dij_g);
     for(int i = 0; i < modes_num; i++)	gmode[i].update_status(*this, Tincr);
     gamma_total += gamma_delta;
+}
+
+void grain::set_lat_hard_mat(){
+    lat_hard_mat.resize(modes_num,modes_num);
+    for (int i = 0; i < modes_num; i++){
+	for (int j = 0; j < modes_num; j++){
+	    if (gmode[i].num == gmode[j].num) lat_hard_mat(gmode[i].num,gmode[j].num) = 1;
+	    else{
+	    	int mode = get_interaction_mode(gmode[i].burgers_vec, gmode[i].plane_norm, gmode[j].burgers_vec, gmode[j].plane_norm);
+	    	lat_hard_mat(gmode[i].num,gmode[j].num) = gmode[i].latent_params[mode];
+	    }
+	}
+    }
+}
+
+int grain::get_interaction_mode(Vector3d burgers_i, Vector3d plane_i, Vector3d burgers_j, Vector3d plane_j){
+    /*
+     * Return the dislocation interaction mode code between two slip system.
+     * 0: No Junction, 1: Hirth Lock, 2: Coplanar Junction, 3: Glissile Junction, 4: Sessile Junction
+     */
+    double perp = 0.02, prll = 0.98;
+    double cos_b_angle = cal_cosine(burgers_i, burgers_j);
+    if(abs(cos_b_angle) < perp) return 1;
+    else {
+	if(abs(cos_b_angle) > prll) return 0;
+	else{
+	    if (abs(cal_cosine(plane_i, plane_j)) > prll) return 2;
+	    else{
+		bool if_glide_i = (abs(cal_cosine(plane_i, burgers_i+burgers_j)) < perp);
+		bool if_glide_j = (abs(cal_cosine(plane_j, burgers_i+burgers_j)) < perp);
+	    	if (if_glide_i || if_glide_j) return 3;
+		else return 4;
+	    }
+	}
+    }
 }

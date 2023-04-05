@@ -1,4 +1,32 @@
-#include "Modes.h"
+#include "Slip.h"
+
+Slip::Slip() {};
+
+Slip::Slip(json &j_slip)
+{
+    mtype = j_slip["type"];  num = j_slip["id"];  shear_modulus = j_slip["G"];
+    strain_rate_slip = 0; drate_dtau = 0; acc_strain = 0; disloc_velocity = 0; 
+    
+    VectorXd info_vec = to_vector(j_slip, "sn", 6);
+    plane_norm = info_vec(seq(0,2)); //normal 
+    burgers_vec = info_vec(seq(3,5)); //Burgers
+    Pij = 0.5 * (burgers_vec / burgers_vec.norm() * plane_norm.transpose() + plane_norm * burgers_vec.transpose() / burgers_vec.norm());
+    Rij = 0.5 * (burgers_vec * plane_norm.transpose() / burgers_vec.norm() - plane_norm * burgers_vec.transpose() / burgers_vec.norm());
+    
+    rate_sen = j_slip["nrsx"];
+    int len = j_slip["CRSS_p"].size();
+    if (len == 4) flag_harden = 0; else flag_harden = 1;
+    for (int i = 0; i != len; ++i) harden_params.push_back(j_slip["CRSS_p"][i]); 
+    for (int i = 0; i != j_slip["hst"].size(); ++i) latent_params.push_back(j_slip["hst"][i]);
+    for (int i = 0; i != 5; ++i) update_params.push_back(0);
+    if (flag_harden == 0) crss = harden_params[0];
+    else {
+	disloc_density = j_slip["CRSS_p"][0];
+	rho_mov = disloc_density;
+    	update_params[0] = burgers_vec.norm() * 1e-10;
+    	crss = harden_params[5];
+    }
+}
 
 int Slip::ini_sn_mode(VectorXd matrix_input, int mode_type, int system_n)
 {
@@ -7,12 +35,11 @@ int Slip::ini_sn_mode(VectorXd matrix_input, int mode_type, int system_n)
     num = system_n;
     VectorXd info_vec = matrix_input;
     plane_norm = info_vec(seq(0,2)); //normal 
+    plane_norm = plane_norm/plane_norm.norm();
     burgers_vec = info_vec(seq(3,5)); //Burgers
-    Pij=0.5*(burgers_vec*plane_norm.transpose()+plane_norm*burgers_vec.transpose());
-    Rij=0.5*(burgers_vec*plane_norm.transpose()-plane_norm*burgers_vec.transpose());
+    Pij=0.5*(burgers_vec/burgers_vec.norm()*plane_norm.transpose()+plane_norm*burgers_vec.transpose()/burgers_vec.norm());
+    Rij=0.5*(burgers_vec*plane_norm.transpose()/burgers_vec.norm()-plane_norm*burgers_vec.transpose()/burgers_vec.norm());
     strain_rate_slip = 0; drate_dtau = 0; shear_modulus = 0; acc_strain = 0; disloc_velocity = 0; 
-    // Need calculate the shear modulus
-    shear_modulus = 86488;
     return 0;
 }
 
@@ -225,10 +252,10 @@ void Slip::update_disvel(Slip* slip_sys, MatrixXd lat_hard_mat, int bv, double n
 }
 
 void Slip::update_ssd(Matrix3d strain_rate, double dtime){
-    if (flag_harden == 0 || flag_harden == 1){
+    if (flag_harden == 0){
 	acc_strain += abs(strain_rate_slip) * dtime;
     }
-    if (flag_harden == 2){ 
+    if (flag_harden == 1){ 
     	double c_backstress = harden_params[9], c_multi = harden_params[10], c_annih = harden_params[11], burgers = update_params[0];
 	double D = 100 * 1e6, ref_srate = 1e7, gg = 0.024;
 	rho_sat = c_backstress * burgers / gg * (1-k_boltzmann * temperature/D/pow(burgers,3) * log(calc_equivalent_value(strain_rate)/ref_srate));
@@ -241,7 +268,7 @@ void Slip::update_ssd(Matrix3d strain_rate, double dtime){
 }
 
 void Slip::update_lhparams(Matrix3d strain_rate){
-    if (flag_harden == 2){ 
+    if (flag_harden == 1){ 
     	double c_backstress = harden_params[9], c_multi = harden_params[10], c_annih = harden_params[11], burgers = update_params[0];
 	double ref_srate = 1e-3, exp_lh = -0.1;
 	lh_coeff = pow(calc_equivalent_value(strain_rate)/ref_srate, exp_lh);
@@ -250,3 +277,24 @@ void Slip::update_lhparams(Matrix3d strain_rate){
     else{}
 }
 
+void Slip::cal_shear_modulus(Matrix6d elastic_modulus){
+    Matrix3d slip_rotation;
+    Vector3d trav_direc = burgers_vec.cross(plane_norm);
+    slip_rotation << (burgers_vec/burgers_vec.norm()), plane_norm/plane_norm.norm(), trav_direc / trav_direc.norm();
+    shear_modulus = rotate_6d_stiff_modu(elastic_modulus, slip_rotation.transpose())(3,3);
+}
+
+void Slip::print(){
+    cout << "Slip system: " << num << endl;
+    cout << "Burgers vector: " << burgers_vec.transpose() << endl;
+    cout << "Plane normal: " << plane_norm.transpose() << endl;
+    cout << "Dislocation density: " << disloc_density << endl;
+    cout << "Shear modulus: " << shear_modulus << endl;
+    cout << "Strain rate: " << strain_rate_slip << endl;
+    cout << "Accumulated strain: " << acc_strain << endl;
+    cout << "Critical resolved shear stress: " << crss << endl;
+    cout << "Harden parameters: " << endl;
+    for (int i = 0; i < harden_params.size(); i++) cout << harden_params[i] << "  " << endl;
+    cout << "LH coefficient: " << lh_coeff << endl;
+    cout << "Flag harden: " << flag_harden << endl;
+}

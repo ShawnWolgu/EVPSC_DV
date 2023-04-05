@@ -200,6 +200,14 @@ void polycrystal::Norm_weight()
 
 }
 
+int polycrystal::ini_cry(json &j){
+    crysym = j["crysym"];   Miller_n = j["Miller_n"]; 
+    Cdim = to_vector(j, "Cdim", 3);  Cang = to_vector(j, "Cang", 3);
+    Trans_Miller = to_matrix(j, "Trans_Miller", 3, Miller_n);
+    Mabc = to_matrix(j, "Mabc", 3, 3);
+    return 0;
+}
+
 int polycrystal::ini_cry(string strin, VectorXd vin)
 {
     //transform str to lower case
@@ -291,6 +299,15 @@ int polycrystal::ini_gmode(int n)
     return 0;
 }
 
+int polycrystal::ini_gmode(json &j)
+{
+    for(int i = 0; i < grains_num; i++)
+    {
+	g[i].ini_gmode_g(j);
+    }
+    return 0;
+}
+
 int polycrystal::check_gmode()
 {
     for(int i = 0; i < grains_num; i++)
@@ -301,6 +318,24 @@ int polycrystal::check_gmode()
     return 0;
 }
 
+void polycrystal::ini_from_json(json &sx_json){
+    ini_cry(sx_json);
+    ini_Cij6(to_matrix(sx_json, "Cij6", 6, 6));
+    ini_therm(to_vector(sx_json, "therm", 6));
+    ini_GZ(sx_json["GZ"]);
+    ini_gmode(sx_json);
+    for(int i = 0; i < grains_num; ++i) g[i].set_lat_hard_mat();
+    cout << "Latent hardening matrix:\n" << g[0].lat_hard_mat << "\n";
+    if (g[0].gmode[0].flag_harden == 1){
+	for(int i = 0; i < grains_num; ++i){
+	   for(int j = 0; j < g[i].modes_num; ++j){
+	       g[i].gmode[j].update_status(g[i],0.0);
+	   }
+	}
+    }
+}
+
+
 int polycrystal::ini_sn(MatrixXd Min, int flag, int system_n, int modei)
 {
     MatrixXd Min_s, Min_n;
@@ -310,13 +345,11 @@ int polycrystal::ini_sn(MatrixXd Min, int flag, int system_n, int modei)
     //calculate the coordinate in Cartesian system
     Min_n = Min_n*Mabc.transpose();
     Min_s = Min_s*Mabc.transpose();
-
     //normalization
- //   for(int i = 0; i < system_n; i++)
- //   {
- //       Min_n.row(i) = Min_n.row(i).normalized();
- //       Min_s.row(i) = Min_s.row(i).normalized();
- //   }
+    for(int i = 0; i < system_n; i++)
+    {
+        Min_n.row(i) = Min_n.row(i).normalized();
+    }
 
     MatrixXd Min_ns(system_n,6);
     Min_ns.block(0,0,system_n,3) = Min_n;
@@ -325,10 +358,10 @@ int polycrystal::ini_sn(MatrixXd Min, int flag, int system_n, int modei)
     for(int i = 0; i < system_n; i++)
         for(int j = 0; j < 6; j++)
             if(abs(Min_ns(i,j)) <= 1e-3 ) Min_ns(i,j) = 0.0;
-
     for(int i = 0; i < grains_num; i++)
     {
-        g[i].ini_sn_g(Min_ns, flag, system_n, modei);
+	cout << "Min_ns:\n" << Min_ns << endl;
+        g[i].ini_sn_g(Min_ns, flag, system_n, modei, Cij6);
     }
     return 0;
 }
@@ -410,14 +443,12 @@ int polycrystal::Selfconsistent_E(int Istep, double ERRM, int ITMAX)
         }
         // -3 ( Eq[2.14] in Wang et al., 2010)
         // the elastic stiffness invovling Jaumann rate 
-
         g[G_n].Update_Mij6_J_g(Chg_basis6(C4SAS).inverse());
         //store the Jaumann rate elastic stiffness in grains
-
         CUB += Chg_basis6(C4SAS) * g[G_n].get_weight_g();
-
         // CUB is the volume average Elastic stiffness of all grains
     }
+    //cout << "SSC:\n" << SSC << endl;
     //-1 Calculate the Elastic stiffness in Jaumann rate in all grains
     //(Rotate to Sample axes according to the euler angle)
     // and sum with the weight 
@@ -425,6 +456,7 @@ int polycrystal::Selfconsistent_E(int Istep, double ERRM, int ITMAX)
 
     if(Istep == 0)  
         CSC = CUB;  //first step, use the volume average
+	SSC = CSC.inverse();
     
     //-5
     //loop to make the guessed elastic stiffness CSC
@@ -497,6 +529,7 @@ int polycrystal::Selfconsistent_E(int Istep, double ERRM, int ITMAX)
             // C~ = C * (S^-1 - I)
             Ctilde = CSC * S66inv_I;
             //-11
+	    //cout << "S66: " << S66 << endl;
         }
         //end of Ishape == 0
 
@@ -565,7 +598,7 @@ int polycrystal::Selfconsistent_E(int Istep, double ERRM, int ITMAX)
             // _g means the value depends on the grain
             //refer to Equ[5-35] in Manual 7d
             // B_g = (M_g + M~)^-1 * (M_ + M~)
-            Matrix6d Metilde = Ctilde.inverse();
+	    Matrix6d Metilde = Ctilde.inverse();
             Me_g = g[G_n].get_Mij6_J_g();
             Matrix6d Part1 = Me_g + Metilde;
             Matrix6d Part1_inv = Part1.inverse();
@@ -587,8 +620,10 @@ int polycrystal::Selfconsistent_E(int Istep, double ERRM, int ITMAX)
         RER=Errorcal(SSC,SSC_new);
         SSC = 0.5*(SSC_new+SSC_new.transpose());
         CSC = SSC.inverse();
+	//cout << "SSC_end: " << SSC << endl;
         //-16
-        cout << "**Error in  ESC iteration_" << IT << ":\t" << RER << endl;
+        cout << "**Error in  ESC iteration " << IT << ":\t" << RER << endl;
+	if(isnan(RER)) return 1;
 
     } //while loop
 
@@ -801,7 +836,8 @@ int polycrystal::Selfconsistent_P(int Istep, double ERRM, int ITMAX)
 
     C_VP_SC = M_VP_SC.inverse();
   
-    cout << "**Error in VPSC iteration_" << IT << ":\t" << RER << endl;
+    cout << "**Error in VPSC iteration " << IT << ":\t" << RER << endl;
+    if(isnan(RER)) return 1;
     }//while loop
     return 0;
 }
@@ -921,14 +957,11 @@ int polycrystal::EVPSC(int istep, double Tincr,\
  bool Iupdate_ori,bool Iupdate_shp,bool Iupdate_CRSS)
 {   
     double errd, errs, err_g;
-    cout << "********STEP********\n\t" \
-        << istep << endl << "********STEP********\n";
+    int max_iter = 20;
+    //cout << "\n**********\tSTEP\t" << istep << "\t**********\n\n";
+    save_status();
 
-    Sig_m_old = Sig_m; //save the stress of the last step
-    for(int G_n = 0; G_n < grains_num; ++G_n)
-        g[G_n].save_sig_g_old();//save the grain stress of the last step
-
-    for(int i = 0; i < 30; ++i)
+    for(int i = 0; i <= max_iter; ++i)
     {
         //save the input for error calculation
         Sig_in = Sig_m;
@@ -939,9 +972,10 @@ int polycrystal::EVPSC(int istep, double Tincr,\
             sig_in_AV += g[G_n].get_stress_g() * g[G_n].get_weight_g();
 
         ///////////
-        cout << "iteration: " << i+1 << endl;
-        Selfconsistent_E(istep, SC_err_m, SC_iter_m);
-        Selfconsistent_P(istep, SC_err_m, SC_iter_m);
+        cout << "        \tIteration " << i+1 << "\t        " << endl;
+        int return_scE = Selfconsistent_E(istep, SC_err_m, SC_iter_m);
+        int return_scP = Selfconsistent_P(istep, SC_err_m, SC_iter_m);
+	if (return_scE == 1 || return_scP == 1) return 1;
         Cal_Sig_m(Tincr); 
         Cal_Sig_g(Tincr);
         Update_AV();
@@ -951,11 +985,12 @@ int polycrystal::EVPSC(int istep, double Tincr,\
         errd = Errorcal(Dij_m, Dij_in);
         err_g = Errorcal(Sig_AV, sig_in_AV);
 
-        cout << "\nerr_s:\t" << errs << endl;
-        cout << "err_d:\t" << errd << endl;
-        cout << "err_g:\t" << err_g << endl;
-        cout << "=-=-=-=-=-=-=-=-=-=\n"; 
+        cout << "\nError in macro stress tensor:\t" << errs << endl;
+        cout << "Error in strain rate tensor:\t" << errd << endl;
+        cout << "Error in average grain stress:\t" << err_g << endl;
+        cout << "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n"; 
         if((errs<errS_m)&&(errd<errD_m)&&(err_g<err_g_AV)) break;
+	if (i == max_iter) return 1;
     }
 
     Eps_m += Dij_m * Tincr; //update the macro strain tensor
@@ -972,6 +1007,7 @@ int polycrystal::EVPSC(int istep, double Tincr,\
      for(int G_n = 0; G_n < grains_num; ++G_n)
     {
         g[G_n].Update_shear_strain(Tincr);
+	g[G_n].update_strain(Tincr);
         if(Iupdate_ori) g[G_n].update_orientation(Tincr, Wij_m, Dije_AV, Dijp_AV);
         if(Iupdate_CRSS) g[G_n].update_modes(Tincr);
         if(Ishape == 1)
@@ -983,6 +1019,31 @@ int polycrystal::EVPSC(int istep, double Tincr,\
     return 0;
 }
 
+void polycrystal::save_status(){
+   // Save Wij_m, Dij_m, Dije_AV, Dijp_AV, Sig_m;
+   Wij_m_old = Wij_m;
+   Dij_m_old = Dij_m;
+   Dije_AV_old = Dije_AV;
+   Dijp_AV_old = Dijp_AV;
+   Sig_m_old = Sig_m;
+   COLD = CSC;
+   C_VP_SC_old = C_VP_SC;
+   for(int G_n = 0; G_n < grains_num; ++G_n)
+	g[G_n].save_status_g();
+}
+
+void polycrystal::restore_status(){
+   // Restore Wij_m, Dij_m, Dije_AV, Dijp_AV, Sig_m;
+   Wij_m = Wij_m_old;
+   Dij_m = Dij_m_old;
+   Dije_AV = Dije_AV_old;
+   Dijp_AV = Dijp_AV_old;
+   Sig_m = Sig_m_old;
+   CSC = COLD;  C_VP_SC = C_VP_SC_old;
+   SSC = CSC.inverse();  M_VP_SC = C_VP_SC.inverse();
+   for(int G_n = 0; G_n < grains_num; ++G_n)
+	g[G_n].restore_status_g();
+}
 
 void polycrystal::Cal_Sig_m(double Tincr)
 {

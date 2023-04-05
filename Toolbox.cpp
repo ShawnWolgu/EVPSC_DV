@@ -865,3 +865,15 @@ int Jacobi(Matrix3d A,Vector3d &D,Matrix3d &V)
     }
     return 1;
 }
+
+MatrixXd to_matrix(json &j, string key, int n, int m){
+    vector<double> v = j[key];
+    MatrixXd m1 = Eigen::Map<Eigen::MatrixXd>(v.data(), n, m); 
+    return m1;
+}
+
+VectorXd to_vector(json &j, string key, int n){
+    vector<double> v = j[key];
+    VectorXd v1 = Eigen::Map<Eigen::VectorXd>(v.data(), v.size());
+    return v1;
+}

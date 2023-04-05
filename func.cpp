@@ -270,3 +270,6 @@ double calc_relative_error(double x, double y){
     else return abs(x)-abs(y)/abs(x);
 }
 
+double cal_cosine(Vector3d vec_i, Vector3d vec_j){
+   return vec_i.dot(vec_j)/(vec_i.norm() * vec_j.norm());
+}

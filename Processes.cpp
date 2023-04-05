@@ -10,6 +10,7 @@ Process::Process()
     ss_out << setw(11) << "S32" << setw(11)<< "S13" << setw(11)<< "S12" << endl;
 
     tex_out.open("Tex.out",ios::out);
+    grain_out.open("Grain.csv",ios::out);
 }
 
 Process::~Process()
@@ -49,11 +50,30 @@ void Process::loading(Polycs::polycrystal &pcrys)
     pcrys.set_ISdot(ISdot);
     for(int istep = 0; istep < Nsteps; ++istep)
     {
-        pcrys.EVPSC(istep, Tincr, Iupdate_ori, Iupdate_shp, Iupdate_CRSS);
+	double pct_step = 0, coeff_step = 1;
+	cout << "\n**********\tSTEP\t" << istep << "\t**********\n\n";
+	do{
+	    cout << "Step " << istep << ":\t" << pct_step << " to " << pct_step + coeff_step << endl;
+            int return_SC = pcrys.EVPSC(istep, coeff_step * Tincr, Iupdate_ori, Iupdate_shp, Iupdate_CRSS);
+	    if (return_SC == 1) {
+		pcrys.restore_status();
+		cout << "Not convergent... Retry with a smaller increment." << endl;
+		cout << "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n\n"; 
+		coeff_step *= 0.5;
+	    	if (coeff_step < 1e-6) {cout << "Not convergent... Abort.\n" << endl; exit(1);}
+		continue;
+	    }
+	    pct_step += coeff_step;
+	    coeff_step = min(1.0, coeff_step * 1.5);
+	    coeff_step = min(1.0 - pct_step, coeff_step);
+	} while (pct_step < 1-1e-6);
         Out_sscurves(pcrys);
         if(!((istep+1)%texctrl))
             Out_texture(pcrys,istep);
+	if(istep == 0) init_grain_info(pcrys, 0);
+	Out_grain_info(pcrys, 0);
     }
+    Out_texture(pcrys,Nsteps);
 
 }
 
@@ -72,6 +92,26 @@ void Process::Out_texture(Polycs::polycrystal &pcrys, int istep)
     tex_out << setprecision(4) << pcrys.get_ellip_ang().transpose().format(Outformat) << endl << endl;
     pcrys.get_euler(tex_out);
     tex_out << endl;
+}
+
+void Process::init_grain_info(Polycs::polycrystal &pcrys, int num){
+    IOFormat Outformat(StreamPrecision);
+    //output dislocation density
+    grain *g_this = &pcrys.g[num];
+    int mode_num = g_this->modes_num;
+    grain_out << "EVM, ";
+    for(int i = 0; i < mode_num; ++i) grain_out << "Mode" << i+1 << ", ";
+    grain_out << endl;
+}
+
+void Process::Out_grain_info(Polycs::polycrystal &pcrys, int num){
+    IOFormat Outformat(StreamPrecision);
+    //output dislocation density
+    grain *g_this = &pcrys.g[num];
+    int mode_num = g_this->modes_num;
+    grain_out << calc_equivalent_value(g_this->get_strain_g()) << ", ";
+    for(int i = 0; i < mode_num; ++i) grain_out << g_this->gmode[i].disloc_density << ", ";
+    grain_out << endl;
 }
 
 void Process::Out_texset(int input){texctrl = input;}

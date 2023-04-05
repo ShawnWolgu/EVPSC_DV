@@ -1,4 +1,4 @@
-#include "Modes.h"
+#include "Slip.h"
 
 double waiting_time(double rss, double freq_Debye, double c_length, double burgers, double disl_density_for, double kink_energy_ref, double crss,\
                     double Peierls_stress, double expo_kinkeng, double temperature_ref, double temperature);

@@ -6,7 +6,9 @@
 #include <fstream>
 #include <iomanip>
 #include <string>
+#include <nlohmann/json.hpp>
 using namespace std;
+using json = nlohmann::json;
 
 #include "Grains.h"
 #include "Toolbox.h"
@@ -18,9 +20,6 @@ namespace Polycs{
 class polycrystal
 {
     private:
-        grain* g  = NULL; 
-        int grains_num = 0;
-
         double GZ = 30; //grain size (um)
 
         Gausspoint* Gpsets  = NULL; 
@@ -53,6 +52,7 @@ class polycrystal
         Matrix6d SSC; //CSC^-1
         //VPSC
         Matrix5d C_VP_SC; //The visco-plastic stiffness 
+        Matrix5d C_VP_SC_old; 
         Matrix5d M_VP_SC; //The visco-plastic compliance C_VP_SC^-1
         Vector6d D0; //the macro back-extrapolated term (follow Equ[5-41b])
 
@@ -89,11 +89,17 @@ class polycrystal
         Matrix3d sig_in_AV;
 
         Matrix6d Msup;
+	// Matrices for restoration
+	Matrix3d Wij_m_old, Dij_m_old, Dije_AV_old, Dijp_AV_old;
 
     public:
         polycrystal();
+        
+	grain* g  = NULL; 
+        int grains_num = 0;
 
-        void ini_Udot_m(Matrix3d);
+	void ini_from_json(json &j);
+	void ini_Udot_m(Matrix3d);
         void ini_Sig_m(Matrix3d);
         void set_IUdot(Matrix3i);
         void set_ISdot(Vector6i);
@@ -108,6 +114,7 @@ class polycrystal
         void Norm_weight();
 
         int ini_cry(string, VectorXd);
+	int ini_cry(json &j);
         //input the crystal constant
         void check_cry();
         int get_Millern();
@@ -122,6 +129,7 @@ class polycrystal
         int check_therm();
 
         int ini_gmode(int n);
+	int ini_gmode(json &j);
         //input the deformation modes
         //needs loop over grains
         int check_gmode();
@@ -152,6 +160,8 @@ class polycrystal
 
         //calculate the macro&grain elastic compliance
         int Selfconsistent_E(int, double, int); 
+	void save_status();
+	void restore_status();
 
         //calculate the macro&grain VP compliance
         int Selfconsistent_P(int, double, int); 
@@ -162,7 +172,8 @@ class polycrystal
         // calculate the Sig_g and Dij_g including the elastic and vp part
         void Cal_Sig_g(double);
 
-        void Update_AV(); //update the volume average value
+	void restore_stress();
+	void Update_AV(); //update the volume average value
 
         //output
         Vector6d get_Sig_m();

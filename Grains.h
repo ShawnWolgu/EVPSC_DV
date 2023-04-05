@@ -1,7 +1,7 @@
 #ifndef GRAINS_H
 #define GRAINS_H
 
-#include "Modes.h"
+#include "Slip.h"
 #include "Toolbox.h"
 
 class Slip;
@@ -12,10 +12,15 @@ class grain
         Matrix6d Cij6_SA_g; //Elastic stiffness in sample Axes
         Matrix6d Mij6_J_g;  //Elastic compliance invovling Jaumann rate in sample Axes
         Matrix6d Metilde_g; //the (Me~)^-1 in elastic consistency
+	Matrix6d Cij6_SA_g_old;
+        Matrix6d Mij6_J_g_old;  //Old Elastic compliance invovling Jaumann rate in sample Axes
+        Matrix6d Metilde_g_old; //Old the (Me~)^-1 in elastic consistency
         double RSinv_C[3][3][3][3];
 
         Matrix5d Mptilde_g;// the (M~) in elastic consistency
         Matrix5d Mpij6_g;  // M visco-plastic compliance of grain
+	Matrix5d Mptilde_g_old;
+	Matrix5d Mpij6_g_old;
         double RSinv_VP[3][3][3][3];
 
         Vector5d d0_g;
@@ -29,8 +34,14 @@ class grain
         // Udot_g = Dij_g + Wij_g
         Matrix3d eps_g; //strain of grain
         Matrix3d sig_g; //stress of grain
-        Matrix3d sig_g_old; //stress in last step
-
+        // Some variables for restoration
+	Matrix3d sig_g_old; //stress in last step
+	Matrix3d Dij_g_old; //strain rate in last step
+	Matrix3d Dije_g_old; //elastic strain rate in last step
+	Matrix3d Dijp_g_old; //vp strain rate in last step
+	double RSinv_C_old[3][3][3][3];
+	double RSinv_VP_old[3][3][3][3];
+	
         ///////
         //the shape of ellipsoid
         //Vector3d ell_axis_o_g;
@@ -50,6 +61,7 @@ class grain
         double gamma_total = 0;
         double gamma_delta = 0; //the increment of gamma
 
+	int get_interaction_mode(Vector3d burgers_i, Vector3d plane_i, Vector3d burgers_j, Vector3d plane_j);
     public:
     
         int grain_i; // The Number
@@ -68,11 +80,12 @@ class grain
   
         //input the number of deformation modes
         int ini_gmode_g(int);
+        int ini_gmode_g(json &);
         int check_gmode_g();
   
         //input the normal and Burgers vector in ONE mode (several systems)
         //(MatrixXd) sn, (int) flag of twin or slip, (int) number of systems,(int) mode label
-        int ini_sn_g(MatrixXd, int, int, int);
+        int ini_sn_g(MatrixXd, int, int, int, Matrix6d);
         int check_sn_g();
   
         //input the hardening parameters
@@ -97,12 +110,11 @@ class grain
 
         //get the stress of grain
         Matrix3d get_stress_g();
+	Matrix3d get_strain_g();
         
         Matrix3d get_Dije_g();
         Matrix3d get_Dijp_g();
         Matrix3d get_Udot_g();
-
-        void save_sig_g_old();
 
         //calculate the stress in grains with Newton-Rapthon iteration
         //Parameters:
@@ -123,6 +135,9 @@ class grain
         double cal_RSSxlim(Matrix3d); //Calculate the limit of RSS/CRSS
 
         //Elastic consistent
+	void save_status_g();
+	void restore_status_g();
+	void restore_Mij6_J_g();
         void Update_Mij6_J_g(Matrix6d);
         void Update_Cij6_SA_g(Matrix6d);
         void Update_Metilde_g(Matrix6d);
@@ -135,6 +150,7 @@ class grain
         Matrix5d get_Mpij6_g(); 
         Vector5d get_d0_g();
         void Update_RSinv_VP_g(double A[3][3][3][3]);
+	void save_RSinv_g();
 
         Vector3d get_ell_axis_g();
         Matrix3d get_ell_axisb_g();
@@ -159,6 +175,7 @@ class grain
         //Matrix3d Dije_AV, Matrix3d Dijp_AV
         void update_orientation(double, Matrix3d, Matrix3d, Matrix3d);
 
+	void update_strain(double);
         //update the CRSS in the deformation systems
         //parameter:
         //double Tincr
