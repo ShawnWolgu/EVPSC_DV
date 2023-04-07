@@ -1,4 +1,7 @@
+#include <omp.h>
 #include "Polycrystals.h"
+#include "global.h"
+
 using namespace Polycs;
 using namespace std;
 
@@ -182,9 +185,8 @@ int polycrystal::grains_n(int n)
 
 int polycrystal::check_grains_n()
 {
-    cout << "the number of grains:\n" << grains_num << endl;
-    return grains_num;
-    //print the number of grains
+    logger.debug("the number of grains: "+std::to_string(grains_num));
+    return grains_num; //print the number of grains
 }
 
 void polycrystal::ini_euler(Vector4d vin, int i){g[i].ini_euler_g(vin);} 
@@ -260,10 +262,10 @@ int polycrystal::get_Millern(){return Miller_n;}
 
 void polycrystal::check_cry()
 {
-    cout << crysym << endl;
-    cout << "the cdim and cang:" << endl;
-    cout << Cdim.transpose() << endl;
-    cout << Cang.transpose() << endl;
+    logger.debug("the crysym: "+crysym);
+    logger.debug("the cdim and cang:");
+    logger.debug(Cdim.transpose());
+    logger.debug(Cang.transpose());
 }
 
 void polycrystal::ini_Cij6(MatrixXd Min)
@@ -274,7 +276,8 @@ void polycrystal::ini_Cij6(MatrixXd Min)
 
 int polycrystal::check_Cij6()
 {
-    cout << "elastic constant:\n" << Cij6 << "\n";
+    logger.debug("elastic constant:");
+    logger.debug(Cij6);
     return 0;
 }
 
@@ -286,7 +289,8 @@ int polycrystal::ini_therm(VectorXd vin)
 
 int polycrystal::check_therm()
 {
-    cout << "Thermal coefficient:\n" << therm.transpose() << "\n";
+    logger.debug("Thermal coefficient:");
+    logger.debug(therm.transpose());
     return 0;
 }
 
@@ -312,8 +316,8 @@ int polycrystal::check_gmode()
 {
     for(int i = 0; i < grains_num; i++)
     {
-        cout << "the number of modes in Grain " << i << ":\n";
-        cout  << g[i].check_gmode_g() << endl;
+	logger.debug("the number of modes in Grain "+std::to_string(i)+":");
+	logger.debug(std::to_string(g[i].check_gmode_g()));
     }
     return 0;
 }
@@ -325,7 +329,8 @@ void polycrystal::ini_from_json(json &sx_json){
     ini_GZ(sx_json["GZ"]);
     ini_gmode(sx_json);
     for(int i = 0; i < grains_num; ++i) g[i].set_lat_hard_mat();
-    cout << "Latent hardening matrix:\n" << g[0].lat_hard_mat << "\n";
+    logger.debug("Latent hardening matrix:");
+    logger.debug(g[0].lat_hard_mat);
     if (g[0].gmode[0].flag_harden == 1){
 	for(int i = 0; i < grains_num; ++i){
 	   for(int j = 0; j < g[i].modes_num; ++j){
@@ -335,46 +340,6 @@ void polycrystal::ini_from_json(json &sx_json){
     }
 }
 
-
-int polycrystal::ini_sn(MatrixXd Min, int flag, int system_n, int modei)
-{
-    MatrixXd Min_s, Min_n;
-
-    Min_n = Min(all,seq(0,Miller_n-1))*Trans_Miller.transpose();
-    Min_s = Min(all,seq(Miller_n,2*Miller_n-1))*Trans_Miller.transpose(); 
-    //calculate the coordinate in Cartesian system
-    Min_n = Min_n*Mabc.transpose();
-    Min_s = Min_s*Mabc.transpose();
-    //normalization
-    for(int i = 0; i < system_n; i++)
-    {
-        Min_n.row(i) = Min_n.row(i).normalized();
-    }
-
-    MatrixXd Min_ns(system_n,6);
-    Min_ns.block(0,0,system_n,3) = Min_n;
-    Min_ns.block(0,3,system_n,3) = Min_s;
-
-    for(int i = 0; i < system_n; i++)
-        for(int j = 0; j < 6; j++)
-            if(abs(Min_ns(i,j)) <= 1e-3 ) Min_ns(i,j) = 0.0;
-    for(int i = 0; i < grains_num; i++)
-    {
-	cout << "Min_ns:\n" << Min_ns << endl;
-        g[i].ini_sn_g(Min_ns, flag, system_n, modei, Cij6);
-    }
-    return 0;
-}
-
-int polycrystal::check_sn()
-{
-    for(int i = 0; i < grains_num; i++)
-    {
-        cout << "the deformation system in Grain " << i << ":\n";
-        g[i].check_sn_g();
-    }
-    return 0;
-}
 
 int polycrystal::ini_GZ(double x)
 {
@@ -395,7 +360,7 @@ int polycrystal::check_hardening()
 {
     for(int i = 0; i < grains_num; i++)
     {
-        cout << "the hardening parameters in Grain " << i << ":\n";
+	logger.debug("the hardening parameters in Grain "+std::to_string(i)+":");
         g[i].check_hardening_g();
     }    
     return 0;
@@ -533,8 +498,11 @@ int polycrystal::Selfconsistent_E(int Istep, double ERRM, int ITMAX)
         }
         //end of Ishape == 0
 
+
+        #pragma omp parallel for num_threads(Mtr)
         for(int G_n = 0; G_n < grains_num; G_n++)
         {
+	    logger.debug("SC_E: Thread " + std::to_string(omp_get_thread_num()) + " is processing grain " + std::to_string(G_n));
             //solve the eshelby tensor in all the ellipsoid of grain 
             if(Ishape == 1)
             {
@@ -613,6 +581,8 @@ int polycrystal::Selfconsistent_E(int Istep, double ERRM, int ITMAX)
             SSC_new += Me_g * B_g * g[G_n].get_weight_g();
             //-15           
         } //loop over grains
+        #pragma omp barrier
+        #pragma omp master
 
         //cout << "\nThe CNEW:\n" << CNEW << endl;
         //-16
@@ -622,7 +592,7 @@ int polycrystal::Selfconsistent_E(int Istep, double ERRM, int ITMAX)
         CSC = SSC.inverse();
 	//cout << "SSC_end: " << SSC << endl;
         //-16
-        cout << "**Error in  ESC iteration " << IT << ":\t" << RER << endl;
+	logger.notice("**Error in  ESC iteration "+to_string(IT)+":\t"+to_string(RER));
 	if(isnan(RER)) return 1;
 
     } //while loop
@@ -713,8 +683,10 @@ int polycrystal::Selfconsistent_P(int Istep, double ERRM, int ITMAX)
 
         DVP_AV = Vector5d::Zero();
 
+        #pragma omp parallel for num_threads(Mtr)
         for(int G_n = 0; G_n < grains_num; G_n++)
         {
+	    logger.debug("SC_P: Thread " + std::to_string(omp_get_thread_num()) + " is processing grain " + std::to_string(G_n));
             //-2
             //rotate the macro VP stiffness 
             //from Sample axes to the ellipsoid axes;
@@ -814,6 +786,8 @@ int polycrystal::Selfconsistent_P(int Istep, double ERRM, int ITMAX)
             //06.06
 
         } //loop over grains
+        #pragma omp barrier
+        #pragma omp master
 
     // Equ[5-41a]
     // <M_g * B_g> * <B_g>^-1
@@ -836,7 +810,7 @@ int polycrystal::Selfconsistent_P(int Istep, double ERRM, int ITMAX)
 
     C_VP_SC = M_VP_SC.inverse();
   
-    cout << "**Error in VPSC iteration " << IT << ":\t" << RER << endl;
+    logger.notice("**Error in VPSC iteration :" + to_string(IT) + "\t" + to_string(RER));
     if(isnan(RER)) return 1;
     }//while loop
     return 0;
@@ -957,7 +931,7 @@ int polycrystal::EVPSC(int istep, double Tincr,\
  bool Iupdate_ori,bool Iupdate_shp,bool Iupdate_CRSS)
 {   
     double errd, errs, err_g;
-    int max_iter = 20;
+    int max_iter = 15;
     //cout << "\n**********\tSTEP\t" << istep << "\t**********\n\n";
     save_status();
 
@@ -972,10 +946,9 @@ int polycrystal::EVPSC(int istep, double Tincr,\
             sig_in_AV += g[G_n].get_stress_g() * g[G_n].get_weight_g();
 
         ///////////
-        cout << "        \tIteration " << i+1 << "\t        " << endl;
+	logger.notice("        \tIteration " + std::to_string(i+1) + "\t        ");
         int return_scE = Selfconsistent_E(istep, SC_err_m, SC_iter_m);
         int return_scP = Selfconsistent_P(istep, SC_err_m, SC_iter_m);
-	if (return_scE == 1 || return_scP == 1) return 1;
         Cal_Sig_m(Tincr); 
         Cal_Sig_g(Tincr);
         Update_AV();
@@ -984,11 +957,13 @@ int polycrystal::EVPSC(int istep, double Tincr,\
         errs = Errorcal(Sig_m, Sig_in);
         errd = Errorcal(Dij_m, Dij_in);
         err_g = Errorcal(Sig_AV, sig_in_AV);
+	error_SC = std::max(errs, std::max(errd, err_g))/(errS_m + errD_m + err_g_AV) * 3;
 
-        cout << "\nError in macro stress tensor:\t" << errs << endl;
-        cout << "Error in strain rate tensor:\t" << errd << endl;
-        cout << "Error in average grain stress:\t" << err_g << endl;
-        cout << "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n"; 
+	logger.notice("Error in macro stress tensor:\t" + std::to_string(errs));
+	logger.notice("Error in strain rate tensor:\t" + std::to_string(errd));
+	logger.notice("Error in average grain stress:\t" + std::to_string(err_g));
+	logger.notice("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
+	if (return_scE == 1 || return_scP == 1){ error_SC = 2; return 1;}
         if((errs<errS_m)&&(errd<errD_m)&&(err_g<err_g_AV)) break;
 	if (i == max_iter) return 1;
     }
@@ -1131,8 +1106,12 @@ void polycrystal::Cal_Sig_m(double Tincr)
 void polycrystal::Cal_Sig_g(double Tincr)
 {
     #pragma omp parallel for num_threads(Mtr)
-    for(int G_n = 0; G_n < grains_num; G_n++)
+    for(int G_n = 0; G_n < grains_num; G_n++){
+	logger.debug("Cal_sig: Thread " + std::to_string(omp_get_thread_num()) + " is processing grain " + std::to_string(G_n));
         g[G_n].grain_stress(Tincr, Wij_m, Dij_m, Dije_AV, Dijp_AV, Sig_m, Sig_m_old);
+    }
+    #pragma omp barrier
+    #pragma omp master
 }
 
 

@@ -1,5 +1,6 @@
 #include "Grains.h"
 #include "func.h"
+#include "global.h"
 
 grain::grain()
 {
@@ -98,7 +99,7 @@ int grain::check_hardening_g()
 {
     for(int i = 0; i < modes_num; i++)
     {
-        cout << "Mode " << i << ":\n";
+	logger.debug("Mode "+std::to_string(i)+":");
         gmode[i].check_hardening_mode();
     }
     return 0;    
@@ -565,7 +566,7 @@ void grain::grain_stress(double Tincr, Matrix3d Wij_m, Matrix3d Dij_m,\
         {   break;};
         if(it == 99)
         {
-            cout << "\n grain stress calculation failed !" << endl;
+	    logger.warn("Grain stress calculation failed !");
             Xv = Chg_basis6(X) + Chg_basis6(Sig_m) - Chg_basis6(Sig_m_old);
         }
         

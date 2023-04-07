@@ -1,10 +1,10 @@
 *.exe
 *.out
 *.in
+CMakeLists.txt
 Debuginput/*
 .vscode/*
 build/*
-CMakeLists.txt
 debug/*
 .vimspector.json
 .DS*

@@ -1,4 +1,5 @@
 #include "Slip.h"
+#include "global.h"
 
 Slip::Slip() {};
 
@@ -47,15 +48,23 @@ int Slip::check_sn_mode()
 {
     if(mtype == 1)
     {
-        cout << "Slip systems\n";
-	cout << plane_norm.transpose() << "\t" << burgers_vec.transpose() << endl;
-	cout <<  "Pij\n" << Pij << endl;
+	logger.debug("Slip system: " + to_string(num));
+	logger.debug("Normal: ");
+	logger.debug(plane_norm.transpose());
+	logger.debug("Burgers: ");
+	logger.debug(burgers_vec.transpose());
+	logger.debug("Pij: ");
+	logger.debug(Pij);
     }
     if(mtype == 0)
     {
-        cout << "Twinning systems\n";
-	cout << plane_norm.transpose() << "\t" << burgers_vec.transpose() << endl;
-	cout <<  "Pij\n" << Pij << endl;
+	logger.debug("Twinning system: " + to_string(num));
+	logger.debug("Normal: ");
+	logger.debug(plane_norm.transpose());
+	logger.debug("Shear direction: ");
+	logger.debug(burgers_vec.transpose());
+	logger.debug("Pij: ");
+	logger.debug(Pij);
     }
     return 0;
 }
@@ -86,9 +95,10 @@ int Slip::ini_hardening_mode(double nrsx_in, VectorXd hardens_in, VectorXd laten
 
 int Slip::check_hardening_mode()
 {
-    cout << "Slip systems\n";
-    for (int i = 0; i != harden_params.size(); ++i) cout << harden_params[i] << "\t";
-    cout << endl;
+    logger.debug("Slip system: " + to_string(num));
+    string str = "";
+    for (int i = 0; i != harden_params.size(); ++i) str += std::to_string(harden_params[i]) + "\t";
+    logger.debug("Hardening parameters: " + str);
     return 0;    
 }
 
@@ -285,16 +295,20 @@ void Slip::cal_shear_modulus(Matrix6d elastic_modulus){
 }
 
 void Slip::print(){
-    cout << "Slip system: " << num << endl;
-    cout << "Burgers vector: " << burgers_vec.transpose() << endl;
-    cout << "Plane normal: " << plane_norm.transpose() << endl;
-    cout << "Dislocation density: " << disloc_density << endl;
-    cout << "Shear modulus: " << shear_modulus << endl;
-    cout << "Strain rate: " << strain_rate_slip << endl;
-    cout << "Accumulated strain: " << acc_strain << endl;
-    cout << "Critical resolved shear stress: " << crss << endl;
-    cout << "Harden parameters: " << endl;
-    for (int i = 0; i < harden_params.size(); i++) cout << harden_params[i] << "  " << endl;
-    cout << "LH coefficient: " << lh_coeff << endl;
-    cout << "Flag harden: " << flag_harden << endl;
+    logger.debug("Slip system: " + to_string(num));
+    logger.debug("Burgers vector: ");
+    logger.debug(burgers_vec.transpose());
+    logger.debug("Plane normal: ");
+    logger.debug(plane_norm.transpose());
+    logger.debug("Dislocation density: " + to_string(disloc_density));
+    logger.debug("Shear modulus: " + to_string(shear_modulus));
+    logger.debug("Strain rate: " + to_string(strain_rate_slip));
+    logger.debug("Accumulated strain: " + to_string(acc_strain));
+    logger.debug("Critical resolved shear stress: " + to_string(crss));
+    logger.debug("Harden parameters: ");
+    string str = "";
+    for (int i = 0; i < harden_params.size(); i++) str += to_string(harden_params[i]) + "  "; 
+    logger.debug(str);
+    logger.debug("LH coefficient: " + to_string(lh_coeff));
+    logger.debug("Flag harden: " + to_string(flag_harden));
 }

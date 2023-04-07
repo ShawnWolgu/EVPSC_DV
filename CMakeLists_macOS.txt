@@ -1,0 +1,19 @@
+cmake_minimum_required(VERSION 3.0.0)
+
+#set(CMAKE_CXX_COMPILER "/usr/bin/gcc")
+
+project(EVPSC_CPP)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set(CMAKE_BUILD_TYPE Debug)
+set(CMAKE_CXX_FLAGS "-isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk -fopenmp")
+set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
+#set(CMAKE_CXX_FLAGS_DEBUG "-O3")
+
+SET( EIGEN3_INCLUDE_DIR "/opt/homebrew/Cellar/eigen/3.4.0_1/include/eigen3" )
+SET( JSON_INCLUDE_DIR "/opt/homebrew/Cellar/nlohmann-json/3.11.2/include" )
+#SET( TCLAP_INCLUDE_DIR "/opt/cLibs/tclap-1.2.2/include" )
+SET( OMP_INCLUDE_DIR "/opt/omp/usr/local/include")
+#SET( SPDLOG_INCLUDE_DIR "/opt/homebrew/Cellar/spdlog/1.11.0/include" )
+include_directories( ${EIGEN3_INCLUDE_DIR} ${OMP_INCLUDE_DIR} ${JSON_INCLUDE_DIR})# ${TCLAP_INCLUDE_DIR} ${SPDLOG_INCLUDE_DIR} )
+add_executable(EVPSC EVPSC_CPP_intest.cpp Toolbox.cpp Input.cpp Processes.cpp Polycrystals.cpp Grains.cpp Slip.cpp func.cpp disvel.cpp global.cpp)

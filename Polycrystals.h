@@ -79,7 +79,7 @@ class polycrystal
 
         //some parameters for error control and iteration control
         double SC_err_m = 0.01; //the error limit of Self-consistent compliance or stiffness
-        int SC_iter_m = 20; //the max iteration number of SC
+        int SC_iter_m = 15; //the max iteration number of SC
         double errD_m = 0.01; //error limit between the input macro strain rate and output at each iteration 
         double errS_m = 0.01; //error limit of the macro stress
         double err_g_AV = 0.01; //error limit of the average grain stress
@@ -97,6 +97,7 @@ class polycrystal
         
 	grain* g  = NULL; 
         int grains_num = 0;
+	double error_SC = 0;
 
 	void ini_from_json(json &j);
 	void ini_Udot_m(Matrix3d);

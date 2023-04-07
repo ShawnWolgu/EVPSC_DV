@@ -1,4 +1,5 @@
 #include "Processes.h"
+#include "global.h"
 using namespace Procs;
 
 Process::Process()
@@ -48,25 +49,32 @@ void Process::loading(Polycs::polycrystal &pcrys)
     pcrys.ini_Sig_m(Sdot_input);
     pcrys.set_IUdot(IUdot);
     pcrys.set_ISdot(ISdot);
+    double coeff_step = 1;
     for(int istep = 0; istep < Nsteps; ++istep)
     {
-	double pct_step = 0, coeff_step = 1;
-	cout << "\n**********\tSTEP\t" << istep << "\t**********\n\n";
+	logger.info("");
+	logger.info("**********\tSTEP\t"+ to_string(istep) + "\t**********");
+	logger.info("");
+	double pct_step = 0; 
+	update_progress(pct_step);
 	do{
-	    cout << "Step " << istep << ":\t" << pct_step << " to " << pct_step + coeff_step << endl;
+	    coeff_step = min(1.0 - pct_step, coeff_step);
+	    logger.notice("Step " + to_string(istep) + ":\t" + to_string(pct_step) + " to " + to_string(pct_step + coeff_step));
             int return_SC = pcrys.EVPSC(istep, coeff_step * Tincr, Iupdate_ori, Iupdate_shp, Iupdate_CRSS);
 	    if (return_SC == 1) {
 		pcrys.restore_status();
-		cout << "Not convergent... Retry with a smaller increment." << endl;
-		cout << "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n\n"; 
-		coeff_step *= 0.5;
-	    	if (coeff_step < 1e-6) {cout << "Not convergent... Abort.\n" << endl; exit(1);}
+		logger.warn("Not convergent... Retry with a smaller increment.");
+		logger.notice("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
+		if(isnan(pcrys.error_SC)) coeff_step *= 0.1;
+		else coeff_step *= sqrt(sqrt(1/pcrys.error_SC));
+	    	if (coeff_step < 1e-6) { logger.error("Not convergent... Abort."); exit(1);}
 		continue;
 	    }
 	    pct_step += coeff_step;
-	    coeff_step = min(1.0, coeff_step * 1.5);
-	    coeff_step = min(1.0 - pct_step, coeff_step);
+	    update_progress(pct_step);
+	    coeff_step *= sqrt(sqrt(1/pcrys.error_SC));
 	} while (pct_step < 1-1e-6);
+	cout.flush();
         Out_sscurves(pcrys);
         if(!((istep+1)%texctrl))
             Out_texture(pcrys,istep);
@@ -87,6 +95,7 @@ void Process::Out_sscurves(Polycs::polycrystal &pcrys)
 void Process::Out_texture(Polycs::polycrystal &pcrys, int istep)
 {
     IOFormat Outformat(StreamPrecision);
+    logger.notice("Output texture at step " + to_string(istep+1));
     tex_out << "TEXTURE AT STEP = " << istep+1 << endl;
     tex_out << setprecision(4) << pcrys.get_ell_axis().transpose().format(Outformat)<< endl; 
     tex_out << setprecision(4) << pcrys.get_ellip_ang().transpose().format(Outformat) << endl << endl;
@@ -96,6 +105,7 @@ void Process::Out_texture(Polycs::polycrystal &pcrys, int istep)
 
 void Process::init_grain_info(Polycs::polycrystal &pcrys, int num){
     IOFormat Outformat(StreamPrecision);
+    logger.notice("Output grain info at step 0");
     //output dislocation density
     grain *g_this = &pcrys.g[num];
     int mode_num = g_this->modes_num;

@@ -1,8 +1,10 @@
 #include "Input.h"
+#include "global.h"
 
 int EVPSCinput(string &ftex,string &fsx,string &fload, Procs::Process &Proc)
 {
     fstream ininp;
+    logger.info("Loading input file EVPSC_CPP.in ...");
     ininp.open("EVPSC_CPP.in",ios::in); //open EVPSC.in
     if (ininp.is_open())
     {
@@ -39,7 +41,7 @@ int EVPSCinput(string &ftex,string &fsx,string &fload, Procs::Process &Proc)
     }
     else
     {
-        cout << "Error code 0: loading file cannot be opened.\n";
+	logger.error("Error code 0: loading file cannot be opened.");
         return 1;
     }
 }
@@ -48,6 +50,7 @@ int loadinput(string fname, Procs::Process &Proc)
 {
     fstream loadinp;
     loadinp.open(fname,ios::in); //open load
+    logger.info("Loading process file " + fname + " ...");
 
     if (loadinp.is_open())
     {   //checking whether the file is open
@@ -115,7 +118,7 @@ int loadinput(string fname, Procs::Process &Proc)
     }
     else
     {
-        cout << "Error code 0: loading file cannot be opened.\n";
+	logger.error("Error code 0: process file cannot be opened.");
         return 1;
     }
 }
@@ -127,6 +130,7 @@ int sxinput(string fname, Polycs::polycrystal &pcrys)
 
     if (sxinp.is_open()) //checking whether the file is open
     {  
+	logger.info("Loading sx file " + fname + " ...");
         string tp;     getline(sxinp, tp); //skip first line
         string crysym; getline(sxinp, crysym); //crystal symmetry string
 	add_trans_miller(crysym.substr(0,5), sx_json);
@@ -212,7 +216,7 @@ int sxinput(string fname, Polycs::polycrystal &pcrys)
     }
     else
     {
-        cout << "Error code 0: .sx file cannot be opened\n";
+	logger.error("Error code 0: .sx file cannot be opened");
         return 1;
     }
 }
@@ -223,6 +227,7 @@ int texinput(string fname, Polycs::polycrystal &pcrys)
     texinp.open(fname,ios::in); //open .tex
     if (texinp.is_open())
     {   //checking whether the file is open
+	logger.info("Reading texture file");
         string tp;
         //skip 3 lines;
         for(int i = 0; i < 3; i++)
@@ -249,7 +254,7 @@ int texinput(string fname, Polycs::polycrystal &pcrys)
     }
     else
     {
-        cout << "Error code 0: texture file cannot be opened.\n";
+	logger.error("Error code 0: texture file cannot be opened");
         return 1;
     }
 }
@@ -329,7 +334,7 @@ void add_trans_miller(string crysym, json &sx_json){
     }
     else
     {
-	cout << "Error: crystal symmetry is not supported.\n";
+	logger.error("Error code 1: crystal symmetry is not supported.");
 	exit(1);
     }
     sx_json["crysym"] = crysym;
