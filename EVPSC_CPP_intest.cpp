@@ -6,6 +6,7 @@
 #include <Eigen/Dense>
 
 #include "Input.h"
+#include "Toolbox.h"
 #include "global.h"
 #include "Processes.h"
 #include "Polycrystals.h"
@@ -25,7 +26,7 @@ int main()
     double Start = clock();
     Proc1.loading(metal);
     double End = clock();
-    string end_message = "EVPSC_CPP End! The run time is: " + std::to_string((double)(End - Start) / CLOCKS_PER_SEC) + " sec";
+    string end_message = "EVPSC_CPP End! The run time is: " + std::to_string((double)(End - Start) / (Mtr * CLOCKS_PER_SEC)) + " sec";
     logger.info(end_message);
     return 0;
 }

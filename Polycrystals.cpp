@@ -1,4 +1,3 @@
-#include <omp.h>
 #include "Polycrystals.h"
 #include "global.h"
 
@@ -499,10 +498,10 @@ int polycrystal::Selfconsistent_E(int Istep, double ERRM, int ITMAX)
         //end of Ishape == 0
 
 
-        #pragma omp parallel for num_threads(Mtr)
+        //#pragma omp parallel for num_threads(Mtr)
         for(int G_n = 0; G_n < grains_num; G_n++)
         {
-	    logger.debug("SC_E: Thread " + std::to_string(omp_get_thread_num()) + " is processing grain " + std::to_string(G_n));
+	    //logger.debug("SC_E: Thread " + std::to_string(omp_get_thread_num()) + " is processing grain " + std::to_string(G_n));
             //solve the eshelby tensor in all the ellipsoid of grain 
             if(Ishape == 1)
             {
@@ -581,8 +580,8 @@ int polycrystal::Selfconsistent_E(int Istep, double ERRM, int ITMAX)
             SSC_new += Me_g * B_g * g[G_n].get_weight_g();
             //-15           
         } //loop over grains
-        #pragma omp barrier
-        #pragma omp master
+        //#pragma omp barrier
+        //#pragma omp master
 
         //cout << "\nThe CNEW:\n" << CNEW << endl;
         //-16
@@ -683,10 +682,10 @@ int polycrystal::Selfconsistent_P(int Istep, double ERRM, int ITMAX)
 
         DVP_AV = Vector5d::Zero();
 
-        #pragma omp parallel for num_threads(Mtr)
+        //#pragma omp parallel for num_threads(Mtr)
         for(int G_n = 0; G_n < grains_num; G_n++)
         {
-	    logger.debug("SC_P: Thread " + std::to_string(omp_get_thread_num()) + " is processing grain " + std::to_string(G_n));
+	    //logger.debug("SC_P: Thread " + std::to_string(omp_get_thread_num()) + " is processing grain " + std::to_string(G_n));
             //-2
             //rotate the macro VP stiffness 
             //from Sample axes to the ellipsoid axes;
@@ -786,8 +785,8 @@ int polycrystal::Selfconsistent_P(int Istep, double ERRM, int ITMAX)
             //06.06
 
         } //loop over grains
-        #pragma omp barrier
-        #pragma omp master
+        //#pragma omp barrier
+        //#pragma omp master
 
     // Equ[5-41a]
     // <M_g * B_g> * <B_g>^-1
@@ -1107,11 +1106,10 @@ void polycrystal::Cal_Sig_g(double Tincr)
 {
     #pragma omp parallel for num_threads(Mtr)
     for(int G_n = 0; G_n < grains_num; G_n++){
-	logger.debug("Cal_sig: Thread " + std::to_string(omp_get_thread_num()) + " is processing grain " + std::to_string(G_n));
+	//logger.debug("Cal_sig: Thread " + std::to_string(omp_get_thread_num()) + " is processing grain " + std::to_string(G_n));
         g[G_n].grain_stress(Tincr, Wij_m, Dij_m, Dije_AV, Dijp_AV, Sig_m, Sig_m_old);
     }
     #pragma omp barrier
-    #pragma omp master
 }
 
 

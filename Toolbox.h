@@ -23,7 +23,7 @@ using json = nlohmann::json;
 
 //
 #define Intn 10 //number of integral points in Eshelby calculation
-#define Mtr 20 //number of Multithread
+#define Mtr 8 //number of Multithread
 //
 typedef Matrix<double, 6, 6> Matrix6d;
 typedef Matrix<double,5,5> Matrix5d;
