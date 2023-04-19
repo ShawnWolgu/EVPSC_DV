@@ -1076,11 +1076,11 @@ void polycrystal::Cal_Sig_m(double Tincr)
     Vector6d AUX11;
     Matrix6d AUX21;
 
-    for(int i = 1; i <= 6; i++){
-        AUX11(i-1) = -Id(i-1)*BC_D(i-1);
-        for(int j = 1; j <= 6; j++){
-                AUX11(i-1) = AUX11(i-1) + AUX2(i-1,j-1)*Is(j-1)*BC_S(j-1)*profac(j-1);
-                AUX21(i-1,j-1) = Is(j-1)*(i/j)*(j/i) - Id(j-1)*AUX2(i-1,j-1)*profac(j-1);
+    for(int i = 0; i != 6; i++){
+        AUX11(i) = -Id(i)*BC_D(i);
+        for(int j = 0; j != 6; j++){
+		AUX11(i) = AUX11(i) + AUX2(i,j)*Is(j)*BC_S(j)*profac(j);
+                AUX21(i,j) = Is(j) - Id(j)*AUX2(i,j)*profac(j);
             }
     }
 

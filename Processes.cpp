@@ -9,9 +9,11 @@ Process::Process()
     ss_out << setw(11) << "E32" << setw(11)<< "E13" << setw(11)<< "E12";
     ss_out << setw(11) << "S11" << setw(11)<< "S22" << setw(11)<< "S33";
     ss_out << setw(11) << "S32" << setw(11)<< "S13" << setw(11)<< "S12" << endl;
-
     tex_out.open("Tex.out",ios::out);
     grain_out.open("Grain.csv",ios::out);
+    time_out.open("Time.csv",ios::out);
+    rate_out.open("Rate.csv",ios::out);
+    rhosat_out.open("Rhosat.csv",ios::out);
 }
 
 Process::~Process()
@@ -49,6 +51,7 @@ void Process::loading(Polycs::polycrystal &pcrys)
     pcrys.ini_Sig_m(Sdot_input);
     pcrys.set_IUdot(IUdot);
     pcrys.set_ISdot(ISdot);
+    Out_sscurves(pcrys);
     double coeff_step = 1;
     for(int istep = 0; istep < Nsteps; ++istep)
     {
@@ -109,9 +112,34 @@ void Process::init_grain_info(Polycs::polycrystal &pcrys, int num){
     //output dislocation density
     grain *g_this = &pcrys.g[num];
     int mode_num = g_this->modes_num;
+    
     grain_out << "EVM, ";
     for(int i = 0; i < mode_num; ++i) grain_out << "Mode" << i+1 << ", ";
     grain_out << endl;
+    grain_out << calc_equivalent_value(g_this->get_strain_g()) << ", ";
+    for(int i = 0; i < mode_num; ++i) grain_out << g_this->gmode[i].disloc_density << ", ";
+    grain_out << endl;
+    
+    time_out << "EVM, ";
+    for(int i = 0; i < mode_num; ++i) time_out << "Mode" << i+1 << ", ";
+    time_out << endl;
+    time_out << calc_equivalent_value(g_this->get_strain_g()) << ", ";
+    for(int i = 0; i < mode_num; ++i) time_out << (g_this->gmode[i].t_wait)/(g_this->gmode[i].t_run) << ", ";
+    time_out << endl;
+    
+    rate_out << "EVM, ";
+    for(int i = 0; i < mode_num; ++i) rate_out << "Mode" << i+1 << ", ";
+    rate_out << endl;
+    rate_out << calc_equivalent_value(g_this->get_strain_g()) << ", ";
+    for(int i = 0; i < mode_num; ++i) rate_out << g_this->gmode[i].strain_rate_slip << ", ";
+    rate_out << endl;
+
+    rhosat_out << "EVM, ";
+    for(int i = 0; i < mode_num; ++i) rhosat_out << "Mode" << i+1 << ", ";
+    rhosat_out << endl;
+    rhosat_out << calc_equivalent_value(g_this->get_strain_g()) << ", ";
+    for(int i = 0; i < mode_num; ++i) rhosat_out << g_this->gmode[i].rho_sat << ", ";
+    rhosat_out << endl;
 }
 
 void Process::Out_grain_info(Polycs::polycrystal &pcrys, int num){
@@ -119,9 +147,22 @@ void Process::Out_grain_info(Polycs::polycrystal &pcrys, int num){
     //output dislocation density
     grain *g_this = &pcrys.g[num];
     int mode_num = g_this->modes_num;
+
     grain_out << calc_equivalent_value(g_this->get_strain_g()) << ", ";
     for(int i = 0; i < mode_num; ++i) grain_out << g_this->gmode[i].disloc_density << ", ";
     grain_out << endl;
+    
+    time_out << calc_equivalent_value(g_this->get_strain_g()) << ", ";
+    for(int i = 0; i < mode_num; ++i) time_out << (g_this->gmode[i].t_wait)/(g_this->gmode[i].t_run) << ", ";
+    time_out << endl;
+    
+    rate_out << calc_equivalent_value(g_this->get_strain_g()) << ", ";
+    for(int i = 0; i < mode_num; ++i) rate_out << g_this->gmode[i].strain_rate_slip << ", ";
+    rate_out << endl;
+    
+    rhosat_out << calc_equivalent_value(g_this->get_strain_g()) << ", ";
+    for(int i = 0; i < mode_num; ++i) rhosat_out << g_this->gmode[i].rho_sat << ", ";
+    rhosat_out << endl;
 }
 
 void Process::Out_texset(int input){texctrl = input;}

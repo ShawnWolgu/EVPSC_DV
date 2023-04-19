@@ -36,6 +36,9 @@ class Process
         fstream ss_out; //output of the macro stress-strain curves
         fstream tex_out; //output of the texture
 	fstream grain_out; //output of the grain information
+	fstream time_out; //output of the dislocation velocity
+	fstream rate_out; //output of the dislocation glide rate
+	fstream rhosat_out; //output of the dislocation saturation density
 
         int texctrl; //print the texture every n steps(0 means only print at the end)
 

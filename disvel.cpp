@@ -12,15 +12,15 @@ double Slip::disl_velocity(double rss){
      * harden parameters: 0: SSD_density,
      * 1: freq_Debye, 2: c_length, 3: kink_energy_ref, 4: temperature_ref,
      * 5: Peierls_stress, 6: expo_kinkeng, 7: wave_speed, 8: c_drag, 9: c_backstress,
-     * 10: c_multi, 11:c_annih, 12:HP_stress.
+     * 10: c_multi, 11: v_c, 12: D, 13: ref_srate, 14: gg;
      * 
      * update parameters:
-     * 0: burgers, 1: disl_density_for, 2: disl_density_perp, 3: back_stress,
-     * 4: barrier_distance
+     * 0: burgers, 1: disl_density_for, 2: disl_density_resist, 3: back_stress,
+     * 4: barrier_distance, 5:c_annih;
      */
     double freq_Debye = harden_params[1], c_length = harden_params[2], kink_energy_ref = harden_params[3],\
            temperature_ref = harden_params[4], Peierls_stress = harden_params[5], expo_kinkeng = harden_params[6],\
-           wave_speed = harden_params[7], c_drag = harden_params[8], v_c = harden_params[12];
+           wave_speed = harden_params[7], c_drag = harden_params[8], v_c = harden_params[11];
     double burgers = update_params[0], disl_density_for = update_params[1],\
            back_stress = update_params[3], barrier_distance = update_params[4];
     if(abs(rss) > 0.0){

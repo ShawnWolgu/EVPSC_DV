@@ -197,7 +197,7 @@ int sxinput(string fname, Polycs::polycrystal &pcrys)
             getline(sxinp, tp);  //skip a line;
             getline(sxinp, tp);  nrsx = getnum(tp, 1)(0); //rate sensitivity
             getline(sxinp, tp);  //CRSS parameters
-	    if (iharden == 1) CRSS_p = getnum_vec(tp, 13);
+	    if (iharden == 1) CRSS_p = getnum_vec(tp, 15);
 	    else CRSS_p = getnum_vec(tp, 4);
             //hst
             getline(sxinp, tp);  hst = getnum_vec(tp, 5); //5 types of hardening
