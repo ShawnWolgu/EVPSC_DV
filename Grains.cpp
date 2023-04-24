@@ -601,6 +601,10 @@ void grain::update_strain(double Tincr)
     eps_g += Dij_g * Tincr;
 }
 
+Matrix3d grain::get_Wij_g()
+{
+    return Wij_g;
+}
 
 void grain::update_orientation(double Tincr, Matrix3d Wij_m, Matrix3d Dije_AV, Matrix3d Dijp_AV)
 {

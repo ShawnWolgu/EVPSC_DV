@@ -115,6 +115,7 @@ class grain
         Matrix3d get_Dije_g();
         Matrix3d get_Dijp_g();
         Matrix3d get_Udot_g();
+	Matrix3d get_Wij_g();
 
         //calculate the stress in grains with Newton-Rapthon iteration
         //Parameters:

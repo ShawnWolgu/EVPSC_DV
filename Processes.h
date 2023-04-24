@@ -18,11 +18,11 @@ namespace Procs{
 class Process
 {
     private:
-        Matrix3d Udot_input; //the velocity gradient in process file
+        Matrix3d UDWdot_input; //the BC gradient in process file
         Matrix3d Ddot_input; //the strain rate calculated by the velocity gradient in process file
         Matrix3d Sdot_input; //the stress tensor in process file
 
-        Matrix3i IUdot; //the flag of known (control by Udot_input) and unknown (calculated by EVPSC) velocity components
+        Matrix3i IUDWdot; //the flag of known (control by Udot_input) and unknown (calculated by EVPSC) velocity components
         Vector6i IDdot; //the flag of known and unknown strain rate components
         Vector6i ISdot; //the flag of known and unknown stress componets
 
@@ -35,10 +35,12 @@ class Process
         //Output files
         fstream ss_out; //output of the macro stress-strain curves
         fstream tex_out; //output of the texture
-	fstream grain_out; //output of the grain information
+	fstream disloc_out; //output of the grain information
 	fstream time_out; //output of the dislocation velocity
 	fstream rate_out; //output of the dislocation glide rate
-	fstream rhosat_out; //output of the dislocation saturation density
+	fstream crss_out; 
+	fstream nrss_out; 
+	fstream euler_out;
 
         int texctrl; //print the texture every n steps(0 means only print at the end)
 

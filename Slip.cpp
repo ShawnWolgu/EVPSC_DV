@@ -156,6 +156,7 @@ void Slip::cal_strain_rate_disvel(Matrix3d stress_tensor){
     double rss_slip = cal_rss(stress_tensor);
     double disl_vel = disl_velocity(rss_slip);
     strain_rate_slip = abs(rho_mov * burgers * disl_vel) * sign(rss_slip);
+    //strain_rate_slip = abs(disloc_density * burgers * disl_vel) * sign(rss_slip);
 }
 
 void Slip::cal_drate_dtau(Matrix3d stress_tensor){
@@ -190,6 +191,7 @@ void Slip::cal_drate_dtau_disvel(Matrix3d stress_tensor){
     double burgers = update_params[0];
     double rss_slip = cal_rss(stress_tensor);
     vector<double> dvel_and_vel = disl_velocity_grad(rss_slip, crss, harden_params, update_params);
+    //rho_mov = disloc_density;
     drate_dtau = rho_mov * burgers * sign(rss_slip) * dvel_and_vel[0];
     strain_rate_slip = rho_mov * burgers * dvel_and_vel[1] * sign(rss_slip);
 }

@@ -59,7 +59,8 @@ class polycrystal
         Vector5d DVP_AV;
 
         Matrix3d Fij_m; //the macro deformation tensor in grain
-        Matrix3d Udot_m; //the macro velocity gradient;
+        Matrix3d UDWdot_m; //the BC velocity gradient;
+	Matrix3d Udot_m; // L matrix
         Matrix3i IUdot; //the flag of known (control by Udot_m) and unknown (calculated by EVPSC) velocity components
         Vector6i IDdot; //the flag of known and unknown strain rate components
         Vector6i ISdot; //the flag of known and unknown stress componets
@@ -104,6 +105,7 @@ class polycrystal
         void ini_Sig_m(Matrix3d);
         void set_IUdot(Matrix3i);
         void set_ISdot(Vector6i);
+	void set_BC_const(Matrix3d, Matrix3d, Matrix3i, Vector6i);
 
         //input the number of grains
         int grains_n(int);  

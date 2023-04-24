@@ -146,12 +146,22 @@ polycrystal::polycrystal()
     }
 }
 
+void polycrystal::set_BC_const(Matrix3d udot_input, Matrix3d sig_input, Matrix3i iudot_input, Vector6i isig_input){
+    Sig_m = sig_input;
+    ISdot = isig_input;
+    set_IUdot(iudot_input);
+    ini_Udot_m(udot_input);
+}
 
 void polycrystal::ini_Udot_m(Matrix3d Udot_input)
 {   
-    Udot_m = Udot_input;
-    Dij_m = 0.5*(Udot_m + Udot_m.transpose());
-    Wij_m = 0.5*(Udot_m - Udot_m.transpose());
+    UDWdot_m = Udot_input;
+    Dij_m = 0.5*(UDWdot_m + UDWdot_m.transpose());
+    for (int i = 0; i < 3; i++) for (int j = 0; j < 3; j++) {
+	if (IUdot(i,j) == 2) Dij_m(i,j) = UDWdot_m(i,j);
+	if (IUdot(i,j) == 3) Dij_m(i,j) = 0.0;
+    }
+    Wij_m = UDWdot_m - Dij_m;
     
     Dij_AV = Dij_m;
     Dije_AV = Dij_m;
@@ -163,15 +173,19 @@ void polycrystal::ini_Sig_m(Matrix3d Min){Sig_m = Min;}
 void polycrystal::set_IUdot(Matrix3i Min)
 {   
     IUdot = Min;
+    for(int i = 0; i < 3; i++) for(int j = 0; j < 3; j++)
+	if(IUdot(i,j) > 1 && IUdot(j,i) != 0){
+	    logger.error("IUdot configuration not support!");
+	    exit(1);
+	}
     IDdot(0)=IUdot(0,0);
     IDdot(1)=IUdot(1,1);
     IDdot(2)=IUdot(2,2);
-    IDdot(3)=IUdot(1,2)*IUdot(2,1);
-    IDdot(4)=IUdot(0,2)*IUdot(2,0);
-    IDdot(5)=IUdot(0,1)*IUdot(1,0);
+    IDdot(3)=int((IUdot(1,2)+IUdot(2,1)) == 2);
+    IDdot(4)=int((IUdot(0,2)+IUdot(2,0)) == 2);
+    IDdot(5)=int((IUdot(0,1)+IUdot(1,0)) == 2);
 }
 void polycrystal::set_ISdot(Vector6i Min){ISdot = Min;}
-
 
 int polycrystal::grains_n(int n)
 {
@@ -1025,47 +1039,42 @@ void polycrystal::Cal_Sig_m(double Tincr)
     //why not Wij = Udot - Dij ?
     //because the Udot need be update
     //some components are not imposed
-    for(int i = 0; i < 3; i++)
-        for(int j = 0; j < 3; j++)
-    {
-        if(IUdot(i,j)==1 && IUdot(j,i)==1)
-           Wij_m(i,j) = 0.5*(Udot_m(i,j) - Udot_m(j,i));
-        else if(IUdot(i,j)==1)
-            {
-                Wij_m(i,j) = Udot_m(i,j) - Dij_m(i,j);
-                Wij_m(j,i) = -Wij_m(i,j);
-            }
+    //IUdot: 0: not imposed; 1: imposed; 2: control Dij; 3: control Wij
+    for(int i = 0; i < 3; i++) for(int j = 0; j < 3; j++){
+	if(IUdot(i,j) > 1 && IUdot(j,i) != 0){
+	    logger.error("IUdot configuration not support!");
+	    exit(1);
+	}
+        if(IUdot(i,j) == 1 && IUdot(j,i) == 1){
+	    Wij_m(i,j) = 0.5*(UDWdot_m(i,j) - UDWdot_m(j,i));
+	    Wij_m(j,i) = -Wij_m(i,j);
+	}
+        else if(IUdot(i,j) == 1){
+	    Wij_m(i,j) = UDWdot_m(i,j) - Dij_m(i,j);
+	    Wij_m(j,i) = -Wij_m(i,j);
+	}
+	else if(IUdot(i,j) == 3){
+	    Wij_m(i,j) = UDWdot_m(i,j);
+	    Wij_m(j,i) = -Wij_m(i,j);
+	}
         Udot_m(i,j) = Dij_m(i,j) + Wij_m(i,j);
     }
 
-
-    //-1
     //calculate the Jaumann rate
     Matrix3d Sig_J = Wij_m * Sig_m - Sig_m * Wij_m;
-    //-1
-
-    //-2
     //calulate the De = D - Dp - D0
     Vector6d De = Bbasisadd(Chg_basis6(Dij_m), -DVP_AV);
-    //-2
-
-    //-3
     //Calculate AX = B
     //X is the macro stress
     Matrix6d A = SSC/Tincr;
     //B
     Matrix3d Mtemp = Sig_m_old / Tincr;
-
     Vector6d B = De + SSC * ( Chg_basis6(Mtemp) + Chg_basis6(Sig_J));
-    //-3
-
-    //-4
     //According to the IUdot and ISDOT to solve AX = B
     //transform to solve At Xt = Bt
     // Xt in the unkown set of Udot and Sig
     Vector6i Is = ISdot;
     Vector6i Id = IDdot;
-
     Vector6d profac;
     profac << 1,1,1,2,2,2;
 
@@ -1080,26 +1089,20 @@ void polycrystal::Cal_Sig_m(double Tincr)
         AUX11(i) = -Id(i)*BC_D(i);
         for(int j = 0; j != 6; j++){
 		AUX11(i) = AUX11(i) + AUX2(i,j)*Is(j)*BC_S(j)*profac(j);
-                AUX21(i,j) = Is(j) - Id(j)*AUX2(i,j)*profac(j);
+                //AUX21(i,j) = Is(j)*(i+1)/(j+1)*(j+1)/(i+1) - Id(j)*AUX2(i,j)*profac(j);
+                AUX21(i,j) = Is(j)*int(i==j) - Id(j)*AUX2(i,j)*profac(j);
             }
     }
-
     Vector6d AUX6 = AUX21.inverse()*AUX11;
-
-    //-4
 
     Vector6d Sig_x, B_x;
     B_x = mult_dot(BC_D,Id) + mult_dot(AUX6,Is);
     Sig_x = mult_dot(BC_S,Is) + mult_dot(AUX6,Id);
-
     De = Chg_basis6(voigt(B_x)) - SSC * ( Chg_basis6(Mtemp) + Chg_basis6(Sig_J));
-
     //calulate the D = De + Dp + D0
     Vector6d Dij_m_v = Bbasisadd(De, DVP_AV);
-
     Dij_m = Chg_basis(Dij_m_v);
     Sig_m = voigt(Sig_x);
-
 }
 
 void polycrystal::Cal_Sig_g(double Tincr)

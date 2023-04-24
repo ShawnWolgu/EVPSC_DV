@@ -10,10 +10,11 @@ Process::Process()
     ss_out << setw(11) << "S11" << setw(11)<< "S22" << setw(11)<< "S33";
     ss_out << setw(11) << "S32" << setw(11)<< "S13" << setw(11)<< "S12" << endl;
     tex_out.open("Tex.out",ios::out);
-    grain_out.open("Grain.csv",ios::out);
-    time_out.open("Time.csv",ios::out);
+    disloc_out.open("Disloc.csv",ios::out);
+    time_out.open("RunTimeFrac.csv",ios::out);
     rate_out.open("Rate.csv",ios::out);
-    rhosat_out.open("Rhosat.csv",ios::out);
+    crss_out.open("CRSS.csv",ios::out);
+    euler_out.open("Euler.csv",ios::out);
 }
 
 Process::~Process()
@@ -34,7 +35,7 @@ void Process::load_ctrl(Vector4d Vin)
 
 void Process::get_Udot(Matrix3d Min)
 {   
-    Udot_input = Min;
+    UDWdot_input = Min;
     Ddot_input = 0.5*(Min + Min.transpose());
     
     //calculate Time increment Tincr
@@ -42,15 +43,11 @@ void Process::get_Udot(Matrix3d Min)
     Tincr = Eincr / Vtemp(Ictrl);
 }
 void Process::get_Sdot(Matrix3d Min){Sdot_input = Min;}
-void Process::get_IUdot(Matrix3i Min){IUdot = Min;}
+void Process::get_IUdot(Matrix3i Min){IUDWdot = Min;}
 void Process::get_ISdot(Vector6i Vin){ISdot = Vin;}
 
-void Process::loading(Polycs::polycrystal &pcrys)
-{
-    pcrys.ini_Udot_m(Udot_input);
-    pcrys.ini_Sig_m(Sdot_input);
-    pcrys.set_IUdot(IUdot);
-    pcrys.set_ISdot(ISdot);
+void Process::loading(Polycs::polycrystal &pcrys){
+    pcrys.set_BC_const(UDWdot_input, Sdot_input, IUDWdot, ISdot);
     Out_sscurves(pcrys);
     double coeff_step = 1;
     for(int istep = 0; istep < Nsteps; ++istep)
@@ -75,6 +72,10 @@ void Process::loading(Polycs::polycrystal &pcrys)
 	    }
 	    pct_step += coeff_step;
 	    update_progress(pct_step);
+	    logger.debug("Wij_g = ");
+	    logger.debug(pcrys.g[0].get_Wij_g());
+	    logger.debug("Udot_g = ");
+	    logger.debug(pcrys.g[0].get_Udot_g());
 	    coeff_step *= sqrt(sqrt(1/pcrys.error_SC));
 	} while (pct_step < 1-1e-6);
 	cout.flush();
@@ -85,7 +86,6 @@ void Process::loading(Polycs::polycrystal &pcrys)
 	Out_grain_info(pcrys, 0);
     }
     Out_texture(pcrys,Nsteps);
-
 }
 
 void Process::Out_sscurves(Polycs::polycrystal &pcrys)
@@ -113,33 +113,40 @@ void Process::init_grain_info(Polycs::polycrystal &pcrys, int num){
     grain *g_this = &pcrys.g[num];
     int mode_num = g_this->modes_num;
     
-    grain_out << "EVM, ";
-    for(int i = 0; i < mode_num; ++i) grain_out << "Mode" << i+1 << ", ";
-    grain_out << endl;
-    grain_out << calc_equivalent_value(g_this->get_strain_g()) << ", ";
-    for(int i = 0; i < mode_num; ++i) grain_out << g_this->gmode[i].disloc_density << ", ";
-    grain_out << endl;
+    disloc_out << "EVM,Saturation";
+    for(int i = 0; i < mode_num; ++i) disloc_out << "," << "Mode" << i+1;
+    disloc_out << endl;
+    disloc_out << calc_equivalent_value(g_this->get_strain_g()) << ", ";
+    disloc_out << g_this->gmode[0].rho_sat;
+    for(int i = 0; i < mode_num; ++i) disloc_out << "," << g_this->gmode[i].disloc_density;
+    disloc_out << endl;
     
-    time_out << "EVM, ";
-    for(int i = 0; i < mode_num; ++i) time_out << "Mode" << i+1 << ", ";
+    time_out << "EVM";
+    for(int i = 0; i < mode_num; ++i) time_out << "," << "Mode" << i+1;
     time_out << endl;
-    time_out << calc_equivalent_value(g_this->get_strain_g()) << ", ";
-    for(int i = 0; i < mode_num; ++i) time_out << (g_this->gmode[i].t_wait)/(g_this->gmode[i].t_run) << ", ";
+    time_out << calc_equivalent_value(g_this->get_strain_g());
+    for(int i = 0; i < mode_num; ++i) time_out << "," << (g_this->gmode[i].t_run)/(g_this->gmode[i].t_wait + g_this->gmode[i].t_run);
     time_out << endl;
     
-    rate_out << "EVM, ";
-    for(int i = 0; i < mode_num; ++i) rate_out << "Mode" << i+1 << ", ";
+    rate_out << "EVM";
+    for(int i = 0; i < mode_num; ++i) rate_out << "," << "Mode" << i+1;
     rate_out << endl;
-    rate_out << calc_equivalent_value(g_this->get_strain_g()) << ", ";
-    for(int i = 0; i < mode_num; ++i) rate_out << g_this->gmode[i].strain_rate_slip << ", ";
+    rate_out << calc_equivalent_value(g_this->get_strain_g());
+    for(int i = 0; i < mode_num; ++i) rate_out << "," << abs(g_this->gmode[i].strain_rate_slip);
     rate_out << endl;
 
-    rhosat_out << "EVM, ";
-    for(int i = 0; i < mode_num; ++i) rhosat_out << "Mode" << i+1 << ", ";
-    rhosat_out << endl;
-    rhosat_out << calc_equivalent_value(g_this->get_strain_g()) << ", ";
-    for(int i = 0; i < mode_num; ++i) rhosat_out << g_this->gmode[i].rho_sat << ", ";
-    rhosat_out << endl;
+    crss_out << "EVM";
+    for(int i = 0; i < mode_num; ++i) crss_out << "," << "Mode" << i+1;
+    crss_out << endl;
+    crss_out << calc_equivalent_value(g_this->get_strain_g());
+    for(int i = 0; i < mode_num; ++i) crss_out << "," << g_this->gmode[i].crss;
+    crss_out << endl;
+    
+    euler_out << "EVM,phi1,PHI,phi2\n";
+    euler_out << calc_equivalent_value(g_this->get_strain_g());
+    Vector3d v_out = g_this->get_euler_g();
+    for(int i = 0; i < 3; ++i) euler_out << "," << v_out(i);
+    euler_out << endl;
 }
 
 void Process::Out_grain_info(Polycs::polycrystal &pcrys, int num){
@@ -148,21 +155,27 @@ void Process::Out_grain_info(Polycs::polycrystal &pcrys, int num){
     grain *g_this = &pcrys.g[num];
     int mode_num = g_this->modes_num;
 
-    grain_out << calc_equivalent_value(g_this->get_strain_g()) << ", ";
-    for(int i = 0; i < mode_num; ++i) grain_out << g_this->gmode[i].disloc_density << ", ";
-    grain_out << endl;
+    disloc_out << calc_equivalent_value(g_this->get_strain_g()) << ", ";
+    disloc_out << g_this->gmode[0].rho_sat;
+    for(int i = 0; i < mode_num; ++i) disloc_out << "," << g_this->gmode[i].disloc_density;
+    disloc_out << endl;
     
-    time_out << calc_equivalent_value(g_this->get_strain_g()) << ", ";
-    for(int i = 0; i < mode_num; ++i) time_out << (g_this->gmode[i].t_wait)/(g_this->gmode[i].t_run) << ", ";
+    time_out << calc_equivalent_value(g_this->get_strain_g());
+    for(int i = 0; i < mode_num; ++i) time_out << "," << (g_this->gmode[i].t_run)/(g_this->gmode[i].t_wait + g_this->gmode[i].t_run);
     time_out << endl;
     
-    rate_out << calc_equivalent_value(g_this->get_strain_g()) << ", ";
-    for(int i = 0; i < mode_num; ++i) rate_out << g_this->gmode[i].strain_rate_slip << ", ";
+    rate_out << calc_equivalent_value(g_this->get_strain_g());
+    for(int i = 0; i < mode_num; ++i) rate_out << "," << abs(g_this->gmode[i].strain_rate_slip);
     rate_out << endl;
     
-    rhosat_out << calc_equivalent_value(g_this->get_strain_g()) << ", ";
-    for(int i = 0; i < mode_num; ++i) rhosat_out << g_this->gmode[i].rho_sat << ", ";
-    rhosat_out << endl;
+    crss_out << calc_equivalent_value(g_this->get_strain_g());
+    for(int i = 0; i < mode_num; ++i) crss_out << "," << g_this->gmode[i].crss;
+    crss_out << endl;
+    
+    euler_out << calc_equivalent_value(g_this->get_strain_g());
+    Vector3d v_out = g_this->get_euler_g();
+    for(int i = 0; i < 3; ++i) euler_out << "," << v_out(i);
+    euler_out << endl;
 }
 
 void Process::Out_texset(int input){texctrl = input;}
