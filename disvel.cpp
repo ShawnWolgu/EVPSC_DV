@@ -64,7 +64,7 @@ vector<double> Slip::disl_velocity_grad(double rss, double crss, vector<double> 
      */
     double freq_Debye = harden_params[1], c_length = harden_params[2], kink_energy_ref = harden_params[3],\
            temperature_ref = harden_params[4], Peierls_stress = harden_params[5], expo_kinkeng = harden_params[6],\
-           wave_speed = harden_params[7], c_drag = harden_params[8], v_c = harden_params[12];
+           wave_speed = harden_params[7], c_drag = harden_params[8], v_c = harden_params[11];
     double burgers = update_params[0], disl_density_for = update_params[1],\
            back_stress = update_params[3], barrier_distance = update_params[4];
     if(abs(rss) > 1e-20){

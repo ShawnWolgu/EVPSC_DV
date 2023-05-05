@@ -6,6 +6,7 @@ Slip::Slip() {};
 Slip::Slip(json &j_slip)
 {
     mtype = j_slip["type"];  num = j_slip["id"];  shear_modulus = j_slip["G"];
+    logger.debug("Shear modulus: " + to_string(shear_modulus));
     strain_rate_slip = 0; drate_dtau = 0; acc_strain = 0; disloc_velocity = 0; 
     
     VectorXd info_vec = to_vector(j_slip, "sn", 6);
@@ -102,14 +103,16 @@ int Slip::check_hardening_mode()
     return 0;    
 }
 
-double Slip::get_gamma0(){return ref_rate;}
-double Slip::get_nrsx(){return rate_sen;}
+double Slip::get_gamma0(){ return ref_rate; }
+double Slip::get_nrsx(){ return rate_sen; }
 
-double Slip::cal_rss(Matrix3d stress_tensor){return (stress_tensor.cwiseProduct(Pij)).sum();}
-double Slip::cal_relative_rss(Matrix3d stress_tensor){return (stress_tensor.cwiseProduct(Pij)).sum() / crss;}
+double Slip::cal_rss(Matrix3d stress_tensor){ return (stress_tensor.cwiseProduct(Pij)).sum();}
+double Slip::cal_relative_rss(Matrix3d stress_tensor){ return (stress_tensor.cwiseProduct(Pij)).sum() / crss;}
 
-Matrix3d Slip::cal_dijpmode(Matrix3d sig){cal_strain_rate(sig);return strain_rate_slip * Pij;}
-Matrix3d Slip::cal_rotslip_m(){return strain_rate_slip * Rij;}
+Matrix3d Slip::cal_dijpmode(Matrix3d sig){ 
+    cal_strain_rate(sig);
+    return strain_rate_slip * Pij;}
+Matrix3d Slip::cal_rotslip_m(){ return strain_rate_slip * Rij;}
 
 Matrix6d Slip::get_Fgradm(Matrix3d stress_grain)
 {
@@ -191,7 +194,6 @@ void Slip::cal_drate_dtau_disvel(Matrix3d stress_tensor){
     double burgers = update_params[0];
     double rss_slip = cal_rss(stress_tensor);
     vector<double> dvel_and_vel = disl_velocity_grad(rss_slip, crss, harden_params, update_params);
-    //rho_mov = disloc_density;
     drate_dtau = rho_mov * burgers * sign(rss_slip) * dvel_and_vel[0];
     strain_rate_slip = rho_mov * burgers * dvel_and_vel[1] * sign(rss_slip);
 }
@@ -203,8 +205,8 @@ void Slip::update_status(grain &gr_, double dtime){
     //Update Schmidt here. But not realized yet, maybe pack the update into a function.
     Vector3d update_bv = burgers_vec;
     Vector3d update_nv = plane_norm;
-    Pij = 0.5 * (update_bv * update_nv.transpose() + update_nv * update_bv.transpose());
-    Rij = 0.5 * (update_bv * update_nv.transpose() - update_nv * update_bv.transpose());
+    Pij = 0.5 * (update_bv / update_bv.norm() * update_nv.transpose() + update_nv * update_bv.transpose()/update_bv.norm());
+    Rij = 0.5 * (update_bv / update_bv.norm() * update_nv.transpose() - update_nv * update_bv.transpose()/update_bv.norm());
 
     switch (flag_harden)
     {
@@ -271,15 +273,14 @@ void Slip::update_ssd(Matrix3d strain_rate, double dtime){
     if (flag_harden == 1){ 
     	double c_backstress = harden_params[9], c_multi = harden_params[10], burgers = update_params[0], c_annih = update_params[5];
 	double D = harden_params[12] * 1e6, ref_srate = harden_params[13], gg = harden_params[14];
-	logger.debug("D: " + to_string(D) + " ref_srate: " + to_string(ref_srate) + " gg: " + to_string(gg));
 	rho_sat = c_backstress * burgers / gg * (1-k_boltzmann * temperature/D/pow(burgers,3) * log(calc_equivalent_value(strain_rate)/ref_srate));
 	rho_sat = pow(1/rho_sat,2);
-	logger.debug("strain_rate:" + to_string(calc_equivalent_value(strain_rate)));
-	logger.debug("rho_sat: " + to_string(rho_sat));
 	rho_sat = max(rho_sat, 0.5*disloc_density);
 	c_annih = sqrt(c_multi*c_multi/rho_sat);
     	disloc_density += (c_multi * sqrt(disloc_density) - c_annih * disloc_density) * abs(strain_rate_slip) * dtime;
 	update_params[5] = c_annih;
+	//rho_mov = disloc_density;
+	rho_mov = rho_sat;
     }
 }
 
