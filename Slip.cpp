@@ -8,13 +8,13 @@ Slip::Slip(json &j_slip)
     mtype = j_slip["type"];  num = j_slip["id"];  shear_modulus = j_slip["G"];
     logger.debug("Shear modulus: " + to_string(shear_modulus));
     strain_rate_slip = 0; drate_dtau = 0; acc_strain = 0; disloc_velocity = 0; 
-    
+
     VectorXd info_vec = to_vector(j_slip, "sn", 6);
     plane_norm = info_vec(seq(0,2)); //normal 
     burgers_vec = info_vec(seq(3,5)); //Burgers
     Pij = 0.5 * (burgers_vec / burgers_vec.norm() * plane_norm.transpose() + plane_norm * burgers_vec.transpose() / burgers_vec.norm());
     Rij = 0.5 * (burgers_vec * plane_norm.transpose() / burgers_vec.norm() - plane_norm * burgers_vec.transpose() / burgers_vec.norm());
-    
+
     rate_sen = j_slip["nrsx"];
     int len = j_slip["CRSS_p"].size();
     if (len == 4) flag_harden = 0; else flag_harden = 1;
@@ -23,10 +23,10 @@ Slip::Slip(json &j_slip)
     for (int i = 0; i != 5; ++i) update_params.push_back(0);
     if (flag_harden == 0) crss = harden_params[0];
     else {
-	disloc_density = j_slip["CRSS_p"][0];
-	rho_mov = disloc_density;
-    	update_params[0] = burgers_vec.norm() * 1e-10;
-    	crss = harden_params[5];
+        disloc_density = j_slip["CRSS_p"][0];
+        rho_mov = disloc_density;
+        update_params[0] = burgers_vec.norm() * 1e-10;
+        crss = harden_params[5];
     }
 }
 
@@ -49,23 +49,23 @@ int Slip::check_sn_mode()
 {
     if(mtype == 1)
     {
-	logger.debug("Slip system: " + to_string(num));
-	logger.debug("Normal: ");
-	logger.debug(plane_norm.transpose());
-	logger.debug("Burgers: ");
-	logger.debug(burgers_vec.transpose());
-	logger.debug("Pij: ");
-	logger.debug(Pij);
+        logger.debug("Slip system: " + to_string(num));
+        logger.debug("Normal: ");
+        logger.debug(plane_norm.transpose());
+        logger.debug("Burgers: ");
+        logger.debug(burgers_vec.transpose());
+        logger.debug("Pij: ");
+        logger.debug(Pij);
     }
     if(mtype == 0)
     {
-	logger.debug("Twinning system: " + to_string(num));
-	logger.debug("Normal: ");
-	logger.debug(plane_norm.transpose());
-	logger.debug("Shear direction: ");
-	logger.debug(burgers_vec.transpose());
-	logger.debug("Pij: ");
-	logger.debug(Pij);
+        logger.debug("Twinning system: " + to_string(num));
+        logger.debug("Normal: ");
+        logger.debug(plane_norm.transpose());
+        logger.debug("Shear direction: ");
+        logger.debug(burgers_vec.transpose());
+        logger.debug("Pij: ");
+        logger.debug(Pij);
     }
     return 0;
 }
@@ -135,15 +135,15 @@ void Slip::cal_strain_rate(Matrix3d stress_tensor){
      */
     switch (flag_harden)
     {
-    case 0:
-        cal_strain_rate_pow(stress_tensor);
-        break;
-    case 1:
-        cal_strain_rate_disvel(stress_tensor);
-        break;
-    default:
-        cal_strain_rate_disvel(stress_tensor);
-        break;
+        case 0:
+            cal_strain_rate_pow(stress_tensor);
+            break;
+        case 1:
+            cal_strain_rate_disvel(stress_tensor);
+            break;
+        default:
+            cal_strain_rate_disvel(stress_tensor);
+            break;
     }
 }
 
@@ -170,15 +170,15 @@ void Slip::cal_drate_dtau(Matrix3d stress_tensor){
      */
     switch (flag_harden)
     {
-    case 0:
-        cal_drate_dtau_pow(stress_tensor);
-        break;
-    case 1:
-        cal_drate_dtau_disvel(stress_tensor);
-        break;
-    default:
-        cal_drate_dtau_disvel(stress_tensor);
-        break;
+        case 0:
+            cal_drate_dtau_pow(stress_tensor);
+            break;
+        case 1:
+            cal_drate_dtau_disvel(stress_tensor);
+            break;
+        default:
+            cal_drate_dtau_disvel(stress_tensor);
+            break;
     }
 }
 
@@ -210,15 +210,15 @@ void Slip::update_status(grain &gr_, double dtime){
 
     switch (flag_harden)
     {
-    case 0:
-        update_voce(gr_.gmode, gr_.lat_hard_mat, gr_.modes_num, dtime);
-        break;
-    case 1:
-        update_disvel(gr_.gmode, gr_.lat_hard_mat, update_bv.norm(), gr_.modes_num, dtime);
-        break;
-    default:
-        update_disvel(gr_.gmode, gr_.lat_hard_mat, update_bv.norm(), gr_.modes_num, dtime);
-        break;
+        case 0:
+            update_voce(gr_.gmode, gr_.lat_hard_mat, gr_.modes_num, dtime);
+            break;
+        case 1:
+            update_disvel(gr_.gmode, gr_.lat_hard_mat, update_bv.norm(), gr_.modes_num, dtime);
+            break;
+        default:
+            update_disvel(gr_.gmode, gr_.lat_hard_mat, update_bv.norm(), gr_.modes_num, dtime);
+            break;
     }
 }
 
@@ -228,12 +228,12 @@ void Slip::update_voce(Slip* gmode, MatrixXd lat_hard_mat, int modes_num, double
      */
     double Gamma = 0;
     for(int i = 0; i < modes_num; i++){
-	Gamma += abs(gmode[i].acc_strain);
+        Gamma += abs(gmode[i].acc_strain);
     }
     double tau_0 = harden_params[0], tau_1 = harden_params[1], h_0 = harden_params[2], h_1 = harden_params[3];
     double dtau_by_dGamma = h_1 + (abs(h_0/tau_1)*tau_1 - h_1) * exp(-Gamma*abs(h_0/tau_1)) + abs(h_0/tau_1)*h_1*Gamma*exp(-Gamma*abs(h_0/tau_1));
     for (int i = 0; i < modes_num; i++){
-	crss += abs(gmode[i].strain_rate_slip) * dtime * lat_hard_mat(num,gmode[i].num) * dtau_by_dGamma;
+        crss += abs(gmode[i].strain_rate_slip) * dtime * lat_hard_mat(num,gmode[i].num) * dtau_by_dGamma;
     }
 }
 
@@ -252,9 +252,9 @@ void Slip::update_disvel(Slip* slip_sys, MatrixXd lat_hard_mat, int bv, double n
     double burgers, disl_density_for, disl_density_resist, back_stress, barrier_distance, cosine_n_m;
     disl_density_for = disl_density_resist = 0;
     for(int i = 0; i < nmode; i++){
-	disl_density_for += slip_sys[i].disloc_density;
-	//disl_density_resist += slip_sys[i].disloc_density * ((lat_hard_mat(num,slip_sys[i].num)-1)*lh_coeff+1);
-	disl_density_resist += slip_sys[i].disloc_density * (lat_hard_mat(num,slip_sys[i].num));
+        disl_density_for += slip_sys[i].disloc_density;
+        //disl_density_resist += slip_sys[i].disloc_density * ((lat_hard_mat(num,slip_sys[i].num)-1)*lh_coeff+1);
+        disl_density_resist += slip_sys[i].disloc_density * (lat_hard_mat(num,slip_sys[i].num));
     }
     burgers = bv * 1e-10;
     back_stress = c_backstress * shear_modulus * burgers * sqrt(disl_density_resist);// + HP_stress
@@ -268,26 +268,26 @@ void Slip::update_disvel(Slip* slip_sys, MatrixXd lat_hard_mat, int bv, double n
 
 void Slip::update_ssd(Matrix3d strain_rate, double dtime){
     if (flag_harden == 0){
-	acc_strain += abs(strain_rate_slip) * dtime;
+        acc_strain += abs(strain_rate_slip) * dtime;
     }
     if (flag_harden == 1){ 
-    	double c_backstress = harden_params[9], c_multi = harden_params[10], burgers = update_params[0], c_annih = update_params[5];
-	double D = harden_params[12] * 1e6, ref_srate = harden_params[13], gg = harden_params[14];
-	rho_sat = c_backstress * burgers / gg * (1-k_boltzmann * temperature/D/pow(burgers,3) * log(calc_equivalent_value(strain_rate)/ref_srate));
-	rho_sat = pow(1/rho_sat,2);
-	rho_sat = max(rho_sat, 0.5*disloc_density);
-	c_annih = sqrt(c_multi*c_multi/rho_sat);
-    	disloc_density += (c_multi * sqrt(disloc_density) - c_annih * disloc_density) * abs(strain_rate_slip) * dtime;
-	update_params[5] = c_annih;
-	if (abs(strain_rate_slip) > 1e3) rho_mov = disloc_density;
+        double c_backstress = harden_params[9], c_multi = harden_params[10], burgers = update_params[0], c_annih = update_params[5];
+        double D = harden_params[12] * 1e6, ref_srate = harden_params[13], gg = harden_params[14];
+        rho_sat = c_backstress * burgers / gg * (1-k_boltzmann * temperature/D/pow(burgers,3) * log(calc_equivalent_value(strain_rate)/ref_srate));
+        rho_sat = pow(1/rho_sat,2);
+        rho_sat = max(rho_sat, 0.5*disloc_density);
+        c_annih = sqrt(c_multi*c_multi/rho_sat);
+        disloc_density += (c_multi * sqrt(disloc_density) - c_annih * disloc_density) * abs(strain_rate_slip) * dtime;
+        update_params[5] = c_annih;
+        if (abs(strain_rate_slip) > 1e3) rho_mov = disloc_density;
     }
 }
 
 void Slip::update_lhparams(Matrix3d strain_rate){
     if (flag_harden == 1){ 
-	double ref_srate = 1e-3, exp_lh = -0.1;
-	lh_coeff = pow(calc_equivalent_value(strain_rate)/ref_srate, exp_lh);
-	if (lh_coeff > 2) lh_coeff = 2;
+        double ref_srate = 1e-3, exp_lh = -0.1;
+        lh_coeff = pow(calc_equivalent_value(strain_rate)/ref_srate, exp_lh);
+        if (lh_coeff > 2) lh_coeff = 2;
     }
     else{}
 }
