@@ -41,6 +41,8 @@ class Process
 	fstream crss_out; 
 	fstream nrss_out; 
 	fstream euler_out;
+	fstream ss_out_csv;
+	fstream ss_grain_out;
 
         int texctrl; //print the texture every n steps(0 means only print at the end)
 

@@ -15,6 +15,8 @@ Process::Process()
     rate_out.open("Rate.csv",ios::out);
     crss_out.open("CRSS.csv",ios::out);
     euler_out.open("Euler.csv",ios::out);
+    ss_out_csv.open("str_str.csv",ios::out);
+    ss_grain_out.open("str_str_grain.csv",ios::out);
 }
 
 Process::~Process()
@@ -147,6 +149,19 @@ void Process::init_grain_info(Polycs::polycrystal &pcrys, int num){
     Vector3d v_out = g_this->get_euler_g();
     for(int i = 0; i < 3; ++i) euler_out << "," << v_out(i);
     euler_out << endl;
+
+    ss_out_csv << "E11, E22, E33, E23, E13, E12, S11, S22, S33, S23, S13, S12\n";
+    for(int i = 0; i < 6; ++i) ss_out_csv << pcrys.get_Eps_m()(i) << ",";
+    for(int i = 0; i < 6; ++i) ss_out_csv << pcrys.get_Sig_m()(i) << ",";
+    ss_out_csv << endl;
+
+    ss_grain_out << "EVM, SVM, E11, E22, E33, E23, E13, E12, S11, S22, S33, S23, S13, S12\n";
+    ss_grain_out << calc_equivalent_value(g_this->get_strain_g());
+    ss_grain_out << "," << calc_equivalent_value(g_this->get_stress_g());
+    for(int i = 0; i < 6; ++i) ss_grain_out << "," << voigt(g_this->get_strain_g())(i);
+    for(int i = 0; i < 6; ++i) ss_grain_out << "," << voigt(g_this->get_stress_g())(i);
+    ss_grain_out << endl;
+
 }
 
 void Process::Out_grain_info(Polycs::polycrystal &pcrys, int num){
@@ -176,6 +191,16 @@ void Process::Out_grain_info(Polycs::polycrystal &pcrys, int num){
     Vector3d v_out = g_this->get_euler_g();
     for(int i = 0; i < 3; ++i) euler_out << "," << v_out(i);
     euler_out << endl;
+
+    for(int i = 0; i < 6; ++i) ss_out_csv << pcrys.get_Eps_m()(i) << ",";
+    for(int i = 0; i < 6; ++i) ss_out_csv << pcrys.get_Sig_m()(i) << ",";
+    ss_out_csv << endl;
+
+    ss_grain_out << calc_equivalent_value(g_this->get_strain_g());
+    ss_grain_out << "," << calc_equivalent_value(g_this->get_stress_g());
+    for(int i = 0; i < 6; ++i) ss_grain_out << "," << voigt(g_this->get_strain_g())(i);
+    for(int i = 0; i < 6; ++i) ss_grain_out << "," << voigt(g_this->get_stress_g())(i);
+    ss_grain_out << endl;
 }
 
 void Process::Out_texset(int input){texctrl = input;}

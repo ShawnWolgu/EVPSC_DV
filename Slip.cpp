@@ -279,8 +279,7 @@ void Slip::update_ssd(Matrix3d strain_rate, double dtime){
 	c_annih = sqrt(c_multi*c_multi/rho_sat);
     	disloc_density += (c_multi * sqrt(disloc_density) - c_annih * disloc_density) * abs(strain_rate_slip) * dtime;
 	update_params[5] = c_annih;
-	//rho_mov = disloc_density;
-	rho_mov = rho_sat;
+	if (abs(strain_rate_slip) > 1e3) rho_mov = disloc_density;
     }
 }
 

@@ -54,7 +54,7 @@ int grain::ini_gmode_g(json &j)
     gmode = new Slip[modes_num];
     int i = 0;
     for (json &j_mode: j["sx_per_mode"]){
-	gmode[i] = Slip(j_mode); ++i;
+        gmode[i] = Slip(j_mode); ++i;
     }
     gamma_delta_gmode = new double[modes_num];
     return 1;
@@ -67,11 +67,11 @@ int grain::ini_sn_g(MatrixXd Min, int flag, int system_n, int modei, Matrix6d el
     cout << "Min" << Min << "\n";
     for(int i = modei; i < modei+system_n; i++)
     {
-	VectorXd Min_temp = Min(i-modei,all);
-	cout << "line number: " << i-modei << "\n";
-	cout << "Min_temp: " << Min_temp.transpose() << "\n";
-	gmode[i].ini_sn_mode(Min_temp, flag, i);
-	gmode[i].cal_shear_modulus(elastic_modulus);
+        VectorXd Min_temp = Min(i-modei,all);
+        cout << "line number: " << i-modei << "\n";
+        cout << "Min_temp: " << Min_temp.transpose() << "\n";
+        gmode[i].ini_sn_mode(Min_temp, flag, i);
+        gmode[i].cal_shear_modulus(elastic_modulus);
     }
     return 0;
 }
@@ -90,7 +90,7 @@ int grain::ini_hardening_g(double nrsx_in, VectorXd CRSS_p_in, VectorXd hst_in, 
 {
     for(int i = modei; i < modei+modes_num; i++)
     {
-	gmode[i].ini_hardening_mode(nrsx_in, CRSS_p_in, hst_in);
+        gmode[i].ini_hardening_mode(nrsx_in, CRSS_p_in, hst_in);
     }
     return 0;
 }
@@ -99,14 +99,14 @@ int grain::check_hardening_g()
 {
     for(int i = 0; i < modes_num; i++)
     {
-	logger.debug("Mode "+std::to_string(i)+":");
+        logger.debug("Mode "+std::to_string(i)+":");
         gmode[i].check_hardening_mode();
     }
     return 0;    
 }
 
 void grain::Eshelby_E(double ESIM[3][3][3][3], double ESCR[3][3][3][3], \
-Vector3d axis_t, Matrix6d C66,Integralpoint6 aa6, Integralpoint6 aaww6, Integralpoint3 alpha)
+                      Vector3d axis_t, Matrix6d C66,Integralpoint6 aa6, Integralpoint6 aaww6, Integralpoint3 alpha)
 {
     int npoints = Intn * Intn; 
 
@@ -148,10 +148,10 @@ Vector3d axis_t, Matrix6d C66,Integralpoint6 aa6, Integralpoint6 aaww6, Integral
     double Tijkl[3][3][3][3];
     voigt(T66, Tijkl);
 
-//   COMPUTE SYMMETRIC (DISTORTION) ESHELBY TENSOR FROM EQ.B9.
-//       ESIM(N,M,K,L)=0.5*(T(M,J,N,I)+T(N,J,M,I))*C4(I,J,K,L)
-//   COMPUTE ANTI-SYMMETRIC (ROTATION) ESHELBY TENSOR FROM EQ.B9.
-//       ESCR(N,M,K,L)=0.5*(T(M,J,N,I)-T(N,J,M,I))*C4(I,J,K,L)
+    //   COMPUTE SYMMETRIC (DISTORTION) ESHELBY TENSOR FROM EQ.B9.
+    //       ESIM(N,M,K,L)=0.5*(T(M,J,N,I)+T(N,J,M,I))*C4(I,J,K,L)
+    //   COMPUTE ANTI-SYMMETRIC (ROTATION) ESHELBY TENSOR FROM EQ.B9.
+    //       ESCR(N,M,K,L)=0.5*(T(M,J,N,I)-T(N,J,M,I))*C4(I,J,K,L)
     double C4[3][3][3][3];
     voigt(C66, C4);
 
@@ -160,22 +160,22 @@ Vector3d axis_t, Matrix6d C66,Integralpoint6 aa6, Integralpoint6 aaww6, Integral
         for(int k = 0; k < 3; k++)
             for(int m = 0; m < 3; m++)
                 for(int n = 0; n < 3; n++)
-    {
-        dumsim = 0;
-        dumscr = 0;
-        for(int j = 0; j < 3; j++)
-            for(int i = 0; i < 3; i++)
-            {
-                dumsim=dumsim+(Tijkl[m][j][n][i]+Tijkl[n][j][m][i])*C4[i][j][k][l];
-                dumscr=dumscr+(Tijkl[m][j][n][i]-Tijkl[n][j][m][i])*C4[i][j][k][l];
-            }
-        ESIM[n][m][k][l]=0.5*dumsim;
-        ESCR[n][m][k][l]=0.5*dumscr;
-    }
+                {
+                    dumsim = 0;
+                    dumscr = 0;
+                    for(int j = 0; j < 3; j++)
+                        for(int i = 0; i < 3; i++)
+                        {
+                            dumsim=dumsim+(Tijkl[m][j][n][i]+Tijkl[n][j][m][i])*C4[i][j][k][l];
+                            dumscr=dumscr+(Tijkl[m][j][n][i]-Tijkl[n][j][m][i])*C4[i][j][k][l];
+                        }
+                    ESIM[n][m][k][l]=0.5*dumsim;
+                    ESCR[n][m][k][l]=0.5*dumscr;
+                }
 }
 
 void grain::Eshelby_P(double ESIM[3][3][3][3],double ESCR[3][3][3][3],\
-Vector3d axis_t, Matrix6d C66,Integralpoint6 aa6, Integralpoint6 aaww6, Integralpoint3 alpha, Integralpoint3 aww, Integralpoint1 ww)
+                      Vector3d axis_t, Matrix6d C66,Integralpoint6 aa6, Integralpoint6 aaww6, Integralpoint3 alpha, Integralpoint3 aww, Integralpoint1 ww)
 {
     int npoints = Intn * Intn; 
 
@@ -228,15 +228,15 @@ Vector3d axis_t, Matrix6d C66,Integralpoint6 aa6, Integralpoint6 aaww6, Integral
             for(int i = 0; i < 3; i++)
                 P(i,j) += aww(j,ny)*a1_10_inv(i+6)*abcoro3;
         PDIL += ww(ny)*a1_10_inv(9)*abcoro3;
-        
+
     }
     double Tijkl[3][3][3][3];
     voigt(T66, Tijkl);
 
-//   COMPUTE SYMMETRIC (DISTORTION) ESHELBY TENSOR FROM EQ.B9.
-//       ESIM(N,M,K,L)=0.5*(T(M,J,N,I)+T(N,J,M,I))*C4(I,J,K,L)
-//   COMPUTE ANTI-SYMMETRIC (ROTATION) ESHELBY TENSOR FROM EQ.B9.
-//       ESCR(N,M,K,L)=0.5*(T(M,J,N,I)-T(N,J,M,I))*C4(I,J,K,L)
+    //   COMPUTE SYMMETRIC (DISTORTION) ESHELBY TENSOR FROM EQ.B9.
+    //       ESIM(N,M,K,L)=0.5*(T(M,J,N,I)+T(N,J,M,I))*C4(I,J,K,L)
+    //   COMPUTE ANTI-SYMMETRIC (ROTATION) ESHELBY TENSOR FROM EQ.B9.
+    //       ESCR(N,M,K,L)=0.5*(T(M,J,N,I)-T(N,J,M,I))*C4(I,J,K,L)
     double C4[3][3][3][3];
     voigt(C66, C4);
 
@@ -245,18 +245,18 @@ Vector3d axis_t, Matrix6d C66,Integralpoint6 aa6, Integralpoint6 aaww6, Integral
         for(int k = 0; k < 3; k++)
             for(int m = 0; m < 3; m++)
                 for(int n = 0; n < 3; n++)
-    {
-        dumsim = 0;
-        dumscr = 0;
-        for(int j = 0; j < 3; j++)
-            for(int i = 0; i < 3; i++)
-            {
-                dumsim=dumsim+(Tijkl[m][j][n][i]+Tijkl[n][j][m][i])*C4[i][j][k][l];
-                dumscr=dumscr+(Tijkl[m][j][n][i]-Tijkl[n][j][m][i])*C4[i][j][k][l];
-            }
-        ESIM[n][m][k][l]=0.5*dumsim;
-        ESCR[n][m][k][l]=0.5*dumscr;
-    }
+                {
+                    dumsim = 0;
+                    dumscr = 0;
+                    for(int j = 0; j < 3; j++)
+                        for(int i = 0; i < 3; i++)
+                        {
+                            dumsim=dumsim+(Tijkl[m][j][n][i]+Tijkl[n][j][m][i])*C4[i][j][k][l];
+                            dumscr=dumscr+(Tijkl[m][j][n][i]-Tijkl[n][j][m][i])*C4[i][j][k][l];
+                        }
+                    ESIM[n][m][k][l]=0.5*dumsim;
+                    ESCR[n][m][k][l]=0.5*dumscr;
+                }
 }
 
 Matrix3d grain::get_stress_g(){return sig_g;}
@@ -278,10 +278,10 @@ void grain::save_status_g(){
 
 void grain::save_RSinv_g(){
     for(int i = 0; i < 3; i++)  for(int j = 0; j < 3; j++)
-    for(int m = 0; m < 3; m++)  for(int n = 0; n < 3; n++){
-        RSinv_C_old[i][j][m][n] = RSinv_C[i][j][m][n];
-        RSinv_VP_old[i][j][m][n] = RSinv_VP[i][j][m][n];
-    }
+        for(int m = 0; m < 3; m++)  for(int n = 0; n < 3; n++){
+            RSinv_C_old[i][j][m][n] = RSinv_C[i][j][m][n];
+            RSinv_VP_old[i][j][m][n] = RSinv_VP[i][j][m][n];
+        }
 }
 
 void grain::restore_status_g(){
@@ -304,7 +304,7 @@ void grain::Update_RSinv_C_g(double A[3][3][3][3])
         for(int j = 0; j < 3; j++)
             for(int m = 0; m < 3; m++)
                 for(int n = 0; n < 3; n++)
-    RSinv_C[i][j][m][n] = A[i][j][m][n];
+                    RSinv_C[i][j][m][n] = A[i][j][m][n];
 }
 Matrix6d grain::get_Mij6_J_g(){return Mij6_J_g;}
 
@@ -319,7 +319,7 @@ void grain::Update_RSinv_VP_g(double A[3][3][3][3])
         for(int j = 0; j < 3; j++)
             for(int m = 0; m < 3; m++)
                 for(int n = 0; n < 3; n++)
-    RSinv_VP[i][j][m][n] = A[i][j][m][n];
+                    RSinv_VP[i][j][m][n] = A[i][j][m][n];
 }
 
 void grain::Update_Mpij6_g()
@@ -350,7 +350,7 @@ void grain::Update_shape_g()
     Eigsrt(BX_vectors, BX_value);
     //-2 solve the eigen vector of BX
     //and sort the value from largest to smallest
-    
+
     Matrix3d B = BX_vectors;
     Vector3d W = BX_value;
     //-3 
@@ -362,11 +362,11 @@ void grain::Update_shape_g()
     double temp;
     if(B.determinant() <= 0) Sign = 1;
     for(int i = 0; i < 3; i++)
-        {
-            temp = B(i,0);
-            B(i,0) = B(i,1);
-            B(i,1) = temp * Sign;
-        }
+    {
+        temp = B(i,0);
+        B(i,0) = B(i,1);
+        B(i,1) = temp * Sign;
+    }
     temp = W(0); W(0) = W(1); W(1) = temp;
     //-3 
 
@@ -380,7 +380,7 @@ void grain::Update_shape_g()
             ell_axis_g(i) = sqrt(W(i));
     //if Iflat_g = 1, the axis of ellipsoid keeps unchange
     //-4 update the stretching of ellipsoid
- 
+
     //-5 update the ellipsoid orientation
     Matrix3d BT = B.transpose();
     ellip_ang_g = Euler_trans(B);
@@ -388,34 +388,34 @@ void grain::Update_shape_g()
 
     //-6 Update the Iflat_g according to the Max axes ratio of ellipsoid
     if((!Iflat_g)&&(Ratmax >= ell_crit_shape_g))
-    {
-        Iflat_g = 1;
-    }
-    //-6
+        {
+            Iflat_g = 1;
+        }
+        //-6
 
-    //-7 Iflat_g = 1; recaculates the Fij_g in grain
+        //-7 Iflat_g = 1; recaculates the Fij_g in grain
     else if((Iflat_g)&&(Ratmax >= ell_crit_shape_g))
     {
-        W(1) = W(1)/4;
-        if(Ratmin >= 0.5 * ell_crit_shape_g)
-            W(0) = W(0)/4;
-        for(int i = 0; i < 3; i++)
-            ell_axis_g(i) = sqrt(W(i));
-        
-        Matrix3d Fijx;
-        for(int i = 0; i < 3; i++)
-            for(int j = 0; j < 3; j++)
-                Fijx(i,j) = Iij(i,j) * ell_axis_g(i);
-        
-        for(int i = 0; i < 3; i++)
-            for(int j = 0; j < 3; j++)
+    W(1) = W(1)/4;
+    if(Ratmin >= 0.5 * ell_crit_shape_g)
+        W(0) = W(0)/4;
+    for(int i = 0; i < 3; i++)
+        ell_axis_g(i) = sqrt(W(i));
+
+    Matrix3d Fijx;
+    for(int i = 0; i < 3; i++)
+        for(int j = 0; j < 3; j++)
+            Fijx(i,j) = Iij(i,j) * ell_axis_g(i);
+
+    for(int i = 0; i < 3; i++)
+        for(int j = 0; j < 3; j++)
         {
             Fij_g(i,j) = 0;
             for(int k = 0; k < 3; k++)
                 for(int l = 0; l < 3; l++)
                     Fij_g(i,j) = Fij_g(i,j) + B(i,k)*B(j,l)*Fijx(k,l);
         }
-    }
+}
 }
 
 void grain::Update_Fij_g(double Tincr)
@@ -425,7 +425,7 @@ void grain::Update_Fij_g(double Tincr)
     for(int i = 0; i < 3; i++)
         for(int j = 0; j < 3; j++)
             for(int k = 0; k < 3; k++)
-            Fnew(i,j) += (Tincr*Udot_g(i,k)+Iij(i,k))*Fij_g(k,j);
+                Fnew(i,j) += (Tincr*Udot_g(i,k)+Iij(i,k))*Fij_g(k,j);
     Fij_g = Fnew;
 }
 
@@ -494,14 +494,14 @@ double grain::cal_RSSxlim(Matrix3d D)
     for(int i = 0; i < modes_num; i++)
         if(nrsxmin > gmode[i].get_nrsx())
             nrsxmin = gmode[i].get_nrsx();
-    
+
     double lim = 2* pow(D.norm()/gmode[0].get_gamma0(),1/nrsxmin);
     if(lim < 2) lim = 2;
     return  lim;           
 }
 
 void grain::grain_stress(double Tincr, Matrix3d Wij_m, Matrix3d Dij_m,\
- Matrix3d Dije_AV, Matrix3d Dijp_AV, Matrix3d Sig_m, Matrix3d Sig_m_old)
+                         Matrix3d Dije_AV, Matrix3d Dijp_AV, Matrix3d Sig_m, Matrix3d Sig_m_old)
 {
     //cout << "sig_g_before = " << endl << sig_g << endl;
     Matrix3d X = sig_g; 
@@ -548,7 +548,7 @@ void grain::grain_stress(double Tincr, Matrix3d Wij_m, Matrix3d Dij_m,\
         //{Xv = Xold + coef*(Xv-Xold);}
         //06.31
         Xold = Xv;
- 
+
         F = -DB +  Mtemp * Xv;
         F =  Bbasisadd(F, Mptilde_g * Chg_basis5(Chg_basis(Xv)));
         dijpgv = Chg_basis5(cal_Dijp(Chg_basis(Xv)));
@@ -566,10 +566,10 @@ void grain::grain_stress(double Tincr, Matrix3d Wij_m, Matrix3d Dij_m,\
         {   break;};
         if(it == 99)
         {
-	    logger.warn("Grain stress calculation failed !");
+            logger.warn("Grain stress calculation failed !");
             Xv = Chg_basis6(X) + Chg_basis6(Sig_m) - Chg_basis6(Sig_m_old);
         }
-        
+
     }
     //Newton-Rapthon iteration
 
@@ -580,7 +580,7 @@ void grain::grain_stress(double Tincr, Matrix3d Wij_m, Matrix3d Dij_m,\
     Dije_g = Chg_basis(dijegv);
     Dijp_g = Chg_basis(dijpgv);
     Dij_g = Dije_g + Dijp_g;
-    
+
     Update_Mpij6_g();
 }
 
@@ -629,13 +629,13 @@ void grain::update_modes(double Tincr)
 void grain::set_lat_hard_mat(){
     lat_hard_mat.resize(modes_num,modes_num);
     for (int i = 0; i < modes_num; i++){
-	for (int j = 0; j < modes_num; j++){
-	    if (gmode[i].num == gmode[j].num) lat_hard_mat(gmode[i].num,gmode[j].num) = 1;
-	    else{
-	    	int mode = get_interaction_mode(gmode[i].burgers_vec, gmode[i].plane_norm, gmode[j].burgers_vec, gmode[j].plane_norm);
-	    	lat_hard_mat(gmode[i].num,gmode[j].num) = gmode[i].latent_params[mode];
-	    }
-	}
+        for (int j = 0; j < modes_num; j++){
+            if (gmode[i].num == gmode[j].num) lat_hard_mat(gmode[i].num,gmode[j].num) = 1;
+            else{
+                int mode = get_interaction_mode(gmode[i].burgers_vec, gmode[i].plane_norm, gmode[j].burgers_vec, gmode[j].plane_norm);
+                lat_hard_mat(gmode[i].num,gmode[j].num) = gmode[i].latent_params[mode];
+            }
+        }
     }
 }
 
@@ -648,15 +648,15 @@ int grain::get_interaction_mode(Vector3d burgers_i, Vector3d plane_i, Vector3d b
     double cos_b_angle = cal_cosine(burgers_i, burgers_j);
     if(abs(cos_b_angle) < perp) return 1;
     else {
-	if(abs(cos_b_angle) > prll) return 0;
-	else{
-	    if (abs(cal_cosine(plane_i, plane_j)) > prll) return 2;
-	    else{
-		bool if_glide_i = (abs(cal_cosine(plane_i, burgers_i+burgers_j)) < perp);
-		bool if_glide_j = (abs(cal_cosine(plane_j, burgers_i+burgers_j)) < perp);
-	    	if (if_glide_i || if_glide_j) return 3;
-		else return 4;
-	    }
-	}
+        if(abs(cos_b_angle) > prll) return 0;
+        else{
+            if (abs(cal_cosine(plane_i, plane_j)) > prll) return 2;
+            else{
+                bool if_glide_i = (abs(cal_cosine(plane_i, burgers_i+burgers_j)) < perp);
+                bool if_glide_j = (abs(cal_cosine(plane_j, burgers_i+burgers_j)) < perp);
+                if (if_glide_i || if_glide_j) return 3;
+                else return 4;
+            }
+        }
     }
 }
