@@ -22,7 +22,7 @@ public:
     // Define the message hierarchy levels inside the Logger class
     enum class MessageLevel {
         DEBUG,
-	NOTICE,
+        NOTICE,
         WARN,
         INFO,
         ERROR,
@@ -55,7 +55,7 @@ public:
         std::time_t t = std::time(nullptr);
         std::string timestamp = std::asctime(std::localtime(&t));
         timestamp.pop_back();  // Remove the newline character from the end
-	Eigen::IOFormat LogFmt(4, 0, ", ", "\n", "["+timestamp+"] "+getPrefix(level)+ "[", "]");
+        Eigen::IOFormat LogFmt(4, 0, ", ", "\n", "["+timestamp+"] "+getPrefix(level)+ "[", "]");
         // Output the message to the console
         if (console_level_ <= level) {
             std::cout << message.format(LogFmt) << std::endl;
@@ -91,39 +91,39 @@ private:
     // Helper function to print the message prefix based on the message level
     void printPrefix(MessageLevel level, std::ostream& stream = std::cout) {
         switch (level) {
-        case MessageLevel::DEBUG:
-            stream << "[ DEBUG] ";
-            break;
-        case MessageLevel::INFO:
-            stream << "[ INFO ] ";
-            break;
-	case MessageLevel::NOTICE:
-	    stream << "[NOTICE] ";
-	    break;
-        case MessageLevel::WARN:
-            stream << "[ WARN ] ";
-            break;
-        case MessageLevel::ERROR:
-            stream << "[ ERROR] ";
-            break;
-        default:
-            break;
+            case MessageLevel::DEBUG:
+                stream << "[ DEBUG] ";
+                break;
+            case MessageLevel::INFO:
+                stream << "[ INFO ] ";
+                break;
+            case MessageLevel::NOTICE:
+                stream << "[NOTICE] ";
+                break;
+            case MessageLevel::WARN:
+                stream << "[ WARN ] ";
+                break;
+            case MessageLevel::ERROR:
+                stream << "[ ERROR] ";
+                break;
+            default:
+                break;
         }
     }
     std::string getPrefix(MessageLevel level) {
         switch (level) {
-        case MessageLevel::DEBUG:
-            return "[ DEBUG] ";
-        case MessageLevel::INFO:
-	    return "[ INFO ] ";
-	case MessageLevel::NOTICE:
-	    return "[NOTICE] ";
-	case MessageLevel::WARN:
-	    return "[ WARN ] ";
-	case MessageLevel::ERROR:
-	    return "[ ERROR] ";
-	default:
-	    return "";
+            case MessageLevel::DEBUG:
+                return "[ DEBUG] ";
+            case MessageLevel::INFO:
+                return "[ INFO ] ";
+            case MessageLevel::NOTICE:
+                return "[NOTICE] ";
+            case MessageLevel::WARN:
+                return "[ WARN ] ";
+            case MessageLevel::ERROR:
+                return "[ ERROR] ";
+            default:
+                return "";
         }
     }
 };

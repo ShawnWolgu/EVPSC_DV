@@ -581,6 +581,8 @@ void grain::grain_stress(double Tincr, Matrix3d Wij_m, Matrix3d Dij_m,\
     Dijp_g = Chg_basis(dijpgv);
     Dij_g = Dije_g + Dijp_g;
 
+    logger.debug("Grain number = %d" + to_string(grain_i));
+    logger.debug(Mpij6_g);
     Update_Mpij6_g();
 }
 

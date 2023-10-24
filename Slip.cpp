@@ -195,6 +195,11 @@ void Slip::cal_drate_dtau_disvel(Matrix3d stress_tensor){
     double rss_slip = cal_rss(stress_tensor);
     vector<double> dvel_and_vel = disl_velocity_grad(rss_slip, crss, harden_params, update_params);
     drate_dtau = rho_mov * burgers * sign(rss_slip) * dvel_and_vel[0];
+    if (isnan(drate_dtau)){
+        logger.debug("number: " + to_string(num));
+        logger.debug("rss_slip: " + to_string(rss_slip));
+        logger.debug("dvel: " + to_string(dvel_and_vel[0]));
+    }
     strain_rate_slip = rho_mov * burgers * dvel_and_vel[1] * sign(rss_slip);
 }
 
