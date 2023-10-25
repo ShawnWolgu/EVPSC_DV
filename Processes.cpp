@@ -62,15 +62,15 @@ void Process::loading(Polycs::polycrystal &pcrys){
 	do{
 	    coeff_step = min(1.0 - pct_step, coeff_step);
 	    logger.notice("Step " + to_string(istep) + ":\t" + to_string(pct_step) + " to " + to_string(pct_step + coeff_step));
-            int return_SC = pcrys.EVPSC(istep, coeff_step * Tincr, Iupdate_ori, Iupdate_shp, Iupdate_CRSS);
+        int return_SC = pcrys.EVPSC(istep, coeff_step * Tincr, Iupdate_ori, Iupdate_shp, Iupdate_CRSS);
 	    if (return_SC == 1) {
-		pcrys.restore_status();
-		logger.warn("Not convergent... Retry with a smaller increment.");
-		logger.notice("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
-		if(isnan(pcrys.error_SC)) coeff_step *= 0.1;
-		else coeff_step *= sqrt(sqrt(1/pcrys.error_SC));
+            pcrys.restore_status();
+            logger.warn("Not convergent... Retry with a smaller increment.");
+            logger.notice("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
+            if(isnan(pcrys.error_SC)) coeff_step *= 0.1;
+            else coeff_step *= sqrt(sqrt(1/pcrys.error_SC));
 	    	if (coeff_step < 1e-6) { logger.error("Not convergent... Abort."); exit(1);}
-		continue;
+		    continue;
 	    }
 	    pct_step += coeff_step;
 	    update_progress(pct_step);

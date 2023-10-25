@@ -7,41 +7,41 @@ int EVPSCinput(string &ftex,string &fsx,string &fload, Procs::Process &Proc)
     logger.info("Loading input file EVPSC_CPP.in ...");
     ininp.open("EVPSC_CPP.in",ios::in); //open EVPSC.in
     if (ininp.is_open())
-    {
-        //read the file path
-        string tp;
-        getline(ininp, tp); //skip
-        getline(ininp, ftex);
-        getline(ininp, tp); //skip
-        getline(ininp, fsx); 
-        getline(ininp, tp); //skip
-        getline(ininp, fload); 
+        {
+            //read the file path
+            string tp;
+            getline(ininp, tp); //skip
+            getline(ininp, ftex);
+            getline(ininp, tp); //skip
+            getline(ininp, fsx); 
+            getline(ininp, tp); //skip
+            getline(ininp, fload); 
 
-        //read the update control
-        getline(ininp, tp); //skip
-        getline(ininp, tp); //skip
-        getline(ininp, tp); //skip
-        getline(ininp, tp); 
-        VectorXd temp1 = getnum(tp, 3);
-        Vector3i temp2;
-        for(int i=0; i<3; i++)
-            temp2(i) = int(temp1(i));
-        Proc.Update_ctrl(temp2);
+            //read the update control
+            getline(ininp, tp); //skip
+            getline(ininp, tp); //skip
+            getline(ininp, tp); //skip
+            getline(ininp, tp); 
+            VectorXd temp1 = getnum(tp, 3);
+            Vector3i temp2;
+            for(int i=0; i<3; i++)
+                temp2(i) = int(temp1(i));
+            Proc.Update_ctrl(temp2);
 
-        //read output control
-        getline(ininp, tp); //skip
-        getline(ininp, tp); //skip
-        getline(ininp, tp); //skip
-        getline(ininp, tp); 
-        VectorXd temp = getnum(tp, 1);
-        Proc.Out_texset(int(temp(0)));
+            //read output control
+            getline(ininp, tp); //skip
+            getline(ininp, tp); //skip
+            getline(ininp, tp); //skip
+            getline(ininp, tp); 
+            VectorXd temp = getnum(tp, 1);
+            Proc.Out_texset(int(temp(0)));
 
-        ininp.close(); 
-        return 0;
-    }
+            ininp.close(); 
+            return 0;
+        }
     else
     {
-	logger.error("Error code 0: loading file cannot be opened.");
+        logger.error("Error code 0: loading file cannot be opened.");
         return 1;
     }
 }
@@ -53,72 +53,72 @@ int loadinput(string fname, Procs::Process &Proc)
     logger.info("Loading process file " + fname + " ...");
 
     if (loadinp.is_open())
-    {   //checking whether the file is open
-        string tp;
+        {   //checking whether the file is open
+            string tp;
 
-        //1st line is the loading control option
-        getline(loadinp, tp);
-        Vector4d Victrl = getnum(tp, 4);
-        Proc.load_ctrl(Victrl);
-         
-        getline(loadinp, tp);//skip one line  
-        //boundary condition
-        Matrix3i IUdot;
-        for(int i = 0; i < 3; i++)
-        {
+            //1st line is the loading control option
             getline(loadinp, tp);
-            Vector3d temp = getnum(tp, 3);
-            for(int j = 0; j < 3; j++)
-                IUdot(i,j) = int(temp(j));
-        }
-        Proc.get_IUdot(IUdot);
+            Vector4d Victrl = getnum(tp, 4);
+            Proc.load_ctrl(Victrl);
 
-        getline(loadinp, tp);//skip one line  
-        //boundary condition
-        Matrix3d Udot;
-        for(int i = 0; i < 3; i++)
-        {
+            getline(loadinp, tp);//skip one line  
+            //boundary condition
+            Matrix3i IUdot;
+            for(int i = 0; i < 3; i++)
+            {
+                getline(loadinp, tp);
+                Vector3d temp = getnum(tp, 3);
+                for(int j = 0; j < 3; j++)
+                    IUdot(i,j) = int(temp(j));
+            }
+            Proc.get_IUdot(IUdot);
+
+            getline(loadinp, tp);//skip one line  
+            //boundary condition
+            Matrix3d Udot;
+            for(int i = 0; i < 3; i++)
+            {
+                getline(loadinp, tp);
+                Udot.row(i) = getnum(tp, 3);
+            }
+            Proc.get_Udot(Udot);
+
+            getline(loadinp, tp);//skip one line  
+            //boundary condition
+            Vector6i ISdot;
             getline(loadinp, tp);
-            Udot.row(i) = getnum(tp, 3);
+            VectorXd temp = getnum(tp, 3);
+            ISdot(0)=int(temp(0));ISdot(5)=int(temp(1));ISdot(4)=int(temp(2));
+            getline(loadinp, tp);
+            temp = getnum(tp, 2);
+            ISdot(1)=int(temp(0));ISdot(3)=int(temp(1));
+            getline(loadinp, tp);
+            temp = getnum(tp, 1);
+            ISdot(2)=int(temp(0));
+
+            Proc.get_ISdot(ISdot);
+
+            getline(loadinp, tp);//skip one line  
+            //boundary condition
+            Vector6d Sig_m;
+            getline(loadinp, tp);
+            temp = getnum(tp, 3);
+            Sig_m(0)=temp(0);Sig_m(5)=temp(1);Sig_m(4)=temp(2);
+            getline(loadinp, tp);
+            temp = getnum(tp, 2);
+            Sig_m(1)=temp(0);Sig_m(3)=temp(1);
+            getline(loadinp, tp);
+            temp = getnum(tp, 1);
+            Sig_m(2)=temp(0);
+
+            Proc.get_Sdot(voigt(Sig_m));
+
+            loadinp.close(); //close the file object.
+            return 0;        
         }
-        Proc.get_Udot(Udot);
-
-        getline(loadinp, tp);//skip one line  
-        //boundary condition
-        Vector6i ISdot;
-        getline(loadinp, tp);
-        VectorXd temp = getnum(tp, 3);
-        ISdot(0)=int(temp(0));ISdot(5)=int(temp(1));ISdot(4)=int(temp(2));
-        getline(loadinp, tp);
-        temp = getnum(tp, 2);
-        ISdot(1)=int(temp(0));ISdot(3)=int(temp(1));
-        getline(loadinp, tp);
-        temp = getnum(tp, 1);
-        ISdot(2)=int(temp(0));
-
-        Proc.get_ISdot(ISdot);
-
-        getline(loadinp, tp);//skip one line  
-        //boundary condition
-        Vector6d Sig_m;
-        getline(loadinp, tp);
-        temp = getnum(tp, 3);
-        Sig_m(0)=temp(0);Sig_m(5)=temp(1);Sig_m(4)=temp(2);
-        getline(loadinp, tp);
-        temp = getnum(tp, 2);
-        Sig_m(1)=temp(0);Sig_m(3)=temp(1);
-        getline(loadinp, tp);
-        temp = getnum(tp, 1);
-        Sig_m(2)=temp(0);
-
-        Proc.get_Sdot(voigt(Sig_m));
-
-        loadinp.close(); //close the file object.
-        return 0;        
-    }
     else
     {
-	logger.error("Error code 0: process file cannot be opened.");
+        logger.error("Error code 0: process file cannot be opened.");
         return 1;
     }
 }
@@ -130,38 +130,38 @@ int sxinput(string fname, Polycs::polycrystal &pcrys)
 
     if (sxinp.is_open()) //checking whether the file is open
     {  
-	logger.info("Loading sx file " + fname + " ...");
+        logger.info("Loading sx file " + fname + " ...");
         string tp;     getline(sxinp, tp); //skip first line
         string crysym; getline(sxinp, crysym); //crystal symmetry string
-	add_trans_miller(crysym.substr(0,5), sx_json);
+        add_trans_miller(crysym.substr(0,5), sx_json);
         getline(sxinp, tp);  add_lattice_const(getnum(tp, 6), sx_json); //cystal constants
-	int Millern = sx_json["Miller_n"];
-        
+        int Millern = sx_json["Miller_n"];
+
         getline(sxinp, tp);  //skip a line;
         MatrixXd Cij6(6,6);  //Elastic constants;
         for (int i=0; i<6; i++) { getline(sxinp, tp); Cij6.row(i) = getnum(tp, 6);}
-	add_elastic_constant(Cij6, sx_json);
+        add_elastic_constant(Cij6, sx_json);
 
         getline(sxinp, tp);  //skip a line;
         getline(sxinp, tp);  VectorXd therm = getnum(tp, 6); //Thermal coefficients
-	add_thermal_coefficient(therm, sx_json);
+        add_thermal_coefficient(therm, sx_json);
 
         getline(sxinp, tp);  //skip a line;        //Start reading slip and twinning modes
         getline(sxinp, tp);  int nmodesx = int(getnum(tp, 1)(0)); //total mode number in file
         getline(sxinp, tp);  int nmodes = int(getnum(tp, 1)(0));  //considered in current run
         getline(sxinp, tp);  VectorXd mode_i = getnum(tp, nmodes);  //the index of modes(mode_i)
-	
-	//Start reading slip and twinning modes
-	int modes_num = 0; vector<int> mode_count; vector<json> sx_modes;
+
+        //Start reading slip and twinning modes
+        int modes_num = 0; vector<int> mode_count; vector<json> sx_modes;
         bool f = 1;  
         for(int imode = 0; imode < nmodesx; ++imode){
             getline(sxinp, tp);  //skip a line;
             getline(sxinp, tp);  VectorXd mode_info = getnum(tp, 4);
             /* mode_info 0: the serial number 
-	     * 1: number of mechnical systems
-	     * 2: flag of slip (0 for twin; 1 for slip) 
-	     * 3: flag of twin (1 for twin; 0 for slip)
-	     */ 
+             * 1: number of mechnical systems
+             * 2: flag of slip (0 for twin; 1 for slip) 
+             * 3: flag of twin (1 for twin; 0 for slip)
+            */ 
             MatrixXd nor_dir(int(mode_info(1)),2*Millern); //normal and direction of slip plane
             if(int(mode_info(3))) getline(sxinp, tp); //special for twin
             for (int i = 0; i < int(mode_info(1)); i++) {
@@ -169,56 +169,56 @@ int sxinput(string fname, Polycs::polycrystal &pcrys)
             }
             f = (mode_i.array() == imode+1).any();
             if(f){
-		json this_mode;
-		MatrixXd sn_matrix = cal_sn_info(nor_dir, sx_json["Mabc"], sx_json["Trans_Miller"], Millern, int(mode_info(1)));
-		this_mode["sn_info"] = get_vector(sn_matrix);
-		this_mode["mode_n"] = int(mode_info(1));
-	    	if (mode_info(2) == 1) this_mode["type"] = 0; //slip
-	    	else if (mode_info(3) == 1) this_mode["type"] = 1; //twin
-	    	else this_mode["type"] = 2; //other
-		modes_num += int(mode_info(1));
-		mode_count.push_back(int(mode_info(1)));
-		sx_modes.push_back(this_mode);
+                json this_mode;
+                MatrixXd sn_matrix = cal_sn_info(nor_dir, sx_json["Mabc"], sx_json["Trans_Miller"], Millern, int(mode_info(1)));
+                this_mode["sn_info"] = get_vector(sn_matrix);
+                this_mode["mode_n"] = int(mode_info(1));
+                if (mode_info(2) == 1) this_mode["type"] = 0; //slip
+                else if (mode_info(3) == 1) this_mode["type"] = 1; //twin
+                else this_mode["type"] = 2; //other
+                modes_num += int(mode_info(1));
+                mode_count.push_back(int(mode_info(1)));
+                sx_modes.push_back(this_mode);
             }                
         }
-	sx_json["modes_num"] = modes_num;
+        sx_json["modes_num"] = modes_num;
 
         getline(sxinp, tp);  //skip a line;
         getline(sxinp, tp);  int iharden = int(getnum(tp, 1)(0)); //hardening law(Voce=0, DV=1)
         getline(sxinp, tp);  bool irate = bool(getnum(tp, 1)(0)); //"rate sensitive" flag(1: Y; 0: N)
         getline(sxinp, tp);  sx_json["GZ"] = getnum(tp, 1)(0); //grain size: um
-	int harden_size;
-	if(iharden == 0) harden_size = 4; else harden_size = 13;
-	
-	//Read hardening parameters of modes
-	double nrsx; vector<double> CRSS_p, hst;
+        int harden_size;
+        if(iharden == 0) harden_size = 4; else harden_size = 13;
+
+        //Read hardening parameters of modes
+        double nrsx; vector<double> CRSS_p, hst;
         for(int imode = 0; imode < nmodes; ++imode)
         {
             getline(sxinp, tp);  //skip a line;
             getline(sxinp, tp);  nrsx = getnum(tp, 1)(0); //rate sensitivity
             getline(sxinp, tp);  //CRSS parameters
-	    if (iharden == 1) CRSS_p = getnum_vec(tp, 15);
-	    else CRSS_p = getnum_vec(tp, 4);
+            if (iharden == 1) CRSS_p = getnum_vec(tp, 15);
+            else CRSS_p = getnum_vec(tp, 4);
             //hst
             getline(sxinp, tp);  hst = getnum_vec(tp, 5); //5 types of hardening
-	    sx_modes[imode]["nrsx"] = nrsx;
-	    sx_modes[imode]["CRSS_p"] = CRSS_p;
-	    sx_modes[imode]["hst"] = hst;
+            sx_modes[imode]["nrsx"] = nrsx;
+            sx_modes[imode]["CRSS_p"] = CRSS_p;
+            sx_modes[imode]["hst"] = hst;
         }
-	sx_json["modes"] = sx_modes;
-	json sx_per_mode = sx_info_postprocess(sx_json);
-	sx_json["sx_per_mode"] = sx_per_mode;
+        sx_json["modes"] = sx_modes;
+        json sx_per_mode = sx_info_postprocess(sx_json);
+        sx_json["sx_per_mode"] = sx_per_mode;
         sxinp.close(); //close the file object.
-	//cout << sx_json.dump(4) << endl;
-	pcrys.ini_from_json(sx_json);
-	//pcrys.g[0].gmode[0].print();
+        //cout << sx_json.dump(4) << endl;
+        pcrys.ini_from_json(sx_json);
+        //pcrys.g[0].gmode[0].print();
         return 0;
     }
     else
     {
-	logger.error("Error code 0: .sx file cannot be opened");
-        return 1;
-    }
+    logger.error("Error code 0: .sx file cannot be opened");
+    return 1;
+}
 }
 
 int texinput(string fname, Polycs::polycrystal &pcrys)
@@ -226,35 +226,35 @@ int texinput(string fname, Polycs::polycrystal &pcrys)
     fstream texinp;
     texinp.open(fname,ios::in); //open .tex
     if (texinp.is_open())
-    {   //checking whether the file is open
-	logger.info("Reading texture file");
-        string tp;
-        //skip 3 lines;
-        for(int i = 0; i < 3; i++)
-        {
+        {   //checking whether the file is open
+            logger.info("Reading texture file");
+            string tp;
+            //skip 3 lines;
+            for(int i = 0; i < 3; i++)
+            {
+                getline(texinp, tp);
+            }
+            //number of grains 
             getline(texinp, tp);
+            VectorXd Gn = getnum(tp, 1);
+            //
+            pcrys.grains_n(int(Gn(0)));
+            // 
+            //Euler angle and weighs
+            Vector4d Euler_w(0,0,0,0);
+            for(int i = 0; i < int(Gn(0)); i++)
+            {
+                getline(texinp, tp);
+                Euler_w = getnum(tp, 4);
+                pcrys.ini_euler(getnum(tp, 4),i);
+            }
+            texinp.close(); //close the file object.
+            pcrys.Norm_weight();
+            return 0;        
         }
-        //number of grains 
-        getline(texinp, tp);
-        VectorXd Gn = getnum(tp, 1);
-        //
-        pcrys.grains_n(int(Gn(0)));
-        // 
-        //Euler angle and weighs
-        Vector4d Euler_w(0,0,0,0);
-        for(int i = 0; i < int(Gn(0)); i++)
-        {
-            getline(texinp, tp);
-            Euler_w = getnum(tp, 4);
-            pcrys.ini_euler(getnum(tp, 4),i);
-        }
-        texinp.close(); //close the file object.
-        pcrys.Norm_weight();
-        return 0;        
-    }
     else
     {
-	logger.error("Error code 0: texture file cannot be opened");
+        logger.error("Error code 0: texture file cannot be opened");
         return 1;
     }
 }
@@ -266,18 +266,18 @@ VectorXd getnum(string strin, int num)
 
     //string pattern("\\d+(\\.\\d+)?");
     string pattern("[+-]?[\\d]+([\\.][\\d]*)?([Ee][+-]?[\\d]+)?");
-	regex r(pattern);
-	smatch results;
+    regex r(pattern);
+    smatch results;
 
-	string::const_iterator iter_begin = strin.cbegin();
-	string::const_iterator iter_end = strin.cend();
-	while (regex_search(iter_begin, iter_end,  results,  r))
-	{
+    string::const_iterator iter_begin = strin.cbegin();
+    string::const_iterator iter_end = strin.cend();
+    while (regex_search(iter_begin, iter_end,  results,  r))
+    {
         if (i >= num) break;
-		Vtemp(i)=stof(results[0].str());
-		iter_begin = results[0].second;	
+        Vtemp(i)=stof(results[0].str());
+        iter_begin = results[0].second;	
         i++;
-	}
+    }
     return Vtemp;
 }
 
@@ -286,25 +286,25 @@ vector<double> getnum_vec(string strin, int num){
     vector<double> Vtemp;
     //string pattern("\\d+(\\.\\d+)?");
     string pattern("[+-]?[\\d]+([\\.][\\d]*)?([Ee][+-]?[\\d]+)?");
-	regex r(pattern);
-	smatch results;
-	string::const_iterator iter_begin = strin.cbegin();
-	string::const_iterator iter_end = strin.cend();
-	while (regex_search(iter_begin, iter_end,  results,  r)){
-            if (i >= num) break;
-	    Vtemp.push_back(stof(results[0].str()));
-	    iter_begin = results[0].second;	
-	    i++;
-	}
+    regex r(pattern);
+    smatch results;
+    string::const_iterator iter_begin = strin.cbegin();
+    string::const_iterator iter_end = strin.cend();
+    while (regex_search(iter_begin, iter_end,  results,  r)){
+        if (i >= num) break;
+        Vtemp.push_back(stof(results[0].str()));
+        iter_begin = results[0].second;	
+        i++;
+    }
     return Vtemp;
 }
 
 vector<double> get_vector(MatrixXd &matrix){
     vector<double> v;
     for(int i = 0; i < matrix.rows(); i++){
-	for(int j = 0; j < matrix.cols(); j++){
-	    v.push_back(matrix(i,j));
-	}
+        for(int j = 0; j < matrix.cols(); j++){
+            v.push_back(matrix(i,j));
+        }
     }
     return v;
 }
@@ -312,7 +312,7 @@ vector<double> get_vector(MatrixXd &matrix){
 vector<double> get_vector(VectorXd &matrix){
     vector<double> v;
     for(int i = 0; i < matrix.size(); i++){
-	v.push_back(matrix(i));
+        v.push_back(matrix(i));
     }
     return v;
 }
@@ -323,19 +323,19 @@ void add_trans_miller(string crysym, json &sx_json){
     for (int i = 0; i < crysym.size(); i++) crysym[i] = tolower(crysym[i]);
     vector<double> Mtemp; int Miller_n; 
     if(!crysym.compare("hexag"))
-    {
-	Miller_n = 4;
-	Mtemp = {1, 0, -1, 0, 0, 1, -1, 0, 0, 0, 0, 1};
-    }
+        {
+            Miller_n = 4;
+            Mtemp = {1, 0, -1, 0, 0, 1, -1, 0, 0, 0, 0, 1};
+        }
     else if(!crysym.compare("cubic")) 
-    {
-	Miller_n = 3;
-	Mtemp = {1, 0, 0, 0, 1, 0, 0, 0, 1};
+        {
+        Miller_n = 3;
+        Mtemp = {1, 0, 0, 0, 1, 0, 0, 0, 1};
     }
     else
     {
-	logger.error("Error code 1: crystal symmetry is not supported.");
-	exit(1);
+        logger.error("Error code 1: crystal symmetry is not supported.");
+        exit(1);
     }
     sx_json["crysym"] = crysym;
     sx_json["Miller_n"] = Miller_n;
@@ -346,8 +346,8 @@ void add_lattice_const(VectorXd ccon, json &sx_json){
     //add lattice constants to sx_json
     vector<double> Cdim, Cang, Mtemp; Matrix3d Mabc; 
     for(int i = 0; i < ccon.size(); i++){
-	if (i < 3) Cdim.push_back(ccon(i));
-	else Cang.push_back(ccon(i)/180*M_PI);
+        if (i < 3) Cdim.push_back(ccon(i));
+        else Cang.push_back(ccon(i)/180*M_PI);
     }
     sx_json["Cdim"] = Cdim;
     sx_json["Cang"] = Cang;
@@ -366,13 +366,13 @@ void add_lattice_const(VectorXd ccon, json &sx_json){
 }
 
 void add_elastic_constant(MatrixXd Cij6, json &sx_json){
-   vector<double> ela_consts;
-   for(int i = 0; i < 6; i++){
-	for(int j = 0; j < 6; j++){
-		ela_consts.push_back(Cij6(i,j));
-	}
-   }
-   sx_json["Cij6"] = ela_consts;
+    vector<double> ela_consts;
+    for(int i = 0; i < 6; i++){
+        for(int j = 0; j < 6; j++){
+            ela_consts.push_back(Cij6(i,j));
+        }
+    }
+    sx_json["Cij6"] = ela_consts;
 }
 
 void add_thermal_coefficient(VectorXd ther, json &sx_json){
@@ -401,27 +401,27 @@ MatrixXd cal_sn_info(MatrixXd &Min, vector<double> m_abc, vector<double> transMl
     for(int i = 0; i < system_n; i++)
         for(int j = 0; j < 6; j++)
             if(abs(Min_ns(i,j)) <= 1e-3 ) Min_ns(i,j) = 0.0;
-    
+
     return Min_ns;
 }
 
 json sx_info_postprocess(json &sx_json){
     vector<json> info_per_mode; int mode_id = 0;
     for (auto &json_mode : sx_json["modes"]){
-	int system_n = json_mode["mode_n"];
-	for (int crt_mode=0; crt_mode < system_n; crt_mode++){
-	    json this_mode;
-	    this_mode["id"] = mode_id++;
-	    this_mode["type"] = json_mode["type"]; //other
-	    vector<double> sn;
-	    for (int i = 6*crt_mode; i < 6*crt_mode+6; i++) sn.push_back(json_mode["sn_info"][i]);
-	    this_mode["nrsx"] = json_mode["nrsx"];
-	    this_mode["CRSS_p"] = json_mode["CRSS_p"];
-	    this_mode["hst"] = json_mode["hst"];
-	    this_mode["sn"] = sn;
-	    this_mode["G"] = cal_shear_modulus(sx_json["Cij6"], sn);
-	    info_per_mode.push_back(this_mode);
-	}
+        int system_n = json_mode["mode_n"];
+        for (int crt_mode=0; crt_mode < system_n; crt_mode++){
+            json this_mode;
+            this_mode["id"] = mode_id++;
+            this_mode["type"] = json_mode["type"]; //other
+            vector<double> sn;
+            for (int i = 6*crt_mode; i < 6*crt_mode+6; i++) sn.push_back(json_mode["sn_info"][i]);
+            this_mode["nrsx"] = json_mode["nrsx"];
+            this_mode["CRSS_p"] = json_mode["CRSS_p"];
+            this_mode["hst"] = json_mode["hst"];
+            this_mode["sn"] = sn;
+            this_mode["G"] = cal_shear_modulus(sx_json["Cij6"], sn);
+            info_per_mode.push_back(this_mode);
+        }
     }
     return info_per_mode;
 }

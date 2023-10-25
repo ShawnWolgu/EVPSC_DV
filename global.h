@@ -1,6 +1,7 @@
 #ifndef GLOBALS_H
 #define GLOBALS_H
 #include <iostream>
+#include <vector>
 #include <fstream>
 #include <string>
 #include <chrono>
@@ -66,6 +67,32 @@ public:
         }
     }
 
+    void log(MessageLevel level, const std::vector<double>& message) {
+        // Get the current time
+        std::time_t t = std::time(nullptr);
+        std::string timestamp = std::asctime(std::localtime(&t));
+        timestamp.pop_back();  // Remove the newline character from the end
+        // Output the message to the console
+        if (console_level_ <= level) {
+            std::cout << "[" << timestamp << "] ";
+            printPrefix(level);
+            for (int i = 0; i < message.size(); i++) {
+                std::cout << message[i] << " ";
+            }
+            std::cout << std::endl;
+        }
+        // Output the message to the log file
+        if (file_level_ <= level) {
+            outfile << "[" << timestamp << "] ";
+            printPrefix(level, outfile);
+            for (int i = 0; i < message.size(); i++) {
+                outfile << message[i] << " ";
+            }
+            outfile << std::endl;
+        }
+    }
+
+
     // Overloaded functions for different message levels
     void debug(const std::string& message) { log(MessageLevel::DEBUG, message); }
     void info(const std::string& message) { log(MessageLevel::INFO, message); }
@@ -77,6 +104,11 @@ public:
     void notice(const Eigen::MatrixXd& message) { log(MessageLevel::NOTICE, message); }
     void warn(const Eigen::MatrixXd& message) { log(MessageLevel::WARN, message); }
     void error(const Eigen::MatrixXd& message) { log(MessageLevel::ERROR, message); }
+    void debug(const std::vector<double>& message) { log(MessageLevel::DEBUG, message); }
+    void info(const std::vector<double>& message) { log(MessageLevel::INFO, message); }
+    void notice(const std::vector<double>& message) { log(MessageLevel::NOTICE, message); }
+    void warn(const std::vector<double>& message) { log(MessageLevel::WARN, message); }
+    void error(const std::vector<double>& message) { log(MessageLevel::ERROR, message); }
     // Set the message level filter for console output
     void setConsoleLevel(MessageLevel level) { console_level_ = level; }
 

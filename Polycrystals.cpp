@@ -945,7 +945,6 @@ int polycrystal::EVPSC(int istep, double Tincr,\
 {   
     double errd, errs, err_g;
     int max_iter = 15;
-    //cout << "\n**********\tSTEP\t" << istep << "\t**********\n\n";
     save_status();
 
     for(int i = 0; i <= max_iter; ++i)
@@ -959,7 +958,7 @@ int polycrystal::EVPSC(int istep, double Tincr,\
             sig_in_AV += g[G_n].get_stress_g() * g[G_n].get_weight_g();
 
         ///////////
-	logger.notice("        \tIteration " + std::to_string(i+1) + "\t        ");
+        logger.notice("        \tIteration " + std::to_string(i+1) + "\t        ");
         int return_scE = Selfconsistent_E(istep, SC_err_m, SC_iter_m);
         int return_scP = Selfconsistent_P(istep, SC_err_m, SC_iter_m);
         Cal_Sig_m(Tincr); 
@@ -970,15 +969,15 @@ int polycrystal::EVPSC(int istep, double Tincr,\
         errs = Errorcal(Sig_m, Sig_in);
         errd = Errorcal(Dij_m, Dij_in);
         err_g = Errorcal(Sig_AV, sig_in_AV);
-	error_SC = std::max(errs, std::max(errd, err_g))/(errS_m + errD_m + err_g_AV) * 3;
+        error_SC = std::max(errs, std::max(errd, err_g))/(errS_m + errD_m + err_g_AV) * 3;
 
-	logger.notice("Error in macro stress tensor:\t" + std::to_string(errs));
-	logger.notice("Error in strain rate tensor:\t" + std::to_string(errd));
-	logger.notice("Error in average grain stress:\t" + std::to_string(err_g));
-	logger.notice("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
-	if (return_scE == 1 || return_scP == 1){ error_SC = 2; return 1;}
+        logger.notice("Error in macro stress tensor:\t" + std::to_string(errs));
+        logger.notice("Error in strain rate tensor:\t" + std::to_string(errd));
+        logger.notice("Error in average grain stress:\t" + std::to_string(err_g));
+        logger.notice("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
+        if (return_scE == 1 || return_scP == 1){ error_SC = 2; return 1;}
         if((errs<errS_m)&&(errd<errD_m)&&(err_g<err_g_AV)) break;
-	if (i == max_iter) return 1;
+        if (i == max_iter) return 1;
     }
 
     Eps_m += Dij_m * Tincr; //update the macro strain tensor
@@ -995,7 +994,7 @@ int polycrystal::EVPSC(int istep, double Tincr,\
      for(int G_n = 0; G_n < grains_num; ++G_n)
     {
         g[G_n].Update_shear_strain(Tincr);
-	g[G_n].update_strain(Tincr);
+        g[G_n].update_strain(Tincr);
         if(Iupdate_ori) g[G_n].update_orientation(Tincr, Wij_m, Dije_AV, Dijp_AV);
         if(Iupdate_CRSS) g[G_n].update_modes(Tincr);
         if(Ishape == 1)

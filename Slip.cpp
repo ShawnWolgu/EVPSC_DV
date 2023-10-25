@@ -5,6 +5,7 @@ Slip::Slip() {};
 
 Slip::Slip(json &j_slip)
 {
+    logger.debug("Slip system: " + to_string(j_slip["id"]));
     mtype = j_slip["type"];  num = j_slip["id"];  shear_modulus = j_slip["G"];
     logger.debug("Shear modulus: " + to_string(shear_modulus));
     strain_rate_slip = 0; drate_dtau = 0; acc_strain = 0; disloc_velocity = 0; 
