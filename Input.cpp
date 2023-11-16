@@ -209,9 +209,8 @@ int sxinput(string fname, Polycs::polycrystal &pcrys)
         json sx_per_mode = sx_info_postprocess(sx_json);
         sx_json["sx_per_mode"] = sx_per_mode;
         sxinp.close(); //close the file object.
-        //cout << sx_json.dump(4) << endl;
         pcrys.ini_from_json(sx_json);
-        //pcrys.g[0].gmode[0].print();
+        pcrys.g[0].gmode[0].print();
         return 0;
     }
     else

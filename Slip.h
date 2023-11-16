@@ -14,7 +14,7 @@ class Slip
     {
     protected:
         double ref_rate = 1e-3; 
-        double temperature = 273; // need to be synchronized with the grain;
+        double temperature = 293; // need to be synchronized with the grain;
         double crss_incr = 0;
         Matrix3d Pij;
         Matrix3d Rij;
@@ -30,7 +30,7 @@ class Slip
         void cal_drate_dtau_pow(Matrix3d stress_tensor);
         void cal_drate_dtau_disvel(Matrix3d stress_tensor);
         void update_voce(Slip* slip_sys, MatrixXd lat_hard_mat, int nmode, double dtime);
-        void update_disvel(Slip* slip_sys, MatrixXd lat_hard_mat, int bv, double nmode ,double dtime);
+        void update_disvel(Slip* slip_sys, MatrixXd lat_hard_mat, double bv, double nmode ,double dtime);
 
     public:
         Slip();
@@ -38,7 +38,7 @@ class Slip
         int num = -1, flag_harden;
         Vector3d burgers_vec,plane_norm;
         vector<double> harden_params, update_params, latent_params;
-        double ref_strain_rate = 0.001, rate_sen, strain_rate_slip, drate_dtau, shear_modulus, disloc_density, crss, acc_strain, disloc_velocity, rho_sat = 0.0, lh_coeff = 1.0, rho_mov = 0.0;
+        double ref_strain_rate = 0.001, rate_sen, strain_rate_slip, drate_dtau, shear_modulus, disloc_density, crss, acc_strain, disloc_velocity, rho_sat = 0.0, lh_coeff = 1.0, rho_mov = 0.0, rss = 0.0;
         double t_wait = 0.0, t_run = 0.0;
         // Original Contents
         int ini_sn_mode(VectorXd matrix_input, int mode_type, int system_n);
@@ -58,7 +58,7 @@ class Slip
         void update_ssd(Matrix3d strain_rate, double dtime);
         void update_lhparams(Matrix3d strain_rate);
         double disl_velocity(double rss);
-        vector<double> disl_velocity_grad(double rss, double crss, vector<double> harden_params, vector<double> update_params);
+        vector<double> disl_velocity_grad(double rss);
         void cal_shear_modulus(Matrix6d elastic_modulus);
         void print();
     };

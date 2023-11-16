@@ -1,6 +1,9 @@
 #include "Grains.h"
+#include "Eigen/src/Core/Matrix.h"
+#include "Toolbox.h"
 #include "func.h"
 #include "global.h"
+#include <string>
 
 grain::grain()
 {
@@ -17,7 +20,7 @@ grain::grain()
     d0_g = Vector5d::Zero();
 
     //initial the VP consistent
-    Mpij6_g = 1e-8 * Matrix5d::Identity();
+    Mpij6_g = 1e-10 * Matrix5d::Identity();
 
 }
 
@@ -324,7 +327,7 @@ void grain::Update_RSinv_VP_g(double A[3][3][3][3])
 
 void grain::Update_Mpij6_g()
 {
-    Mpij6_g = 1e-8 * Matrix5d::Identity() + cal_Fgrad(sig_g) ;
+    Mpij6_g = 1e-10 * Matrix5d::Identity() + cal_Fgrad(sig_g) ;
     d0_g = Chg_basis5(Dijp_g) - Mpij6_g * Chg_basis5(sig_g);
 }
 
@@ -468,7 +471,6 @@ Matrix5d grain::cal_Fgrad(Matrix3d Min)
     Matrix6d Fgrad = Matrix6d::Zero();
     for(int i = 0; i < modes_num; i++)
         Fgrad += gmode[i].get_Fgradm(X);
-
     //return Chg_basis5(rotate_C66(Fgrad, E));
     return Chg_basis5(rotate_C66(Fgrad, ET));
 }
@@ -503,22 +505,11 @@ double grain::cal_RSSxlim(Matrix3d D)
 void grain::grain_stress(double Tincr, Matrix3d Wij_m, Matrix3d Dij_m,\
                          Matrix3d Dije_AV, Matrix3d Dijp_AV, Matrix3d Sig_m, Matrix3d Sig_m_old)
 {
-    //cout << "sig_g_before = " << endl << sig_g << endl;
     Matrix3d X = sig_g; 
-    //06.31
-    //double RSSxlim = cal_RSSxlim(Dij_m);
-    //double RSSxm = cal_RSSxmax(X);
-    //if(cal_RSSxmax(X) > RSSxlim) X = X/RSSxm; 
-    //06.31
-    //-1
-    //according to Equ[5-30] in manual
-    //calculate the wij~
-    //and the Jaumann rate
+    //according to Equ[5-30] in manual, calculate the wij~ and the Jaumann rate
     Matrix3d wg = Wij_m + mult_4th(RSinv_C,Dije_g-Dije_AV) + mult_4th(RSinv_VP,Dijp_g-Dijp_AV);
-
     Matrix3d Xjau = wg * X - X * wg;
     Matrix3d Sjau = Wij_m * Sig_m - Sig_m * Wij_m; 
-    //-1
 
     //solve the interaction equation of grain
     Vector6d DB = Chg_basis6(Dij_m);
@@ -528,61 +519,77 @@ void grain::grain_stress(double Tincr, Matrix3d Wij_m, Matrix3d Dij_m,\
     Mt = Xjau-Sjau;
     DB += Mij6_J_g *Chg_basis6(Xjau) + Metilde_g * Chg_basis6(Mt);
     DB = Bbasisadd(DB, Mptilde_g * Chg_basis5(Sig_m));
-    //
 
     //Newton-Rapthon iteration
-    // X(i+1) = X(i) - F/Fgrad
-    double coef=0.2;
-    Vector6d Xv = Chg_basis6(X);
-    Vector6d Xold = Xv;
+    Vector6d Xv = Chg_basis6(X), Xold = Xv, F;
+    /* logger.debug("initial Xv:"); logger.debug(Xv); */
     Vector5d dijpgv;
-    Vector6d F;
-    Matrix6d Fgrad;
-    Matrix6d Mtemp = (Metilde_g + Mij6_J_g)/Tincr;
-    double err;
-    double Errm = 1e-3;
-    for(int it = 0; it < 100; it ++ )
+    Matrix6d Fgrad, Mtemp = (Metilde_g + Mij6_J_g)/Tincr;
+    double Errm = 1e-3, F_err = 1e-4, err_iter = Errm*10, coeff = 1;
+    int NR_max_iter = 7, DH_max_iter = 25;
+    for(int it = 0; it < NR_max_iter; it ++ )
     {
-        //06.31
-        //if(cal_RSSxmax(voigt(Xv)) > RSSxlim)
-        //{Xv = Xold + coef*(Xv-Xold);}
-        //06.31
-        Xold = Xv;
-
         F = -DB +  Mtemp * Xv;
         F =  Bbasisadd(F, Mptilde_g * Chg_basis5(Chg_basis(Xv)));
         dijpgv = Chg_basis5(cal_Dijp(Chg_basis(Xv)));
         F = Bbasisadd(F,dijpgv);
-
         Fgrad = -Bbasisadd(Mtemp,Mptilde_g+cal_Fgrad(Chg_basis(Xv)));
-        //Fgrad = -Bbasisadd(Mtemp,Mptilde_g);
-        //Fgrad = Bbasisadd(Fgrad,-cal_Fgrad(Chg_basis(Xv)));
-
+        Xold = Xv;
         Xv = Xold + Fgrad.inverse() * F;
-
-        err = Errorcal(Xv, Xold);  
-
-        if(err < Errm)
-        {   break;};
-        if(it == 99)
-        {
-            logger.warn("Grain stress calculation failed !");
-            Xv = Chg_basis6(X) + Chg_basis6(Sig_m) - Chg_basis6(Sig_m_old);
-        }
-
+        err_iter = Errorcal(Xv, Xold);
+        /* if (isnan(err_iter)){ */
+        /*     logger.debug("F_grad: "); logger.debug(Fgrad);  */
+        /*     logger.debug("Mtemp: "); logger.debug(Mtemp); */
+        /*     logger.debug("Mptilde_g: "); logger.debug(Mptilde_g); */
+        /* } */
+        /* if(grain_i == 0) logger.debug("Grain stress iteration: " + to_string(it) + ", F_norm: " + to_string(F.norm()) + ", err_iter: " + to_string(err_iter)); */
+        if(err_iter < Errm) break;
     }
-    //Newton-Rapthon iteration
-
+    if (isnan(err_iter)){
+        logger.warn("Grain stress iteration failed (nan)!");
+        Xv = Chg_basis6(X) + Chg_basis6(Sig_m) - Chg_basis6(Sig_m_old);
+    }
+    /* logger.debug("Xv after NR iteration: "); logger.debug(Xv); */
+    /* logger.debug("F norm after NR iteration: " + to_string(F.norm())); */
+    if(F.norm() >= F_err){
+        /* logger.warn("Entering downhill ..."); */
+        double F_norm = F.norm();
+        for (int it = 0; F_norm >= F_err; it++) {
+            F = -DB + Mtemp * Xv;
+            F = Bbasisadd(F, Mptilde_g * Chg_basis5(Chg_basis(Xv)));
+            dijpgv = Chg_basis5(cal_Dijp(Chg_basis(Xv)));
+            F = Bbasisadd(F, dijpgv);
+            if (F.norm() < F_norm) {
+                F_norm = F.norm();
+                coeff = min(1., coeff * 2);
+                Xold = Xv;
+                Fgrad = -Bbasisadd(Mtemp, Mptilde_g + cal_Fgrad(Chg_basis(Xv)));
+                Xv = Xold + coeff * Fgrad.inverse() * F;
+            }
+            else{
+                coeff *= 0.5;
+                Xv = Xold + (Xv - Xold) * 0.5;
+            }
+            /* logger.debug("Grain stress (downhill) iteration: " + to_string(it)); */
+            /* logger.debug(Xv); */
+            /* if(grain_i == 0) logger.debug("Grain stress iteration: " + to_string(it) + ", F_norm: " + to_string(F_norm) + ", coeff: " + to_string(coeff)); */
+            if ((it == DH_max_iter) || (coeff < 1e-4)) {
+                logger.warn("Grain stress iteration failed !");
+                Xv = Chg_basis6(X) + Chg_basis6(Sig_m) - Chg_basis6(Sig_m_old);
+                break;
+            }
+        }
+    }
+    /**/
     sig_g = Chg_basis(Xv);
-    //cout << "sig_g = " << endl << sig_g << endl;
-
+    /* logger.debug("Grain number = " + to_string(grain_i) + ", sig_g = "); logger.debug(sig_g); */
     Vector6d dijegv =  Mij6_J_g *((Xv - Chg_basis6(sig_g_old))/Tincr - Chg_basis6(Xjau)); 
-    Dije_g = Chg_basis(dijegv);
-    Dijp_g = Chg_basis(dijpgv);
+    dijpgv = Chg_basis5(cal_Dijp(sig_g));
+    Dije_g = Chg_basis(dijegv); Dijp_g = Chg_basis(dijpgv);
     Dij_g = Dije_g + Dijp_g;
 
-    logger.debug("Grain number = %d" + to_string(grain_i));
-    logger.debug(Mpij6_g);
+    /* logger.debug("Grain number = %d" + to_string(grain_i)); */
+    /* logger.debug(Mpij6_g); */
     Update_Mpij6_g();
 }
 
@@ -616,14 +623,14 @@ void grain::update_orientation(double Tincr, Matrix3d Wij_m, Matrix3d Dije_AV, M
 
     Matrix3d Rot = (Wij_g - cal_rotslip())*Tincr;
     Matrix3d Euler_M_new = Euler_M*Rodrigues(Rot).transpose();
-    //Matrix3d Euler_M = Rodrigues(Rot)*Euler_trans(euler);
-    Euler_M = Euler_M_new;
+    if (Errorcal(Euler_M, Euler_M_new) < 0.33) Euler_M = Euler_M_new;
+    /* Euler_M = Euler_M_new; */
 }
 
 void grain::update_modes(double Tincr)
 {
     for(int i = 0; i < modes_num; i++)	gmode[i].update_ssd(Dij_g, Tincr);
-    for(int i = 0; i < modes_num; i++)	gmode[i].update_lhparams(Dij_g);
+    /* for(int i = 0; i < modes_num; i++)	gmode[i].update_lhparams(Dij_g); */
     for(int i = 0; i < modes_num; i++)	gmode[i].update_status(*this, Tincr);
     gamma_total += gamma_delta;
 }

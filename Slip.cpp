@@ -1,13 +1,14 @@
 #include "Slip.h"
 #include "global.h"
+#include <string>
 
 Slip::Slip() {};
 
 Slip::Slip(json &j_slip)
 {
-    logger.debug("Slip system: " + to_string(j_slip["id"]));
+    logger.info("Slip system: " + to_string(j_slip["id"]));
     mtype = j_slip["type"];  num = j_slip["id"];  shear_modulus = j_slip["G"];
-    logger.debug("Shear modulus: " + to_string(shear_modulus));
+    logger.info("Shear modulus: " + to_string(shear_modulus));
     strain_rate_slip = 0; drate_dtau = 0; acc_strain = 0; disloc_velocity = 0; 
 
     VectorXd info_vec = to_vector(j_slip, "sn", 6);
@@ -27,7 +28,6 @@ Slip::Slip(json &j_slip)
         disloc_density = j_slip["CRSS_p"][0];
         rho_mov = disloc_density;
         update_params[0] = burgers_vec.norm() * 1e-10;
-        crss = harden_params[5];
     }
 }
 
@@ -50,23 +50,23 @@ int Slip::check_sn_mode()
 {
     if(mtype == 1)
     {
-        logger.debug("Slip system: " + to_string(num));
-        logger.debug("Normal: ");
-        logger.debug(plane_norm.transpose());
-        logger.debug("Burgers: ");
-        logger.debug(burgers_vec.transpose());
-        logger.debug("Pij: ");
-        logger.debug(Pij);
+        logger.info("Slip system: " + to_string(num));
+        logger.info("Normal: ");
+        logger.info(plane_norm.transpose());
+        logger.info("Burgers: ");
+        logger.info(burgers_vec.transpose());
+        logger.info("Pij: ");
+        logger.info(Pij);
     }
     if(mtype == 0)
     {
-        logger.debug("Twinning system: " + to_string(num));
-        logger.debug("Normal: ");
-        logger.debug(plane_norm.transpose());
-        logger.debug("Shear direction: ");
-        logger.debug(burgers_vec.transpose());
-        logger.debug("Pij: ");
-        logger.debug(Pij);
+        logger.info("Twinning system: " + to_string(num));
+        logger.info("Normal: ");
+        logger.info(plane_norm.transpose());
+        logger.info("Shear direction: ");
+        logger.info(burgers_vec.transpose());
+        logger.info("Pij: ");
+        logger.info(Pij);
     }
     return 0;
 }
@@ -91,16 +91,15 @@ int Slip::ini_hardening_mode(double nrsx_in, VectorXd hardens_in, VectorXd laten
     else flag_harden = 1;
     for (int i = 0; i != 5; ++i) update_params.push_back(0);
     update_params[0] = burgers_vec.norm() * 1e-10;
-    crss = hardens_in[5];
     return 0;
 }
 
 int Slip::check_hardening_mode()
 {
-    logger.debug("Slip system: " + to_string(num));
+    logger.info("Slip system: " + to_string(num));
     string str = "";
     for (int i = 0; i != harden_params.size(); ++i) str += std::to_string(harden_params[i]) + "\t";
-    logger.debug("Hardening parameters: " + str);
+    logger.info("Hardening parameters: " + str);
     return 0;    
 }
 
@@ -119,6 +118,7 @@ Matrix6d Slip::get_Fgradm(Matrix3d stress_grain)
 {
     cal_drate_dtau(stress_grain);
     Vector6d Pijv = voigt(Pij);
+    /* logger.debug("Mode number: " + to_string(num) + " drate_dtau: " + to_string(drate_dtau)); */
     return Pijv * Pijv.transpose() * drate_dtau;
 }
 
@@ -153,6 +153,7 @@ void Slip::cal_strain_rate_pow(Matrix3d stress_tensor){
     if(abs(rss_slip) > 0.5 * crss){
         strain_rate_slip = ref_rate * pow(abs(rss_slip / crss), 1/rate_sen)* sign(rss_slip); 
     }
+    rss = rss_slip;
 }
 
 void Slip::cal_strain_rate_disvel(Matrix3d stress_tensor){
@@ -160,7 +161,7 @@ void Slip::cal_strain_rate_disvel(Matrix3d stress_tensor){
     double rss_slip = cal_rss(stress_tensor);
     double disl_vel = disl_velocity(rss_slip);
     strain_rate_slip = abs(rho_mov * burgers * disl_vel) * sign(rss_slip);
-    //strain_rate_slip = abs(disloc_density * burgers * disl_vel) * sign(rss_slip);
+    rss = rss_slip;
 }
 
 void Slip::cal_drate_dtau(Matrix3d stress_tensor){
@@ -189,19 +190,16 @@ void Slip::cal_drate_dtau_pow(Matrix3d stress_tensor){
         drate_dtau = ref_strain_rate * pow(abs(rss_slip / crss), 1/rate_sen-1) * sign(rss_slip) / rate_sen / crss * sign(rss_slip); 
         strain_rate_slip = ref_strain_rate * pow(abs(rss_slip / crss), 1/rate_sen) * sign(rss_slip); 
     }
+    rss = rss_slip;
 }   
 
 void Slip::cal_drate_dtau_disvel(Matrix3d stress_tensor){
     double burgers = update_params[0];
     double rss_slip = cal_rss(stress_tensor);
-    vector<double> dvel_and_vel = disl_velocity_grad(rss_slip, crss, harden_params, update_params);
+    vector<double> dvel_and_vel = disl_velocity_grad(rss_slip);
     drate_dtau = rho_mov * burgers * sign(rss_slip) * dvel_and_vel[0];
-    if (isnan(drate_dtau)){
-        logger.debug("number: " + to_string(num));
-        logger.debug("rss_slip: " + to_string(rss_slip));
-        logger.debug("dvel: " + to_string(dvel_and_vel[0]));
-    }
     strain_rate_slip = rho_mov * burgers * dvel_and_vel[1] * sign(rss_slip);
+    rss = rss_slip;
 }
 
 void Slip::update_status(grain &gr_, double dtime){
@@ -211,8 +209,8 @@ void Slip::update_status(grain &gr_, double dtime){
     //Update Schmidt here. But not realized yet, maybe pack the update into a function.
     Vector3d update_bv = burgers_vec;
     Vector3d update_nv = plane_norm;
-    Pij = 0.5 * (update_bv / update_bv.norm() * update_nv.transpose() + update_nv * update_bv.transpose()/update_bv.norm());
-    Rij = 0.5 * (update_bv / update_bv.norm() * update_nv.transpose() - update_nv * update_bv.transpose()/update_bv.norm());
+    /* Pij = 0.5 * (update_bv / update_bv.norm() * update_nv.transpose() + update_nv * update_bv.transpose()/update_bv.norm()); */
+    /* Rij = 0.5 * (update_bv / update_bv.norm() * update_nv.transpose() - update_nv * update_bv.transpose()/update_bv.norm()); */
 
     switch (flag_harden)
     {
@@ -243,49 +241,70 @@ void Slip::update_voce(Slip* gmode, MatrixXd lat_hard_mat, int modes_num, double
     }
 }
 
-void Slip::update_disvel(Slip* slip_sys, MatrixXd lat_hard_mat, int bv, double nmode ,double dtime){
+void Slip::update_disvel(Slip* slip_sys, MatrixXd lat_hard_mat, double bv, double nmode ,double dtime){
     /*
-     * harden parameters: 0: SSD_density,
-     * 1: freq_Debye, 2: c_length, 3: kink_energy_ref, 4: temperature_ref,
-     * 5: Peierls_stress, 6: expo_kinkeng, 7: wave_speed, 8: c_drag, 9: c_backstress,
-     * 10: c_multi, 11: v_c, 12: D, 13: ref_srate, 14: gg;
-     * 
+     * [velocity parameters] 
+     *  1. MFP control coeffient, 2. reference frequency, 3. activation energy, 4. slip resistance, 5. energy exponent
+     *  6. saturated speed, 7. drag coefficient
+     * [hardening parameters] 
+     *  8. forest hardening coefficient
+     * [DD evolution parameters] 
+     *  0. SSD_density, 9. nucleation coefficient, 10. nucleation threshold stress, 11. multiplication coefficient
+     *  12. drag stress D, 13. reference strain rate, 14. c/g 
+     *
      * update parameters:
-     * 0: burgers, 1: disl_density_for, 2: disl_density_resist, 3: back_stress,
-     * 4: barrier_distance, 5:c_annih;
+     * 0: burgers, 1: mean_free_path, 2: disl_density_resist, 3: forest_stress
      */
-    double Peierls_stress = harden_params[5], c_backstress = harden_params[9];
-    double burgers, disl_density_for, disl_density_resist, back_stress, barrier_distance, cosine_n_m;
-    disl_density_for = disl_density_resist = 0;
+    double c_mfp = harden_params[1], resistance_slip = harden_params[4], c_forest = harden_params[8], HP_stress = 0;
+    double burgers, disl_density_for, disl_density_resist, joint_density, forest_stress, mfp;
+    disl_density_for = disl_density_resist = joint_density = 0;
     for(int i = 0; i < nmode; i++){
         disl_density_for += slip_sys[i].disloc_density;
-        //disl_density_resist += slip_sys[i].disloc_density * ((lat_hard_mat(num,slip_sys[i].num)-1)*lh_coeff+1);
         disl_density_resist += slip_sys[i].disloc_density * (lat_hard_mat(num,slip_sys[i].num));
+        if (slip_sys[i].num != num) {
+            joint_density += lat_hard_mat(num,slip_sys[i].num) * sqrt(slip_sys[i].disloc_density) * sqrt(disloc_density);
+        }
     }
     burgers = bv * 1e-10;
-    back_stress = c_backstress * shear_modulus * burgers * sqrt(disl_density_resist);// + HP_stress
-    crss = back_stress + Peierls_stress;
-    barrier_distance = plane_norm.cross(burgers_vec).norm() * 1e-10; // interplane distance should be updated before;
+    forest_stress = c_forest * shear_modulus * burgers * sqrt(disl_density_resist + 0.707*joint_density);// + HP_stress
+    crss = forest_stress + resistance_slip;
+    mfp = c_mfp / sqrt(disloc_density);
     acc_strain += abs(strain_rate_slip) * dtime;
-    //cout << strain_rate_slip << endl;
-    update_params[0] = burgers, update_params[1] = disl_density_for, update_params[2] = disl_density_resist;
-    update_params[3] = back_stress, update_params[4] = barrier_distance;
+    update_params[0] = burgers, update_params[1] = mfp, update_params[2] = disl_density_resist, update_params[3] = forest_stress;
 }
 
 void Slip::update_ssd(Matrix3d strain_rate, double dtime){
+    /*
+     * [velocity parameters] 
+     *  1. MFP control coeffient, 2. reference frequency, 3. activation energy, 4. slip resistance, 5. energy exponent
+     *  6. saturated speed, 7. drag coefficient
+     * [hardening parameters] 
+     *  8. forest hardening coefficient
+     * [DD evolution parameters] 
+     *  0. SSD_density, 9. nucleation coefficient, 10. nucleation threshold stress, 11. multiplication coefficient
+     *  12. drag stress D, 13. reference strain rate, 14. c/g 
+     *
+     * update parameters:
+     * 0: burgers, 1: mean_free_path, 2: disl_density_resist, 3: forest_stress
+     */
     if (flag_harden == 0){
         acc_strain += abs(strain_rate_slip) * dtime;
     }
     if (flag_harden == 1){ 
-        double c_backstress = harden_params[9], c_multi = harden_params[10], burgers = update_params[0], c_annih = update_params[5];
-        double D = harden_params[12] * 1e6, ref_srate = harden_params[13], gg = harden_params[14];
-        rho_sat = c_backstress * burgers / gg * (1-k_boltzmann * temperature/D/pow(burgers,3) * log(calc_equivalent_value(strain_rate)/ref_srate));
-        rho_sat = pow(1/rho_sat,2);
-        rho_sat = max(rho_sat, 0.5*disloc_density);
-        c_annih = sqrt(c_multi*c_multi/rho_sat);
-        disloc_density += (c_multi * sqrt(disloc_density) - c_annih * disloc_density) * abs(strain_rate_slip) * dtime;
-        update_params[5] = c_annih;
-        if (abs(strain_rate_slip) > 1e3) rho_mov = disloc_density;
+        double c_forest = harden_params[8], c_nuc = harden_params[9], tau_nuc = harden_params[10],\
+               c_multi = harden_params[11], c_annih = 0.,\
+               D = harden_params[12] * 1e6, ref_srate = harden_params[13], gg = c_forest/harden_params[14],\
+               burgers = update_params[0], mfp = update_params[1], forest_stress = update_params[3]; 
+        double equi_strain_rate = calc_equivalent_value(strain_rate);
+        rho_sat = c_forest * burgers / gg * (1-k_boltzmann * temperature/D/pow(burgers,3) * log(abs(equi_strain_rate)/ref_srate));
+        rho_sat = max(pow(1/rho_sat,2), 0.5*disloc_density);
+
+        double term_nuc = c_nuc * max(abs(rss)-tau_nuc,0.) / (shear_modulus * burgers * burgers);
+        double term_multi = c_multi / mfp; 
+        c_annih = (term_multi + term_nuc) / rho_sat;
+        disloc_density += (term_multi + term_nuc - c_annih * disloc_density) * abs(strain_rate_slip) * dtime;
+        rho_mov = disloc_density;
+        // if(disloc_density < rho_init) rho_init = SSD_density;
     }
 }
 
@@ -306,20 +325,20 @@ void Slip::cal_shear_modulus(Matrix6d elastic_modulus){
 }
 
 void Slip::print(){
-    logger.debug("Slip system: " + to_string(num));
-    logger.debug("Burgers vector: ");
-    logger.debug(burgers_vec.transpose());
-    logger.debug("Plane normal: ");
-    logger.debug(plane_norm.transpose());
-    logger.debug("Dislocation density: " + to_string(disloc_density));
-    logger.debug("Shear modulus: " + to_string(shear_modulus));
-    logger.debug("Strain rate: " + to_string(strain_rate_slip));
-    logger.debug("Accumulated strain: " + to_string(acc_strain));
-    logger.debug("Critical resolved shear stress: " + to_string(crss));
-    logger.debug("Harden parameters: ");
+    logger.info("Slip system: " + to_string(num));
+    logger.info("Burgers vector: ");
+    logger.info(burgers_vec.transpose());
+    logger.info("Plane normal: ");
+    logger.info(plane_norm.transpose());
+    logger.info("Dislocation density: " + to_string(disloc_density));
+    logger.info("Shear modulus: " + to_string(shear_modulus));
+    logger.info("Strain rate: " + to_string(strain_rate_slip));
+    logger.info("Accumulated strain: " + to_string(acc_strain));
+    logger.info("Critical resolved shear stress: " + to_string(crss));
+    logger.info("Harden parameters: ");
     string str = "";
     for (int i = 0; i < harden_params.size(); i++) str += to_string(harden_params[i]) + "  "; 
-    logger.debug(str);
-    logger.debug("LH coefficient: " + to_string(lh_coeff));
-    logger.debug("Flag harden: " + to_string(flag_harden));
+    logger.info(str);
+    logger.info("LH coefficient: " + to_string(lh_coeff));
+    logger.info("Flag harden: " + to_string(flag_harden));
 }

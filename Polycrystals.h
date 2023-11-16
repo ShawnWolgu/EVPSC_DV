@@ -48,15 +48,16 @@ class polycrystal
         Matrix6d Cij6; //elastic constants 6X6 of crystal
         //ESC
         Matrix6d CSC; //The elastic consistent stiffness
+        Matrix6d CUB;
         Matrix6d COLD;//The initial guessed elastic consistent stiffness
         Matrix6d SSC; //CSC^-1
         //VPSC
         Matrix5d C_VP_SC; //The visco-plastic stiffness 
         Matrix5d C_VP_SC_old; 
-        Matrix5d M_VP_SC; //The visco-plastic compliance C_VP_SC^-1
+        /* Matrix5d M_VP_SC; //The visco-plastic compliance C_VP_SC^-1 */
         Vector6d D0; //the macro back-extrapolated term (follow Equ[5-41b])
 
-        Vector5d DVP_AV;
+        /* Vector5d DVP_AV; */
 
         Matrix3d Fij_m; //the macro deformation tensor in grain
         Matrix3d UDWdot_m; //the BC velocity gradient;
@@ -65,7 +66,7 @@ class polycrystal
         Vector6i IDdot; //the flag of known and unknown strain rate components
         Vector6i ISdot; //the flag of known and unknown stress componets
     
-        Matrix3d Dij_m; //the macro strain rate tensor
+        /* Matrix3d Dij_m; //the macro strain rate tensor */
         Matrix3d Wij_m; //the macro rotation rate tensor
         Matrix3d Udot_AV;
         // Udot_m = Dij_m + Wij_m
@@ -80,7 +81,7 @@ class polycrystal
 
         //some parameters for error control and iteration control
         double SC_err_m = 0.01; //the error limit of Self-consistent compliance or stiffness
-        int SC_iter_m = 15; //the max iteration number of SC
+        int SC_iter_m = 30; //the max iteration number of SC
         double errD_m = 0.01; //error limit between the input macro strain rate and output at each iteration 
         double errS_m = 0.01; //error limit of the macro stress
         double err_g_AV = 0.01; //error limit of the average grain stress
@@ -99,6 +100,9 @@ class polycrystal
 	grain* g  = NULL; 
         int grains_num = 0;
 	double error_SC = 0;
+        Matrix3d Dij_m; //the macro strain rate tensor
+        Vector5d DVP_AV;
+        Matrix5d M_VP_SC; //The visco-plastic compliance C_VP_SC^-1
 
 	void ini_from_json(json &j);
 	void ini_Udot_m(Matrix3d);
@@ -164,7 +168,7 @@ class polycrystal
         //calculate the macro&grain elastic compliance
         int Selfconsistent_E(int, double, int); 
 	void save_status();
-	void restore_status();
+	void restore_status(bool reset);
 
         //calculate the macro&grain VP compliance
         int Selfconsistent_P(int, double, int); 
@@ -180,6 +184,7 @@ class polycrystal
 
         //output
         Vector6d get_Sig_m();
+        Vector6d get_Sig_ave();
         Vector6d get_Eps_m();
         void get_euler(fstream &);
 

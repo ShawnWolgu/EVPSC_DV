@@ -14,15 +14,29 @@ Process::Process()
     time_out.open("RunTimeFrac.csv",ios::out);
     rate_out.open("Rate.csv",ios::out);
     crss_out.open("CRSS.csv",ios::out);
+    rss_out.open("RSS.csv",ios::out);
     euler_out.open("Euler.csv",ios::out);
     ss_out_csv.open("str_str.csv",ios::out);
     ss_grain_out.open("str_str_grain.csv",ios::out);
+    ave_ss_out.open("ave_str_str.csv",ios::out);
+    de_out.open("de.csv",ios::out);
+    Mvp_out.open("Mvp.csv",ios::out);
 }
 
 Process::~Process()
 {
     ss_out.close();
     tex_out.close();
+    disloc_out.close();
+    time_out.close();
+    rate_out.close();
+    crss_out.close();
+    euler_out.close();
+    ss_out_csv.close();
+    ss_grain_out.close();
+    ave_ss_out.close();
+    de_out.close();
+    Mvp_out.close();
 }
 
 void Process::load_ctrl(Vector4d Vin)
@@ -51,7 +65,7 @@ void Process::get_ISdot(Vector6i Vin){ISdot = Vin;}
 void Process::loading(Polycs::polycrystal &pcrys){
     pcrys.set_BC_const(UDWdot_input, Sdot_input, IUDWdot, ISdot);
     Out_sscurves(pcrys);
-    double coeff_step = 1;
+    double coeff_step = 1, current_step = 1.;
     for(int istep = 0; istep < Nsteps; ++istep)
     {
 	logger.info("");
@@ -60,26 +74,30 @@ void Process::loading(Polycs::polycrystal &pcrys){
 	double pct_step = 0; 
 	update_progress(pct_step);
 	do{
-	    coeff_step = min(1.0 - pct_step, coeff_step);
-	    logger.notice("Step " + to_string(istep) + ":\t" + to_string(pct_step) + " to " + to_string(pct_step + coeff_step));
-        int return_SC = pcrys.EVPSC(istep, coeff_step * Tincr, Iupdate_ori, Iupdate_shp, Iupdate_CRSS);
-	    if (return_SC == 1) {
-            pcrys.restore_status();
+        current_step = min(1.0 - pct_step, coeff_step);
+	    logger.notice("Step " + to_string(istep) + ":\t" + to_string(pct_step) + " to " + to_string(pct_step + current_step));
+        int return_SC = pcrys.EVPSC(istep, current_step * Tincr, Iupdate_ori, Iupdate_shp, Iupdate_CRSS);
+	    if (return_SC != 0) {
+            /* pcrys.restore_status(return_SC == 2); */
+            pcrys.restore_status(false);
             logger.warn("Not convergent... Retry with a smaller increment.");
             logger.notice("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
             if(isnan(pcrys.error_SC)) coeff_step *= 0.1;
-            else coeff_step *= sqrt(sqrt(1/pcrys.error_SC));
-	    	if (coeff_step < 1e-6) { logger.error("Not convergent... Abort."); exit(1);}
+            else coeff_step *= 0.5;
+            /* else coeff_step *= sqrt(sqrt(1/pcrys.error_SC)); */
+	    	if (coeff_step < 1e-10) { logger.error("Not convergent... Abort."); exit(1);}
 		    continue;
 	    }
-	    pct_step += coeff_step;
+	    pct_step += current_step;
 	    update_progress(pct_step);
-	    logger.debug("Wij_g = ");
-	    logger.debug(pcrys.g[0].get_Wij_g());
-	    logger.debug("Udot_g = ");
-	    logger.debug(pcrys.g[0].get_Udot_g());
-	    coeff_step *= sqrt(sqrt(1/pcrys.error_SC));
-	} while (pct_step < 1-1e-6);
+	    /* logger.debug("Wij_g = "); */
+	    /* logger.debug(pcrys.g[0].get_Wij_g()); */
+	    /* logger.debug("Udot_g = "); */
+	    /* logger.debug(pcrys.g[0].get_Udot_g()); */
+	    /* coeff_step *= sqrt(sqrt(1/pcrys.error_SC)); */
+        coeff_step *= 2;
+        coeff_step = min(coeff_step, 1.0);
+	} while (pct_step < 1-1e-10);
 	cout.flush();
         Out_sscurves(pcrys);
         if(!((istep+1)%texctrl))
@@ -143,6 +161,13 @@ void Process::init_grain_info(Polycs::polycrystal &pcrys, int num){
     crss_out << calc_equivalent_value(g_this->get_strain_g());
     for(int i = 0; i < mode_num; ++i) crss_out << "," << g_this->gmode[i].crss;
     crss_out << endl;
+
+    rss_out << "EVM";
+    for(int i = 0; i < mode_num; ++i) rss_out << "," << "Mode" << i+1;
+    rss_out << endl;
+    rss_out << calc_equivalent_value(g_this->get_strain_g());
+    for(int i = 0; i < mode_num; ++i) rss_out << "," << g_this->gmode[i].rss;
+    rss_out << endl;
     
     euler_out << "EVM,phi1,PHI,phi2\n";
     euler_out << calc_equivalent_value(g_this->get_strain_g());
@@ -150,18 +175,32 @@ void Process::init_grain_info(Polycs::polycrystal &pcrys, int num){
     for(int i = 0; i < 3; ++i) euler_out << "," << v_out(i);
     euler_out << endl;
 
-    ss_out_csv << "E11, E22, E33, E23, E13, E12, S11, S22, S33, S23, S13, S12\n";
+    ss_out_csv << "E11,E22,E33,E23,E13,E12,S11,S22,S33,S23,S13,S12\n";
     for(int i = 0; i < 6; ++i) ss_out_csv << pcrys.get_Eps_m()(i) << ",";
-    for(int i = 0; i < 6; ++i) ss_out_csv << pcrys.get_Sig_m()(i) << ",";
-    ss_out_csv << endl;
+    for(int i = 0; i < 5; ++i) ss_out_csv << pcrys.get_Sig_m()(i) << ",";
+    ss_out_csv << pcrys.get_Sig_m()(5) << endl;
 
-    ss_grain_out << "EVM, SVM, E11, E22, E33, E23, E13, E12, S11, S22, S33, S23, S13, S12\n";
+    ave_ss_out << "E11,E22,E33,E23,E13,E12,S11,S22,S33,S23,S13,S12\n";
+    for(int i = 0; i < 6; ++i) ave_ss_out << pcrys.get_Eps_m()(i) << ",";
+    for(int i = 0; i < 5; ++i) ave_ss_out << pcrys.get_Sig_ave()(i) << ",";
+    ave_ss_out << pcrys.get_Sig_ave()(5) << endl;
+
+    ss_grain_out << "EVM,SVM,E11,E22,E33,E23,E13,E12,S11,S22,S33,S23,S13,S12\n";
     ss_grain_out << calc_equivalent_value(g_this->get_strain_g());
     ss_grain_out << "," << calc_equivalent_value(g_this->get_stress_g());
     for(int i = 0; i < 6; ++i) ss_grain_out << "," << voigt(g_this->get_strain_g())(i);
     for(int i = 0; i < 6; ++i) ss_grain_out << "," << voigt(g_this->get_stress_g())(i);
     ss_grain_out << endl;
 
+    de_out << "EVM,de11,de22,de33,de23,de13,de12\n";
+    de_out << calc_equivalent_value(voigt(pcrys.get_Eps_m()));
+    Vector6d De = Bbasisadd(Chg_basis6(pcrys.Dij_m), -pcrys.DVP_AV);
+    for(int i = 0; i < 6; ++i) de_out << "," << De(i);
+    de_out << endl;
+
+    Mvp_out << "EVM,Mvp_norm\n";
+    Mvp_out << calc_equivalent_value(voigt(pcrys.get_Eps_m()));
+    Mvp_out << "," << (pcrys.M_VP_SC).norm() << endl;
 }
 
 void Process::Out_grain_info(Polycs::polycrystal &pcrys, int num){
@@ -187,20 +226,36 @@ void Process::Out_grain_info(Polycs::polycrystal &pcrys, int num){
     for(int i = 0; i < mode_num; ++i) crss_out << "," << g_this->gmode[i].crss;
     crss_out << endl;
     
+    rss_out << calc_equivalent_value(g_this->get_strain_g());
+    for(int i = 0; i < mode_num; ++i) rss_out << "," << g_this->gmode[i].rss;
+    rss_out << endl;
+    
     euler_out << calc_equivalent_value(g_this->get_strain_g());
     Vector3d v_out = g_this->get_euler_g();
     for(int i = 0; i < 3; ++i) euler_out << "," << v_out(i);
     euler_out << endl;
 
     for(int i = 0; i < 6; ++i) ss_out_csv << pcrys.get_Eps_m()(i) << ",";
-    for(int i = 0; i < 6; ++i) ss_out_csv << pcrys.get_Sig_m()(i) << ",";
-    ss_out_csv << endl;
+    for(int i = 0; i < 5; ++i) ss_out_csv << pcrys.get_Sig_m()(i) << ",";
+    ss_out_csv << pcrys.get_Sig_m()(5) << endl;
+    
+    for(int i = 0; i < 6; ++i) ave_ss_out << pcrys.get_Eps_m()(i) << ",";
+    for(int i = 0; i < 5; ++i) ave_ss_out << pcrys.get_Sig_ave()(i) << ",";
+    ave_ss_out << pcrys.get_Sig_ave()(5) << endl;
 
     ss_grain_out << calc_equivalent_value(g_this->get_strain_g());
     ss_grain_out << "," << calc_equivalent_value(g_this->get_stress_g());
     for(int i = 0; i < 6; ++i) ss_grain_out << "," << voigt(g_this->get_strain_g())(i);
     for(int i = 0; i < 6; ++i) ss_grain_out << "," << voigt(g_this->get_stress_g())(i);
     ss_grain_out << endl;
+
+    de_out << calc_equivalent_value(voigt(pcrys.get_Eps_m()));
+    Vector6d De = Bbasisadd(Chg_basis6(pcrys.Dij_m), -pcrys.DVP_AV);
+    for(int i = 0; i < 6; ++i) de_out << "," << De(i);
+    de_out << endl;
+
+    Mvp_out << calc_equivalent_value(voigt(pcrys.get_Eps_m()));
+    Mvp_out << "," << (pcrys.M_VP_SC).norm() << endl;
 }
 
 void Process::Out_texset(int input){texctrl = input;}

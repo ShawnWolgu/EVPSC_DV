@@ -8,3 +8,4 @@ build/*
 debug/*
 .vimspector.json
 .DS*
+.cache/*

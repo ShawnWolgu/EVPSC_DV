@@ -1,4 +1,5 @@
 #include "Polycrystals.h"
+#include "func.h"
 #include "global.h"
 
 using namespace Polycs;
@@ -13,16 +14,12 @@ polycrystal::polycrystal()
 
     //initial the shape of ellipsoid
     ell_axis = Vector3d::Ones();
-
     ellip_ang << 90,90,90;
     ell_axisb = Euler_trans(ellip_ang);
-
     Fij_m = Matrix3d::Identity();
 
-
     //initial the VP consistent
-    M_VP_SC = Matrix5d::Identity();
-    M_VP_SC = 1e-8 * M_VP_SC;
+    M_VP_SC = 1e-40 * Matrix5d::Identity();
     C_VP_SC = M_VP_SC.inverse();
     D0 = Vector6d::Zero();
 
@@ -579,7 +576,7 @@ int polycrystal::Selfconsistent_E(int Istep, double ERRM, int ITMAX)
             // _g means the value depends on the grain
             //refer to Equ[5-35] in Manual 7d
             // B_g = (M_g + M~)^-1 * (M_ + M~)
-	    Matrix6d Metilde = Ctilde.inverse();
+            Matrix6d Metilde = Ctilde.inverse();
             Me_g = g[G_n].get_Mij6_J_g();
             Matrix6d Part1 = Me_g + Metilde;
             Matrix6d Part1_inv = Part1.inverse();
@@ -943,8 +940,8 @@ int polycrystal::Update_shape()
 int polycrystal::EVPSC(int istep, double Tincr,\
  bool Iupdate_ori,bool Iupdate_shp,bool Iupdate_CRSS)
 {   
-    double errd, errs, err_g;
-    int max_iter = 15;
+    double errd, errs, err_g, err_av;
+    int max_iter = 30, break_th = 10, break_counter = 0;
     save_status();
 
     for(int i = 0; i <= max_iter; ++i)
@@ -960,7 +957,9 @@ int polycrystal::EVPSC(int istep, double Tincr,\
         ///////////
         logger.notice("        \tIteration " + std::to_string(i+1) + "\t        ");
         int return_scE = Selfconsistent_E(istep, SC_err_m, SC_iter_m);
+        if (return_scE == 1){ error_SC = 2; return 1;}
         int return_scP = Selfconsistent_P(istep, SC_err_m, SC_iter_m);
+        if (return_scP == 1){ error_SC = 2; return 1;}
         Cal_Sig_m(Tincr); 
         Cal_Sig_g(Tincr);
         Update_AV();
@@ -969,15 +968,21 @@ int polycrystal::EVPSC(int istep, double Tincr,\
         errs = Errorcal(Sig_m, Sig_in);
         errd = Errorcal(Dij_m, Dij_in);
         err_g = Errorcal(Sig_AV, sig_in_AV);
-        error_SC = std::max(errs, std::max(errd, err_g))/(errS_m + errD_m + err_g_AV) * 3;
+        double err_stress = Errorcal(Sig_AV, Sig_m);
+        logger.debug("Sig_AV: "); logger.debug(Sig_AV);
+        logger.debug("Sig_m: "); logger.debug(Sig_m);
+        err_av = std::max({errs, errd, err_g})/(errS_m + errD_m + err_g_AV) * 4;
+        if ((err_av / error_SC) > 1.01) break_counter += 1;
+        error_SC = err_av;
 
         logger.notice("Error in macro stress tensor:\t" + std::to_string(errs));
         logger.notice("Error in strain rate tensor:\t" + std::to_string(errd));
         logger.notice("Error in average grain stress:\t" + std::to_string(err_g));
+        logger.notice("Error between stress tensors:\t" + std::to_string(err_stress));
         logger.notice("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
-        if (return_scE == 1 || return_scP == 1){ error_SC = 2; return 1;}
-        if((errs<errS_m)&&(errd<errD_m)&&(err_g<err_g_AV)) break;
-        if (i == max_iter) return 1;
+        if((errs<errS_m)&&(errd<errD_m)&&(err_g<err_g_AV)&&(err_stress<=err_g_AV*1.)) break;
+        if((errs<0.01* errS_m)&&(errd<0.01*errD_m)&&(err_g<0.01* err_g_AV)) break;
+        if ((i == max_iter) || (break_counter == break_th) )return 1;
     }
 
     Eps_m += Dij_m * Tincr; //update the macro strain tensor
@@ -1019,7 +1024,7 @@ void polycrystal::save_status(){
 	g[G_n].save_status_g();
 }
 
-void polycrystal::restore_status(){
+void polycrystal::restore_status(bool flag){
    // Restore Wij_m, Dij_m, Dije_AV, Dijp_AV, Sig_m;
    Wij_m = Wij_m_old;
    Dij_m = Dij_m_old;
@@ -1029,7 +1034,7 @@ void polycrystal::restore_status(){
    CSC = COLD;  C_VP_SC = C_VP_SC_old;
    SSC = CSC.inverse();  M_VP_SC = C_VP_SC.inverse();
    for(int G_n = 0; G_n < grains_num; ++G_n)
-	g[G_n].restore_status_g();
+        g[G_n].restore_status_g();
 }
 
 void polycrystal::Cal_Sig_m(double Tincr)
@@ -1040,22 +1045,22 @@ void polycrystal::Cal_Sig_m(double Tincr)
     //some components are not imposed
     //IUdot: 0: not imposed; 1: imposed; 2: control Dij; 3: control Wij
     for(int i = 0; i < 3; i++) for(int j = 0; j < 3; j++){
-	if(IUdot(i,j) > 1 && IUdot(j,i) != 0){
-	    logger.error("IUdot configuration not support!");
-	    exit(1);
-	}
+        if(IUdot(i,j) > 1 && IUdot(j,i) != 0){
+            logger.error("IUdot configuration not support!");
+            exit(1);
+        }
         if(IUdot(i,j) == 1 && IUdot(j,i) == 1){
-	    Wij_m(i,j) = 0.5*(UDWdot_m(i,j) - UDWdot_m(j,i));
-	    Wij_m(j,i) = -Wij_m(i,j);
-	}
+            Wij_m(i,j) = 0.5*(UDWdot_m(i,j) - UDWdot_m(j,i));
+            Wij_m(j,i) = -Wij_m(i,j);
+            }
         else if(IUdot(i,j) == 1){
-	    Wij_m(i,j) = UDWdot_m(i,j) - Dij_m(i,j);
-	    Wij_m(j,i) = -Wij_m(i,j);
-	}
-	else if(IUdot(i,j) == 3){
-	    Wij_m(i,j) = UDWdot_m(i,j);
-	    Wij_m(j,i) = -Wij_m(i,j);
-	}
+            Wij_m(i,j) = UDWdot_m(i,j) - Dij_m(i,j);
+            Wij_m(j,i) = -Wij_m(i,j);
+            }
+        else if(IUdot(i,j) == 3){
+            Wij_m(i,j) = UDWdot_m(i,j);
+            Wij_m(j,i) = -Wij_m(i,j);
+        }
         Udot_m(i,j) = Dij_m(i,j) + Wij_m(i,j);
     }
 
@@ -1134,6 +1139,7 @@ void polycrystal::Update_AV()
 }
 
 Vector6d polycrystal::get_Sig_m(){return voigt(Sig_m);}
+Vector6d polycrystal::get_Sig_ave(){return voigt(Sig_AV);}
 Vector6d polycrystal::get_Eps_m(){return voigt(Eps_m);}
 void polycrystal::get_euler(fstream &texfile)
 {
