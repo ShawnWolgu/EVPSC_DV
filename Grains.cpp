@@ -505,6 +505,7 @@ double grain::cal_RSSxlim(Matrix3d D)
 void grain::grain_stress(double Tincr, Matrix3d Wij_m, Matrix3d Dij_m,\
                          Matrix3d Dije_AV, Matrix3d Dijp_AV, Matrix3d Sig_m, Matrix3d Sig_m_old)
 {
+    if_stress = 1;
     Matrix3d X = sig_g; 
     //according to Equ[5-30] in manual, calculate the wij~ and the Jaumann rate
     Matrix3d wg = Wij_m + mult_4th(RSinv_C,Dije_g-Dije_AV) + mult_4th(RSinv_VP,Dijp_g-Dijp_AV);
@@ -548,6 +549,7 @@ void grain::grain_stress(double Tincr, Matrix3d Wij_m, Matrix3d Dij_m,\
     if (isnan(err_iter)){
         logger.warn("Grain stress iteration failed (nan)!");
         Xv = Chg_basis6(X) + Chg_basis6(Sig_m) - Chg_basis6(Sig_m_old);
+        if_stress = 0;
     }
     /* logger.debug("Xv after NR iteration: "); logger.debug(Xv); */
     /* logger.debug("F norm after NR iteration: " + to_string(F.norm())); */
@@ -576,6 +578,7 @@ void grain::grain_stress(double Tincr, Matrix3d Wij_m, Matrix3d Dij_m,\
             if ((it == DH_max_iter) || (coeff < 1e-4)) {
                 logger.warn("Grain stress iteration failed !");
                 Xv = Chg_basis6(X) + Chg_basis6(Sig_m) - Chg_basis6(Sig_m_old);
+                if_stress = 0;
                 break;
             }
         }

@@ -64,6 +64,7 @@ class grain
     public:
         int grain_i; // The Number
         int modes_num = 0;
+        int if_stress = 0; //flag of stress calculation
 
         grain();
         //move from private to public

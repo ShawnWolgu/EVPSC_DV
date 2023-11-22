@@ -177,7 +177,7 @@ class polycrystal
         void Cal_Sig_m(double);  
 
         // calculate the Sig_g and Dij_g including the elastic and vp part
-        void Cal_Sig_g(double);
+        double Cal_Sig_g(double);
 
 	void restore_stress();
 	void Update_AV(); //update the volume average value

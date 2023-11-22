@@ -1,4 +1,5 @@
 #include "Input.h"
+#include "Eigen/src/Core/Matrix.h"
 #include "global.h"
 
 int EVPSCinput(string &ftex,string &fsx,string &fload, Procs::Process &Proc)
@@ -385,13 +386,27 @@ MatrixXd cal_sn_info(MatrixXd &Min, vector<double> m_abc, vector<double> transMl
     Mabc = Eigen::Map<Matrix3d>(m_abc.data());
     Trans_Miller = Eigen::Map<MatrixXd>(transMl.data(),3,Miller_n);
 
-    Min_n = Min(all,seq(0,Miller_n-1))*Trans_Miller.transpose();
-    Min_s = Min(all,seq(Miller_n,2*Miller_n-1))*Trans_Miller.transpose(); 
+    Min_n = Min(all,seq(0,Miller_n-1)) * Trans_Miller.transpose();
+    Min_s = Min(all,seq(Miller_n,2*Miller_n-1)) * Trans_Miller.transpose(); 
     //calculate the coordinate in Cartesian system
-    Min_n = Min_n*Mabc.transpose();
+    /* logger.debug("Initial Min_n = "); logger.debug(Min_n); */
+    MatrixXd Mtemp = Min_n.cwiseAbs().array().max(1e-10).matrix();
+    Min_n = (Min_n.array().sign() * Mtemp.array()).matrix();
+    Min_n = Min_n.cwiseInverse();
+    MatrixX3d Min_nv1(Min_n.rows(),3), Min_nv2(Min_n.rows(),3);
+    Min_nv1 << -Min_n.col(0), Min_n.col(1), VectorXd::Zero(Min_n.rows());
+    Min_nv2 << VectorXd::Zero(Min_n.rows()), -Min_n.col(1), Min_n.col(2);
+    Min_nv1 = Min_nv1 * Mabc.transpose();
+    Min_nv2 = Min_nv2 * Mabc.transpose();
+    /* logger.debug("Min_nv1 = "); logger.debug(Min_nv1); */
+    /* logger.debug("Min_nv2 = "); logger.debug(Min_nv2); */
+    for (int i = 0; i < Min_n.rows(); ++i) {
+        Min_n.row(i) = Min_nv1.row(i).cross(Min_nv2.row(i));
+    }
     Min_s = Min_s*Mabc.transpose();
     //normalization
     for(int i = 0; i < system_n; i++)  Min_n.row(i) = Min_n.row(i).normalized();
+    /* logger.debug("Min_n = "); logger.debug(Min_n); */
 
     MatrixXd Min_ns(system_n,6);
     Min_ns.block(0,0,system_n,3) = Min_n;

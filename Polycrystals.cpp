@@ -961,7 +961,8 @@ int polycrystal::EVPSC(int istep, double Tincr,\
         int return_scP = Selfconsistent_P(istep, SC_err_m, SC_iter_m);
         if (return_scP == 1){ error_SC = 2; return 1;}
         Cal_Sig_m(Tincr); 
-        Cal_Sig_g(Tincr);
+        double sig_frac = Cal_Sig_g(Tincr);
+        if (sig_frac < 0.5){ error_SC = 2; return 1;}
         Update_AV();
         ///////////
 
@@ -981,7 +982,7 @@ int polycrystal::EVPSC(int istep, double Tincr,\
         logger.notice("Error between stress tensors:\t" + std::to_string(err_stress));
         logger.notice("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
         if((errs<errS_m)&&(errd<errD_m)&&(err_g<err_g_AV)&&(err_stress<=err_g_AV*1.)) break;
-        if((errs<0.01* errS_m)&&(errd<0.01*errD_m)&&(err_g<0.01* err_g_AV)) break;
+        if((errs<0.1* errS_m)&&(errd<0.1*errD_m)&&(err_g<0.1* err_g_AV)) break;
         if ((i == max_iter) || (break_counter == break_th) )return 1;
     }
 
@@ -1109,7 +1110,7 @@ void polycrystal::Cal_Sig_m(double Tincr)
     Sig_m = voigt(Sig_x);
 }
 
-void polycrystal::Cal_Sig_g(double Tincr)
+double polycrystal::Cal_Sig_g(double Tincr)
 {
     #pragma omp parallel for num_threads(Mtr)
     for(int G_n = 0; G_n < grains_num; G_n++){
@@ -1117,6 +1118,11 @@ void polycrystal::Cal_Sig_g(double Tincr)
         g[G_n].grain_stress(Tincr, Wij_m, Dij_m, Dije_AV, Dijp_AV, Sig_m, Sig_m_old);
     }
     #pragma omp barrier
+    int stress_count = 0;
+    for (int G_n = 0; G_n < grains_num; G_n++){
+        stress_count += g[G_n].if_stress;
+    }
+    return double(stress_count)/grains_num;
 }
 
 

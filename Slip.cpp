@@ -6,9 +6,9 @@ Slip::Slip() {};
 
 Slip::Slip(json &j_slip)
 {
-    logger.info("Slip system: " + to_string(j_slip["id"]));
     mtype = j_slip["type"];  num = j_slip["id"];  shear_modulus = j_slip["G"];
-    logger.info("Shear modulus: " + to_string(shear_modulus));
+    /* logger.info("Slip system: " + to_string(j_slip["id"])); */
+    /* logger.info("Shear modulus: " + to_string(shear_modulus)); */
     strain_rate_slip = 0; drate_dtau = 0; acc_strain = 0; disloc_velocity = 0; 
 
     VectorXd info_vec = to_vector(j_slip, "sn", 6);
@@ -302,7 +302,11 @@ void Slip::update_ssd(Matrix3d strain_rate, double dtime){
         double term_nuc = c_nuc * max(abs(rss)-tau_nuc,0.) / (shear_modulus * burgers * burgers);
         double term_multi = c_multi / mfp; 
         c_annih = (term_multi + term_nuc) / rho_sat;
-        disloc_density += (term_multi + term_nuc - c_annih * disloc_density) * abs(strain_rate_slip) * dtime;
+        double disloc_incre = (term_multi + term_nuc - c_annih * disloc_density) * abs(strain_rate_slip) * dtime;
+        if (disloc_incre > rho_sat){
+            disloc_incre = 0.1 * disloc_density;
+        }
+        disloc_density += disloc_incre;
         rho_mov = disloc_density;
         // if(disloc_density < rho_init) rho_init = SSD_density;
     }
