@@ -7,10 +7,11 @@
 #include <iomanip>
 #include <string>
 #include <nlohmann/json.hpp>
+#include <vector>
 using namespace std;
 using json = nlohmann::json;
 
-#include "Grains.h"
+#include "EVPSC.h"
 #include "Toolbox.h"
 
 namespace Polycs{
@@ -97,9 +98,9 @@ class polycrystal
     public:
         polycrystal();
         
-	grain* g  = NULL; 
+        grain* g = NULL;
         int grains_num = 0;
-	double error_SC = 0;
+        double error_SC = 0., twin_threshold = 1.;
         Matrix3d Dij_m; //the macro strain rate tensor
         Vector5d DVP_AV;
         Matrix5d M_VP_SC; //The visco-plastic compliance C_VP_SC^-1
@@ -114,6 +115,7 @@ class polycrystal
         //input the number of grains
         int grains_n(int);  
         int check_grains_n();
+        int add_grain(Vector4d, int tp_id, int mode_id);
         
         //input the euler angles and weights
         //needs loop over grains
@@ -188,6 +190,7 @@ class polycrystal
         Vector6d get_Eps_m();
         void get_euler(fstream &);
 
+        void update_twin_control();
         
 };
 

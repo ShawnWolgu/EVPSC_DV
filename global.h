@@ -1,5 +1,7 @@
 #ifndef GLOBALS_H
 #define GLOBALS_H
+#include "Polycrystals.h"
+#include "Processes.h"
 #include <iostream>
 #include <vector>
 #include <fstream>
@@ -11,6 +13,8 @@
 
 extern double temp_K;
 extern std::ofstream outfile;
+extern Polycs::polycrystal global_polycrys;
+extern Procs::Process global_proc;
 class Logger;
 extern Logger logger;
 

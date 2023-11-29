@@ -1,10 +1,20 @@
-#ifndef GRAINS_H
-#define GRAINS_H
+#ifndef EVPSC_H
+#define EVPSC_H
 
-#include "Slip.h"
 #include "Toolbox.h"
+#include <vector>
 
+using namespace std;
+
+//[Classes]
+class grain;
+class PMode;
 class Slip;
+class Twin;
+enum class mode_type {slip, twin, undefined};
+enum class twin_status {inactive, growth, saturated, governed};
+
+//[Class realization]
 class grain
 {
     private:
@@ -65,10 +75,14 @@ class grain
         int grain_i; // The Number
         int modes_num = 0;
         int if_stress = 0; //flag of stress calculation
+        double child_frac = 0.0, weight_ref = 0.0;
+        bool twin_term_flag;
 
         grain();
+        grain(const grain& g);
+        grain& operator=(const grain& g);
         //move from private to public
-        Slip* gmode = NULL; // deformation modes
+        PMode** gmode = NULL; // deformation modes
 
         //input the euler angle and weights
         void ini_euler_g(Vector4d);
@@ -80,6 +94,7 @@ class grain
         //input the number of deformation modes
         int ini_gmode_g(int);
         int ini_gmode_g(json &);
+        int ini_gmode_g(grain &);
         int check_gmode_g();
 
         //input the normal and Burgers vector in ONE mode (several systems)
@@ -109,6 +124,7 @@ class grain
 
         //get the stress of grain
         Matrix3d get_stress_g();
+        void set_stress_g(Matrix3d);
         Matrix3d get_strain_g();
 
         Matrix3d get_Dije_g();
@@ -182,7 +198,125 @@ class grain
         void update_modes(double);
 
         //add from SXCpp
-        MatrixXd lat_hard_mat;
-        void set_lat_hard_mat(); // wait to be finished
+        /* MatrixXd lat_hard_mat; */
+        /* std::shared_ptr<Eigen::MatrixXd> lat_hard_mat; */
+        vector<vector<double>> lat_hard_mat;
+        void set_lat_hard_mat();
+        void print_latent_matrix();
     };
+
+class PMode
+    {
+    protected:
+        double temperature = 293; // need to be synchronized with the grain;
+        double ref_strain_rate = 0.001;
+        Matrix3d Pij;
+        Matrix3d Rij;
+
+    public:
+        PMode();
+        PMode(json & j_mode);
+        PMode(PMode* t_mode, bool a);
+        mode_type type = mode_type::undefined;
+        int num = -1;
+        Vector3d burgers_vec,plane_norm;
+        void cal_shear_modulus(Matrix6d elastic_modulus);
+        /* 
+         * [Slip parameters : disvel model]
+         * 0. SSD_density, 1. MFP control coeffient, 2. reference frequency, 3. activation energy, 4. slip resistance, 5. energy exponent 
+         * 6. saturated speed, 7. drag coefficient, 8. forest hardening coefficient, 9. nucleation coefficient 
+         * 10. multiplication coefficient, 11. drag stress D, 12. reference strain rate, 13. c/g 
+         * update_params: 0: burgers, 1: mean_free_path, 2: disl_density_resist, 3: forest_stress
+         * [Slip parameters : Voce model]
+         * * 0. tau_0, 1. tau_1, 2. h_0, 3. h_1
+         * [Twin parameters]
+         * 0. tau_0, 1. tau_1, 2. h_0, 3. h_1, 4. twin_strain, 5. A1 6. A2
+         */
+        vector<double> harden_params, update_params, latent_params;
+        double rate_sen, shear_rate, drate_dtau, shear_modulus, disloc_density, crss, acc_strain, rss = 0.0;
+        // Original Contents
+        double get_gamma0();
+        double get_nrsx();
+        double cal_rss(Matrix3d stress_tensor);
+        double cal_relative_rss(Matrix3d stress_tensor);
+        double update_shear_strain_m();
+        Matrix3d cal_dijpmode(Matrix3d);
+        Matrix3d cal_rot_mode();
+        Matrix6d get_Fgradm(Matrix3d);
+        // Virtual funcs
+        virtual void check_hardening_mode(){};
+        virtual void check_sn_mode() {};
+        virtual void update_status(grain &grain, double dtime) {}; //update the status of slip/twinning system
+        virtual void update_ssd(Matrix3d strain_rate, double dtime) {};
+        virtual void print();
+        virtual void cal_strain_rate(Matrix3d stress_tensor) {};
+        virtual void cal_drate_dtau(Matrix3d stress_tensor) {};
+    };
+
+class Slip : public PMode
+    {
+    protected:
+        int flag_harden;
+        double disloc_velocity = 0.0;
+
+    private:
+        double lh_coeff = 1.0, rho_mov = 0.0;
+        //New Contents 
+        void cal_strain_rate_pow(Matrix3d stress_tensor);
+        void cal_strain_rate_disvel(Matrix3d stress_tensor);
+        void cal_drate_dtau_pow(Matrix3d stress_tensor);
+        void cal_drate_dtau_disvel(Matrix3d stress_tensor);
+        void update_voce(PMode** mode_s, vector<vector<double>> lat_hard_mat, int nmode, double dtime);
+        void update_disvel(PMode** mode_s, vector<vector<double>> lat_hard_mat, double bv, double nmode ,double dtime);
+        double disl_velocity(double rss);
+        vector<double> disl_velocity_grad(double rss);
+
+    public:
+        Slip();
+        Slip(json &j_slip);
+        Slip(Slip* t_mode, bool a);
+        double t_wait = 0.0, t_run = 0.0, rho_sat = 0.0;
+        // Override funcs
+        void check_hardening_mode() override;
+        void check_sn_mode() override;
+        void update_status(grain &grain, double dtime) override; //update the status of slip/twinning system
+        void update_ssd(Matrix3d strain_rate, double dtime) override;
+        void cal_strain_rate(Matrix3d stress_tensor) override;
+        void cal_drate_dtau(Matrix3d stress_tensor) override;
+        void print() override;
+        // Unused Contents
+        void update_lhparams(Matrix3d strain_rate);
+    };
+
+
+class Twin : public PMode
+    {
+    protected:
+        int flag_harden;
+        double disloc_velocity = 0.0;
+
+    private:
+        twin_status status = twin_status::inactive;
+        Twin* link_variant = nullptr;
+
+    public:
+        Twin();
+        Twin(json &j_twin);
+        Twin(Twin* t_mode, bool a);
+        int grain_link = -1;
+        double t_wait = 0.0, t_run = 0.0, rho_sat = 0.0, child_frac = 0.0;
+        void set_parent(int parent_id);
+        // Override funcs
+        void check_hardening_mode() override;
+        void check_sn_mode() override;
+        void update_status(grain &grain, double dtime) override; //update the status of slip/twinning system
+        void update_ssd(Matrix3d strain_rate, double dtime) override;
+        void cal_strain_rate(Matrix3d stress_tensor) override;
+        void cal_drate_dtau(Matrix3d stress_tensor) override;
+        void print() override;
+        void set_status(twin_status s);
+        twin_status get_status() { return status; };
+    };
+
 #endif
+

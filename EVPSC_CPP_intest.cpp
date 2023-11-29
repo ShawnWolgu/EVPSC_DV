@@ -13,18 +13,16 @@
 
 int main()
 {
-    Polycs::polycrystal metal; //declare object
-    Procs::Process Proc1;
     logger.info("EVPSC_CPP Start!");
 
-    string ftex, fsx, fload;
-    if(EVPSCinput(ftex, fsx, fload, Proc1)) exit(0);
-    if(texinput(ftex, metal)) exit(0);
-    if(sxinput(fsx, metal)) exit(0);
-    if(loadinput(fload, Proc1)) exit(0);
+    string tex_path, sx_path, load_path;
+    if(EVPSCinput(tex_path, sx_path, load_path, global_proc)) exit(0);
+    if(texinput(tex_path, global_polycrys)) exit(0);
+    if(sxinput(sx_path, global_polycrys)) exit(0);
+    if(loadinput(load_path, global_proc)) exit(0);
     
     double Start = clock();
-    Proc1.loading(metal);
+    global_proc.loading(global_polycrys);
     double End = clock();
     string end_message = "EVPSC_CPP End! The run time is: " + std::to_string((double)(End - Start) / (Mtr * CLOCKS_PER_SEC)) + " sec";
     logger.info(end_message);

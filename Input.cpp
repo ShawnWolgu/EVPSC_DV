@@ -164,7 +164,7 @@ int sxinput(string fname, Polycs::polycrystal &pcrys)
              * 3: flag of twin (1 for twin; 0 for slip)
             */ 
             MatrixXd nor_dir(int(mode_info(1)),2*Millern); //normal and direction of slip plane
-            if(int(mode_info(3))) getline(sxinp, tp); //special for twin
+            /* if(int(mode_info(3))) getline(sxinp, tp); //special for twin */
             for (int i = 0; i < int(mode_info(1)); i++) {
                 getline(sxinp, tp); nor_dir(i,all) = getnum(tp, 2*Millern);
             }
@@ -201,17 +201,18 @@ int sxinput(string fname, Polycs::polycrystal &pcrys)
             if (iharden == 1) CRSS_p = getnum_vec(tp, 15);
             else CRSS_p = getnum_vec(tp, 4);
             //hst
-            getline(sxinp, tp);  hst = getnum_vec(tp, 5); //5 types of hardening
+            getline(sxinp, tp);  hst = getnum_vec(tp, 6); //6 types of hardening
             sx_modes[imode]["nrsx"] = nrsx;
             sx_modes[imode]["CRSS_p"] = CRSS_p;
             sx_modes[imode]["hst"] = hst;
         }
         sx_json["modes"] = sx_modes;
         json sx_per_mode = sx_info_postprocess(sx_json);
+        /* conjugate_mode_config(sx_per_mode); */
         sx_json["sx_per_mode"] = sx_per_mode;
         sxinp.close(); //close the file object.
         pcrys.ini_from_json(sx_json);
-        pcrys.g[0].gmode[0].print();
+        /* pcrys.g[0].gmode[0]->print(); */
         return 0;
     }
     else

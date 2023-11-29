@@ -1,7 +1,5 @@
-#include "Grains.h"
+#include "EVPSC.h"
 #include "Eigen/src/Core/Matrix.h"
-#include "Toolbox.h"
-#include "func.h"
 #include "global.h"
 #include <string>
 
@@ -21,7 +19,114 @@ grain::grain()
 
     //initial the VP consistent
     Mpij6_g = 1e-10 * Matrix5d::Identity();
+}
 
+grain::grain(const grain& tp){
+    eps_g = tp.eps_g;
+    sig_g = tp.sig_g;
+    Dije_g = tp.Dije_g;
+    Dijp_g = tp.Dijp_g;
+    ell_axis_g = tp.ell_axis_g;
+    ell_axisb_g = tp.ell_axisb_g;
+    ellip_ang_g = tp.ellip_ang_g;
+    Iflat_g = tp.Iflat_g;
+    Fij_g = tp.Fij_g;
+    Udot_g = tp.Udot_g;
+    Dij_g = tp.Dij_g;
+    Dije_g = tp.Dije_g;
+    Dijp_g = tp.Dijp_g;
+    Wij_g = tp.Wij_g; 
+    d0_g = tp.d0_g;
+    Mpij6_g = tp.Mpij6_g;
+    Cij6_SA_g = tp.Cij6_SA_g;
+    Mij6_J_g = tp.Mij6_J_g;
+    Metilde_g = tp.Metilde_g;
+    Mptilde_g = tp.Mptilde_g;
+    Mpij6_g = tp.Mpij6_g;
+    grain_i = tp.grain_i;
+    modes_num = tp.modes_num;
+    gmode = new PMode* [modes_num];
+    for (int i = 0; i < modes_num; ++i){
+        switch (tp.gmode[i]->type) {
+            case mode_type::slip:
+                gmode[i] = new Slip(*(Slip*)tp.gmode[i]);
+                break;
+            case mode_type::twin:
+                gmode[i] = new Twin(*(Twin*)tp.gmode[i]);
+                break;
+            case mode_type::undefined:
+                gmode[i] = new PMode(*(PMode*)tp.gmode[i]);
+                break;
+            default:
+                logger.error("Unknown mode type");
+                return;
+        }
+    }
+    gamma_delta_gmode = tp.gamma_delta_gmode;
+    weight = tp.weight;
+    weight_ref = tp.weight_ref;
+    Euler_M = tp.Euler_M;
+    gamma_total = tp.gamma_total;
+    gamma_delta = tp.gamma_delta;
+    if_stress = tp.if_stress;
+    child_frac = tp.child_frac;
+    twin_term_flag = tp.twin_term_flag;
+    lat_hard_mat = tp.lat_hard_mat;
+}
+
+grain& grain::operator=(const grain& tp){
+    if (this == &tp) return *this;
+    eps_g = tp.eps_g;
+    sig_g = tp.sig_g;
+    Dije_g = tp.Dije_g;
+    Dijp_g = tp.Dijp_g;
+    ell_axis_g = tp.ell_axis_g;
+    ell_axisb_g = tp.ell_axisb_g;
+    ellip_ang_g = tp.ellip_ang_g;
+    Iflat_g = tp.Iflat_g;
+    Fij_g = tp.Fij_g;
+    Udot_g = tp.Udot_g;
+    Dij_g = tp.Dij_g;
+    Dije_g = tp.Dije_g;
+    Dijp_g = tp.Dijp_g;
+    Wij_g = tp.Wij_g; 
+    d0_g = tp.d0_g;
+    Mpij6_g = tp.Mpij6_g;
+    Cij6_SA_g = tp.Cij6_SA_g;
+    Mij6_J_g = tp.Mij6_J_g;
+    Metilde_g = tp.Metilde_g;
+    Mptilde_g = tp.Mptilde_g;
+    Mpij6_g = tp.Mpij6_g;
+    grain_i = tp.grain_i;
+    modes_num = tp.modes_num;
+    gmode = new PMode* [modes_num];
+    for (int i = 0; i < modes_num; ++i){
+        switch (tp.gmode[i]->type) {
+            case mode_type::slip:
+                gmode[i] = new Slip(*(Slip*)tp.gmode[i]);
+                break;
+            case mode_type::twin:
+                gmode[i] = new Twin(*(Twin*)tp.gmode[i]);
+                break;
+            case mode_type::undefined:
+                gmode[i] = new PMode(*(PMode*)tp.gmode[i]);
+                break;
+            default:
+                logger.error("Unknown mode type");
+                break;
+        }
+    }
+    gamma_delta_gmode = tp.gamma_delta_gmode;
+    weight = tp.weight;
+    weight_ref = tp.weight_ref;
+    Euler_M = tp.Euler_M;
+    gamma_total = tp.gamma_total;
+    gamma_delta = tp.gamma_delta;
+    if_stress = tp.if_stress;
+    child_frac = tp.child_frac;
+    twin_term_flag = tp.twin_term_flag;
+    lat_hard_mat = tp.lat_hard_mat;
+    return *this;
 }
 
 Vector3d grain::get_ell_axis_g(){return ell_axis_g;}
@@ -33,6 +138,7 @@ void grain::ini_euler_g(Vector4d vin)
     Vector3d euler = vin(seq(0,2));
     Euler_M = Euler_trans(euler);
     weight = vin(3);
+    weight_ref = weight;
 }
 
 Vector3d grain::get_euler_g(){return Euler_trans(Euler_M);}
@@ -46,7 +152,7 @@ void grain::set_weight_g(double w){weight = w;}
 int grain::ini_gmode_g(int n)
 {
     modes_num = n;
-    gmode = new Slip[n];
+    gmode = new PMode* [n];
     gamma_delta_gmode = new double[n];
     return 1;
 }
@@ -54,46 +160,71 @@ int grain::ini_gmode_g(int n)
 int grain::ini_gmode_g(json &j)
 {
     modes_num = j["modes_num"];
-    gmode = new Slip[modes_num];
+    gmode = new PMode* [modes_num];
     int i = 0;
     for (json &j_mode: j["sx_per_mode"]){
-        gmode[i] = Slip(j_mode); ++i;
+        switch ((int)j_mode["type"]) {
+            case 0:
+                gmode[i] = new Slip(j_mode);
+                break;
+            case 1:
+                gmode[i] = new Twin(j_mode);
+                break;
+            case 2:
+                gmode[i] = new PMode(j_mode);
+                break;
+            default:
+                logger.error("Unknown mode type");
+                return 0;
+        }
+        ++i;
     }
+    logger.info("Grain "+std::to_string(grain_i)+" has initiated "+std::to_string(modes_num)+" modes");
+    /* for (int i = 0; i < modes_num; ++i){ */
+    /*     gmode[i]->print(); */
+    /* } */
     gamma_delta_gmode = new double[modes_num];
     return 1;
 }
 
-int grain::check_gmode_g(){return modes_num;}
-
-int grain::ini_sn_g(MatrixXd Min, int flag, int system_n, int modei, Matrix6d elastic_modulus)
+//Initial deformation mode based on the parent.
+int grain::ini_gmode_g(grain &tp)
 {
-    cout << "Min" << Min << "\n";
-    for(int i = modei; i < modei+system_n; i++)
-    {
-        VectorXd Min_temp = Min(i-modei,all);
-        cout << "line number: " << i-modei << "\n";
-        cout << "Min_temp: " << Min_temp.transpose() << "\n";
-        gmode[i].ini_sn_mode(Min_temp, flag, i);
-        gmode[i].cal_shear_modulus(elastic_modulus);
+    modes_num = tp.modes_num;
+    gmode = new PMode* [modes_num];
+    bool new_mode = true;
+    for (int i = 0; i < modes_num; ++i){
+        switch (tp.gmode[i]->type) {
+            case mode_type::slip:
+                gmode[i] = new Slip((Slip*)tp.gmode[i], new_mode);
+                break;
+            case mode_type::twin:
+                gmode[i] = new Twin((Twin*)tp.gmode[i], new_mode);
+                break;
+            case mode_type::undefined:
+                gmode[i] = new PMode((PMode*)tp.gmode[i], new_mode);
+                break;
+            default:
+                logger.error("Unknown mode type");
+                return 0;
+        }
     }
-    return 0;
+    gamma_delta_gmode = new double[modes_num];
+    logger.info("Grain "+std::to_string(grain_i)+" has initiated "+std::to_string(modes_num)+" modes");
+    /* for (int i = 0; i < modes_num; ++i){ */
+    /*     gmode[i]->print(); */
+    /* } */
+    return 1;
 }
+
+int grain::check_gmode_g(){return modes_num;}
 
 int grain::check_sn_g()
 {
     for(int i = 0; i < modes_num; i++)
     {
         cout << "Mode " << i << ":\n";
-        gmode[i].check_sn_mode();
-    }
-    return 0;
-}
-
-int grain::ini_hardening_g(double nrsx_in, VectorXd CRSS_p_in, VectorXd hst_in, int modei, int modes_num)
-{
-    for(int i = modei; i < modei+modes_num; i++)
-    {
-        gmode[i].ini_hardening_mode(nrsx_in, CRSS_p_in, hst_in);
+        gmode[i]->check_sn_mode();
     }
     return 0;
 }
@@ -103,7 +234,7 @@ int grain::check_hardening_g()
     for(int i = 0; i < modes_num; i++)
     {
         logger.debug("Mode "+std::to_string(i)+":");
-        gmode[i].check_hardening_mode();
+        gmode[i]->check_hardening_mode();
     }
     return 0;    
 }
@@ -263,6 +394,7 @@ void grain::Eshelby_P(double ESIM[3][3][3][3],double ESCR[3][3][3][3],\
 }
 
 Matrix3d grain::get_stress_g(){return sig_g;}
+void grain::set_stress_g(Matrix3d sig){sig_g = sig;}
 Matrix3d grain::get_strain_g(){return eps_g;}
 
 Matrix3d grain::get_Dije_g(){return Dije_g;}
@@ -443,7 +575,7 @@ Matrix3d grain::cal_Dijp(Matrix3d Min)
     Matrix3d Dijp = Matrix3d::Zero();
     for(int i = 0; i < modes_num; i++)
     {
-        Dijp += gmode[i].cal_dijpmode(X);
+        Dijp += gmode[i]->cal_dijpmode(X);
     }
     return ET*Dijp*E;
 }
@@ -456,7 +588,7 @@ Matrix3d grain::cal_rotslip()
     Matrix3d Wij = Matrix3d::Zero();
     for(int i = 0; i < modes_num; i++)
     {
-        Wij += gmode[i].cal_rotslip_m();
+        Wij += gmode[i]->cal_rot_mode();
     }
     return ET*Wij*E;
 }
@@ -470,7 +602,7 @@ Matrix5d grain::cal_Fgrad(Matrix3d Min)
 
     Matrix6d Fgrad = Matrix6d::Zero();
     for(int i = 0; i < modes_num; i++)
-        Fgrad += gmode[i].get_Fgradm(X);
+        Fgrad += gmode[i]->get_Fgradm(X);
     //return Chg_basis5(rotate_C66(Fgrad, E));
     return Chg_basis5(rotate_C66(Fgrad, ET));
 }
@@ -484,7 +616,7 @@ double grain::cal_RSSxmax(Matrix3d Min)
     double RSSxmax = 0;
     for(int i = 0; i < modes_num; i++)
     {
-        double temp = gmode[i].cal_relative_rss(X);
+        double temp = gmode[i]->cal_relative_rss(X);
         if(RSSxmax < temp) RSSxmax = temp;
     }
     return RSSxmax;
@@ -494,10 +626,10 @@ double grain::cal_RSSxlim(Matrix3d D)
 {   
     double nrsxmin = 0;
     for(int i = 0; i < modes_num; i++)
-        if(nrsxmin > gmode[i].get_nrsx())
-            nrsxmin = gmode[i].get_nrsx();
+        if(nrsxmin > gmode[i]->get_nrsx())
+            nrsxmin = gmode[i]->get_nrsx();
 
-    double lim = 2* pow(D.norm()/gmode[0].get_gamma0(),1/nrsxmin);
+    double lim = 2* pow(D.norm()/gmode[0]->get_gamma0(),1/nrsxmin);
     if(lim < 2) lim = 2;
     return  lim;           
 }
@@ -547,7 +679,7 @@ void grain::grain_stress(double Tincr, Matrix3d Wij_m, Matrix3d Dij_m,\
         if(err_iter < Errm) break;
     }
     if (isnan(err_iter)){
-        logger.warn("Grain stress iteration failed (nan)!");
+        logger.warn("Grain stress iteration failed (nan)! Grain " + to_string(grain_i));
         Xv = Chg_basis6(X) + Chg_basis6(Sig_m) - Chg_basis6(Sig_m_old);
         if_stress = 0;
     }
@@ -576,7 +708,7 @@ void grain::grain_stress(double Tincr, Matrix3d Wij_m, Matrix3d Dij_m,\
             /* logger.debug(Xv); */
             /* if(grain_i == 0) logger.debug("Grain stress iteration: " + to_string(it) + ", F_norm: " + to_string(F_norm) + ", coeff: " + to_string(coeff)); */
             if ((it == DH_max_iter) || (coeff < 1e-4)) {
-                logger.warn("Grain stress iteration failed !");
+                logger.warn("Grain stress iteration failed ! Grain " + to_string(grain_i) + ", F_norm: " + to_string(F_norm));
                 Xv = Chg_basis6(X) + Chg_basis6(Sig_m) - Chg_basis6(Sig_m_old);
                 if_stress = 0;
                 break;
@@ -585,6 +717,7 @@ void grain::grain_stress(double Tincr, Matrix3d Wij_m, Matrix3d Dij_m,\
     }
     /**/
     sig_g = Chg_basis(Xv);
+    logger.debug("Grain number = " + to_string(grain_i) + ", F_norm = " + to_string(F.norm()));
     /* logger.debug("Grain number = " + to_string(grain_i) + ", sig_g = "); logger.debug(sig_g); */
     Vector6d dijegv =  Mij6_J_g *((Xv - Chg_basis6(sig_g_old))/Tincr - Chg_basis6(Xjau)); 
     dijpgv = Chg_basis5(cal_Dijp(sig_g));
@@ -602,7 +735,7 @@ void grain::Update_shear_strain(double Tincr)
     gamma_delta = 0;
     for(int i = 0; i < modes_num; i++)
     {         
-        temp = Tincr * gmode[i].update_shear_strain_m();
+        temp = Tincr * gmode[i]->update_shear_strain_m();
         gamma_delta_gmode[i] = temp;
         gamma_delta += temp;
     }    
@@ -632,23 +765,51 @@ void grain::update_orientation(double Tincr, Matrix3d Wij_m, Matrix3d Dije_AV, M
 
 void grain::update_modes(double Tincr)
 {
-    for(int i = 0; i < modes_num; i++)	gmode[i].update_ssd(Dij_g, Tincr);
+    for(int i = 0; i < modes_num; i++)	gmode[i]->update_ssd(Dij_g, Tincr);
     /* for(int i = 0; i < modes_num; i++)	gmode[i].update_lhparams(Dij_g); */
-    for(int i = 0; i < modes_num; i++)	gmode[i].update_status(*this, Tincr);
+    for(int i = 0; i < modes_num; i++)	gmode[i]->update_status(*this, Tincr);
+    child_frac = 0.;
+    for (int i = 0; i < modes_num; i++) {
+        if (gmode[i]->type != mode_type::twin) continue;
+        double probe_child_frac = ((Twin*)gmode[i])->child_frac;
+        child_frac += probe_child_frac;
+    }
+    weight = (1-child_frac) * weight_ref;
+    if (child_frac > global_polycrys.twin_threshold) {
+        twin_term_flag = true;
+        for (int i = 0; i < modes_num; i++) {
+            if (gmode[i]->type != mode_type::twin) continue;
+            if (((Twin*)gmode[i])->get_status() == twin_status::governed) continue;
+            ((Twin*)gmode[i])->set_status(twin_status::saturated);
+        }
+    }
+    else twin_term_flag = false;
     gamma_total += gamma_delta;
 }
 
 void grain::set_lat_hard_mat(){
-    lat_hard_mat.resize(modes_num,modes_num);
+    vector<vector<double>> latent_matrix;
+    latent_matrix.resize(modes_num);
+    for (int i = 0; i < modes_num; i++) latent_matrix[i].resize(modes_num);
     for (int i = 0; i < modes_num; i++){
         for (int j = 0; j < modes_num; j++){
-            if (gmode[i].num == gmode[j].num) lat_hard_mat(gmode[i].num,gmode[j].num) = 1;
+            if (i == j) latent_matrix[i][j] = 1;
             else{
-                int mode = get_interaction_mode(gmode[i].burgers_vec, gmode[i].plane_norm, gmode[j].burgers_vec, gmode[j].plane_norm);
-                lat_hard_mat(gmode[i].num,gmode[j].num) = gmode[i].latent_params[mode];
+                int mode = 0;
+                mode_type type_i = gmode[i]->type;
+                mode_type type_j = gmode[j]->type;
+                if (type_i == mode_type::slip && type_j == mode_type::slip) {
+                    mode = get_interaction_mode(gmode[i]->burgers_vec, gmode[i]->plane_norm, gmode[j]->burgers_vec, gmode[j]->plane_norm);
+                }
+                else if (type_i == mode_type::slip && type_j == mode_type::twin) mode = 5;
+                else if (type_i == mode_type::twin && type_j == mode_type::slip) mode = 0;
+                else if (type_i == mode_type::twin && type_j == mode_type::twin) mode = 1;
+                else mode = 0;
+                latent_matrix[i][j] = gmode[i]->latent_params[mode];
             }
         }
     }
+    lat_hard_mat = latent_matrix;
 }
 
 int grain::get_interaction_mode(Vector3d burgers_i, Vector3d plane_i, Vector3d burgers_j, Vector3d plane_j){
@@ -670,5 +831,16 @@ int grain::get_interaction_mode(Vector3d burgers_i, Vector3d plane_i, Vector3d b
                 else return 4;
             }
         }
+    }
+}
+
+void grain::print_latent_matrix(){
+    string mat_row = "";
+    for (int i = 0; i < modes_num; i++){
+        for (int j = 0; j < modes_num; j++){
+            mat_row += to_string(lat_hard_mat[i][j]) + " ";
+        }
+        logger.debug(mat_row);
+        mat_row = "";
     }
 }

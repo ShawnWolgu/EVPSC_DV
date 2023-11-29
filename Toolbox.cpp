@@ -2,103 +2,82 @@
 using namespace std;
 using namespace Eigen;
 
-/////////////////////////
-//Chg_basis and its overload function
-//with BASIS TENSOR Basis[3][3][6]
+Matrix6d cal_rotation_trans_6d_for_stiff(Matrix3d M);
+Matrix6d cal_rotation_trans_6d_for_compl(Matrix3d M);
+
+/* Chg_basis and its overload function with BASIS TENSOR Basis[3][3][6] */
 const double Basis[3][3][6] = {
-     //1,1
      -RSQ2, -RSQ6, 0, 0, 0, RSQ3,
-     //1,2
      0, 0, 0, 0, RSQ2, 0,
-     //1,3
      0, 0, 0, RSQ2, 0, 0,
-     //2,1
      0, 0, 0, 0, RSQ2, 0,
-     //2,2
      RSQ2, -RSQ6, 0, 0, 0, RSQ3,
-     //2,3 
      0, 0, RSQ2, 0, 0, 0,
-     //3,1
      0, 0, 0, RSQ2, 0, 0,
-     //3,2
      0, 0, RSQ2, 0, 0, 0,
-     //3,3
      0, 2.0*RSQ6, 0, 0, 0, RSQ3
      };
 
-     
-/////////////////////////
-
-/////////////////////////
-//Voigt and its overload function
-//to realize the 3X3X3X3 to 6X6 and the reverse transformation
-//and realize the 3X3 to 6X1 and the reverse transformation
+/* Voigt and its overload function to realize the 3X3X3X3 to 6X6 
+ * and the reverse transformation and realize the 3X3 to 6X1 and the reverse transformation */
 const int IJV[6][2]= {0,0,1,1,2,2,1,2,0,2,0,1};
-/////////////////////////
 
-///
 int Eshelby_case(Vector3d Axis){
     double RATIO1=Axis(1)/Axis(2);
     double RATIO2=Axis(0)/Axis(2);
     Matrix<double, 11, 1> DTE;
     DTE << 0.0,
-    -0.7*RATIO1+7,
-    -RATIO1+17,
-    -RATIO1+23,
-    -RATIO1+26,
-    -RATIO1+29.3,
-    -RATIO1+32,
-    -RATIO1+34.85,
-    -RATIO1+37,
-    -RATIO1+41.9,
-    -RATIO1+44.5;
+          -0.7*RATIO1 + 7,
+          -RATIO1 + 17,
+          -RATIO1 + 23,
+          -RATIO1 + 26,
+          -RATIO1 + 29.3,
+          -RATIO1 + 32,
+          -RATIO1 + 34.85,
+          -RATIO1 + 37,
+          -RATIO1 + 41.9,
+          -RATIO1 + 44.5;
     int case_c = 11;
     for(int i = 1; i <= 10; i++)
         if(RATIO2 >= DTE(i-1)&& RATIO2 < DTE(i)) case_c = i;
     return case_c-1;
 }
 
-
-/// function definition of gau_leg
+/* function definition of gaussian_legrange */
 void gau_leg(double x1, double x2, VectorXd &x, VectorXd &w, int n)
 {
+	int m = n / 2;
 	double eps = 1e-7;
-
-	double m = n / 2;
 	double xm = 0.5*(x1 + x2);
 	double xl = 0.5*(x2 - x1);
 	double xn = n;
 
-	for (int i = 0; i < m; i++)
-	{
+	for (int i = 0; i < m; i++){
 		double xi = i + 1;
 		double z = cos(M_PI*(xi - 0.25) / (xn + 0.5));
 		double p1, p2, p3, xj, pp, z1;
-
 		z1 = z + 1;
+        while (abs(z1 - z) > eps)
+        {
+            p1 = 1;
+            p2 = 0;
+            for (int j = 0; j < n; j++)
+            {
+                xj = j + 1;
+                p3 = p2;
+                p2 = p1;
+                p1 = ((2 * j + 1)*z*p2 - (xj - 1)*p3) / xj;
+            }
 
-		while (abs(z1 - z) > eps)
-		{
-		p1 = 1;
-		p2 = 0;
-		for (int j = 0; j < n; j++)
-		{
-			xj = j + 1;
-			p3 = p2;
-			p2 = p1;
-			p1 = ((2 * j + 1)*z*p2 - (xj - 1)*p3) / xj;
-		}
-
-		pp = n*(z*p1 - p2) / (z*z - 1);
-		z1 = z;
-		z = z1 - p1 / pp;
-		}
-
-		x(i) = xm - xl*z;
-		x(n - 1 - i) = xm + xl*z;
-		w(i) = 2 * xl / ((1 - z*z)*pp*pp);
-		w(n - 1 - i) = w(i);
-	}
+            pp = n*(z*p1 - p2) / (z*z - 1);
+            z1 = z;
+            z = z1 - p1 / pp;
+        }
+        x(i) = xm - xl*z;
+        x(n - 1 - i) = xm + xl*z;
+        w(i) = 2 * xl / ((1 - z*z)*pp*pp);
+        w(n - 1 - i) = w(i);
+    }
 }
 
 /// function definition of voigt
@@ -106,8 +85,7 @@ Matrix3d voigt(Vector6d Vin)
 {
     Matrix3d Mout;
     int I1,I2;
-    for(int i = 0; i < 6; i++)
-    {
+    for(int i = 0; i < 6; i++){
         I1 = IJV[i][0];
         I2 = IJV[i][1];
         Mout(I1,I2) = Vin(i);
@@ -120,12 +98,11 @@ Vector6d voigt(Matrix3d Min)
 {
     Vector6d Vout(6);
     int I1,I2;
-    for(int i = 0; i < 6; i++)
-        {
+    for(int i = 0; i < 6; i++){
         I1 = IJV[i][0];
         I2 = IJV[i][1];
         Vout(i) = Min(I1,I2);
-        }
+    }
     return Vout;
 }
 
@@ -622,9 +599,9 @@ Vector6d devia(Vector6d X)
 Matrix6d devia(Matrix6d Min)
 {
     Matrix6d deviaM;
-    deviaM<< 2/3, -1/3, -1/3, 0, 0, 0,
-    -1/3, 2/3, -1/3, 0, 0, 0,
-    -1/3, -1/3, 2/3, 0, 0, 0,
+    deviaM<< 2./3., -1./3., -1./3., 0, 0, 0,
+    -1./3., 2./3., -1./3., 0, 0, 0,
+    -1./3., -1./3., 2./3., 0, 0, 0,
     0, 0, 0, 1, 0, 0,
     0, 0, 0, 0, 1, 0,
     0, 0, 0, 0, 0, 1;
@@ -876,4 +853,150 @@ VectorXd to_vector(json &j, string key, int n){
     vector<double> v = j[key];
     VectorXd v1 = Eigen::Map<Eigen::VectorXd>(v.data(), v.size());
     return v1;
+}
+
+Matrix6d rotate_6d_stiff_modu(Matrix6d modulus, Matrix3d rotate_matrix){
+    Matrix6d M66 = cal_rotation_trans_6d_for_stiff(rotate_matrix);
+    return M66*modulus*M66.transpose();
+}
+
+Matrix6d cal_rotation_trans_6d_for_stiff(Matrix3d M){
+   Matrix6d M66;
+    double xx,yy,zz,yz,xz,xy,yx,zx,zy;
+    xx = M(0,0); 
+    yy = M(1,1);
+    zz = M(2,2);
+    yz = M(1,2);
+    xz = M(0,2);
+    xy = M(0,1);
+	yx = M(1,0);
+	zx = M(2,0);
+	zy = M(2,1);
+
+    for(int i = 0; i < 3; i++)
+        for(int j = 0; j < 3; j++)
+    M66(i,j) = M(i,j)*M(i,j);
+
+    M66(0,3) = 2*xy*xz;
+    M66(0,4) = 2*xx*xz;
+    M66(0,5) = 2*xx*xy;
+
+    M66(1,3) = 2*yy*yz;
+    M66(1,4) = 2*yx*yz;
+    M66(1,5) = 2*yx*yy;
+
+    M66(2,3) = 2*zy*zz;
+    M66(2,4) = 2*zx*zz;
+    M66(2,5) = 2*zx*zy;
+
+    M66(3,0) = yx*zx;
+    M66(3,1) = yy*zy;
+    M66(3,2) = yz*zz;
+
+    M66(4,0) = xx*zx;
+    M66(4,1) = xy*zy;
+    M66(4,2) = xz*zz;
+
+    M66(5,0) = xx*yx;
+    M66(5,1) = xy*yy;
+    M66(5,2) = xz*yz;
+
+    M66(3,3) = yy*zz+yz*zy;
+    M66(3,4) = yx*zz+yz*zx;
+    M66(3,5) = yx*zy+yy*zx;
+
+    M66(4,3) = xy*zz+xz*zy;
+    M66(4,4) = xx*zz+xz*zx;
+    M66(4,5) = xx*zy+xy*zx;
+
+    M66(5,3) = xy*yz+xz*yy;
+    M66(5,4) = xx*yz+xz*yx;
+    M66(5,5) = xx*yy+xy*yx;
+
+	return M66;
+}
+
+Matrix6d rotate_6d_compl_modu(Matrix6d modulus, Matrix3d rotate_matrix)
+{
+    Matrix6d M66 = cal_rotation_trans_6d_for_compl(rotate_matrix);
+    return M66*modulus*M66.transpose();
+}
+
+Matrix6d cal_rotation_trans_6d_for_compl(Matrix3d M){
+	Matrix6d M66;
+    double xx,yy,zz,yz,xz,xy,yx,zx,zy;
+    xx = M(0,0); 
+    yy = M(1,1);
+    zz = M(2,2);
+    yz = M(1,2);
+    xz = M(0,2);
+    xy = M(0,1);
+	yx = M(1,0);
+	zx = M(2,0);
+	zy = M(2,1);
+
+    for(int i = 0; i < 3; i++)
+        for(int j = 0; j < 3; j++)
+    M66(i,j) = M(i,j)*M(i,j);
+
+    M66(0,3) = xy*xz;
+    M66(0,4) = xx*xz;
+    M66(0,5) = xx*xy;
+
+    M66(1,3) = yy*yz;
+    M66(1,4) = yx*yz;
+    M66(1,5) = yx*yy;
+
+    M66(2,3) = zy*zz;
+    M66(2,4) = zx*zz;
+    M66(2,5) = zx*zy;
+
+    M66(3,0) = 2*yx*zx;
+    M66(3,1) = 2*yy*zy;
+    M66(3,2) = 2*yz*zz;
+
+    M66(4,0) = 2*xx*zx;
+    M66(4,1) = 2*xy*zy;
+    M66(4,2) = 2*xz*zz;
+
+    M66(5,0) = 2*xx*yx;
+    M66(5,1) = 2*xy*yy;
+    M66(5,2) = 2*xz*yz;
+
+    M66(3,3) = yy*zz+yz*zy;
+    M66(3,4) = yx*zz+yz*zx;
+    M66(3,5) = yx*zy+yy*zx;
+
+    M66(4,3) = xy*zz+xz*zy;
+    M66(4,4) = xx*zz+xz*zx;
+    M66(4,5) = xx*zy+xy*zx;
+
+    M66(5,3) = xy*yz+xz*yy;
+    M66(5,4) = xx*yz+xz*yx;
+    M66(5,5) = xx*yy+xy*yx;
+
+	return M66;
+}
+
+int sign(double x){
+    return (0 < x) - (x < 0);
+}
+
+double calc_equivalent_value(Matrix3d mat){
+    Matrix3d dev_mat = mat - Matrix3d::Identity() * mat.trace();
+    double sum = (dev_mat.cwiseProduct(dev_mat)).sum();
+    return sqrt(2./3. * sum);
+}
+
+double cal_cosine(Vector3d vec_i, Vector3d vec_j){
+   return vec_i.dot(vec_j)/(vec_i.norm() * vec_j.norm());
+}
+
+
+Vector4d get_twin_euler_vec(Matrix3d euler, double weight, Vector3d n_twin){
+    Vector4d vector_out;
+    Matrix3d twin_rotation = n_twin * n_twin.transpose() * 2 - Matrix3d::Identity();
+    Matrix3d rotated_euler = twin_rotation * euler;
+    vector_out << Euler_trans(rotated_euler), weight;
+    return vector_out;
 }

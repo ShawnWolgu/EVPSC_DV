@@ -1,6 +1,6 @@
 #include "Polycrystals.h"
-#include "func.h"
 #include "global.h"
+#include <memory>
 
 using namespace Polycs;
 using namespace std;
@@ -187,10 +187,35 @@ void polycrystal::set_ISdot(Vector6i Min){ISdot = Min;}
 int polycrystal::grains_n(int n)
 {
     grains_num = n;
-    g = new grain[n];
+    g = new grain[n*20];
     //change the number of grains
     for(int i = 0; i < n; i++)  g[i].grain_i = i;
     return 0;
+}
+
+// New grain born based on the parent grain. Under tested
+int polycrystal::add_grain(Vector4d vin, int tp_id, int mode_id){
+    logger.debug("Add a new grain because of the twin sys " + to_string(mode_id) + " in grain " + to_string(tp_id));
+    /* grain* g_tmp = new grain(g[tp_id]); */
+    grains_num++;
+    int id = grains_num-1;
+    g[id] = *new grain(g[tp_id]);
+    g[id].grain_i = id;
+    g[id].ini_euler_g(vin);
+    g[id].ini_gmode_g(g[tp_id]);
+    /* g[id].lat_hard_mat = g[tp_id].lat_hard_mat; */
+    g[id].set_stress_g(g[tp_id].get_stress_g());
+    /* g[id].print_latent_matrix(); */
+    if (mode_id != -1){
+        if (Twin* twinPtr = dynamic_cast<Twin*>(g[id].gmode[mode_id])){
+            twinPtr->set_parent(tp_id);
+        }
+    }
+    /* for(int j = 0; j < g[id].modes_num; ++j){ */
+    /*     g[id].gmode[j]->update_status(g[id],0.0); */
+        /* g[id].gmode[j]->print(); */
+    /* } */
+    return id;
 }
 
 int polycrystal::check_grains_n()
@@ -207,8 +232,10 @@ void polycrystal::Norm_weight()
     for(int i = 0; i < grains_num; i++)
         total_w += g[i].get_weight_g();
     
-    for(int i = 0; i < grains_num; i++)
+    for(int i = 0; i < grains_num; i++){
         g[i].set_weight_g(g[i].get_weight_g()/total_w);
+        g[i].weight_ref = g[i].get_weight_g();
+    }
 
 }
 
@@ -317,7 +344,7 @@ int polycrystal::ini_gmode(json &j)
 {
     for(int i = 0; i < grains_num; i++)
     {
-	g[i].ini_gmode_g(j);
+        g[i].ini_gmode_g(j);
     }
     return 0;
 }
@@ -340,29 +367,18 @@ void polycrystal::ini_from_json(json &sx_json){
     ini_gmode(sx_json);
     for(int i = 0; i < grains_num; ++i) g[i].set_lat_hard_mat();
     logger.debug("Latent hardening matrix:");
-    logger.debug(g[0].lat_hard_mat);
-    if (g[0].gmode[0].flag_harden == 1){
+    g[0].print_latent_matrix();
 	for(int i = 0; i < grains_num; ++i){
 	   for(int j = 0; j < g[i].modes_num; ++j){
-	       g[i].gmode[j].update_status(g[i],0.0);
+	       g[i].gmode[j]->update_status(g[i],0.0);
 	   }
 	}
-    }
 }
 
 
 int polycrystal::ini_GZ(double x)
 {
     GZ = x;
-    return 0;
-}
-
-int polycrystal::ini_hardening(double nrsx_in, VectorXd CRSS_p_in, VectorXd hst_in, int modei, int modes_count)
-{
-    for(int i = 0; i < grains_num; i++)
-    {
-        g[i].ini_hardening_g(nrsx_in, CRSS_p_in, hst_in, modei, modes_count);
-    }
     return 0;
 }
 
@@ -970,8 +986,8 @@ int polycrystal::EVPSC(int istep, double Tincr,\
         errd = Errorcal(Dij_m, Dij_in);
         err_g = Errorcal(Sig_AV, sig_in_AV);
         double err_stress = Errorcal(Sig_AV, Sig_m);
-        logger.debug("Sig_AV: "); logger.debug(Sig_AV);
-        logger.debug("Sig_m: "); logger.debug(Sig_m);
+        /* logger.debug("Sig_AV: "); logger.debug(Sig_AV); */
+        /* logger.debug("Sig_m: "); logger.debug(Sig_m); */
         err_av = std::max({errs, errd, err_g})/(errS_m + errD_m + err_g_AV) * 4;
         if ((err_av / error_SC) > 1.01) break_counter += 1;
         error_SC = err_av;
@@ -982,7 +998,7 @@ int polycrystal::EVPSC(int istep, double Tincr,\
         logger.notice("Error between stress tensors:\t" + std::to_string(err_stress));
         logger.notice("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
         if((errs<errS_m)&&(errd<errD_m)&&(err_g<err_g_AV)&&(err_stress<=err_g_AV*1.)) break;
-        if((errs<0.1* errS_m)&&(errd<0.1*errD_m)&&(err_g<0.1* err_g_AV)) break;
+        if((errs<0.1* errS_m)&&(errd<0.1*errD_m)&&(err_g<0.1* err_g_AV)&&(err_stress<=err_g_AV*10.)) break;
         if ((i == max_iter) || (break_counter == break_th) )return 1;
     }
 
@@ -999,7 +1015,9 @@ int polycrystal::EVPSC(int istep, double Tincr,\
     // crystalline orientation 
      for(int G_n = 0; G_n < grains_num; ++G_n)
     {
-        g[G_n].Update_shear_strain(Tincr);
+        logger.debug("Stress in grain " + std::to_string(G_n) + ":");
+        logger.debug(g[G_n].get_stress_g());
+        g[G_n].Update_shear_strain(Tincr);//seems this function is no more needed
         g[G_n].update_strain(Tincr);
         if(Iupdate_ori) g[G_n].update_orientation(Tincr, Wij_m, Dije_AV, Dijp_AV);
         if(Iupdate_CRSS) g[G_n].update_modes(Tincr);
@@ -1008,6 +1026,7 @@ int polycrystal::EVPSC(int istep, double Tincr,\
             g[G_n].Update_Fij_g(Tincr);
             if(Iupdate_shp) g[G_n].Update_shape_g();
         }
+        if(Iupdate_CRSS) update_twin_control();
     }
     return 0;
 }
@@ -1159,3 +1178,20 @@ void polycrystal::get_euler(fstream &texfile)
 
 Vector3d polycrystal::get_ell_axis(){return ell_axis;}
 Vector3d polycrystal::get_ellip_ang(){return ellip_ang;}
+
+void polycrystal::update_twin_control(){
+    double V_eff = 0., V_acc = 0., A_1 = -1., A_2 = -1.;
+    for (int G_n = 0; G_n < grains_num; G_n++){
+        V_eff += g[G_n].child_frac * g[G_n].get_weight_g();
+        V_acc += (g[G_n].twin_term_flag == true) ? g[G_n].get_weight_g() : 0;
+        if (A_1 > -0.01 && A_2 > -0.01) continue;
+        for (int imode = 0; imode < g[G_n].modes_num; imode++){
+            if (g[G_n].gmode[imode]->type != mode_type::twin) continue;
+            if (A_1 < 0.) A_1 = g[G_n].gmode[imode]->harden_params[5];
+            if (A_2 < 0.) A_2 = g[G_n].gmode[imode]->harden_params[6];
+            break;
+        }
+    }
+    twin_threshold = min(1.0, A_1 + A_2 * (V_eff / V_acc));
+}
+

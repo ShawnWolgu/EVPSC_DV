@@ -26,6 +26,7 @@ void add_trans_miller(string crysym, json &sx_json);
 void add_lattice_const(VectorXd ccon, json &sx_json);
 void add_elastic_constant(MatrixXd Cij6, json &sx_json);
 void add_thermal_coefficient(VectorXd ther, json &sx_json);
+void conjugate_mode_config(json &sx_per_mode);
 vector<double> get_vector(MatrixXd &matrix);
 vector<double> get_vector(VectorXd &matrix);
 MatrixXd cal_sn_info(MatrixXd &Min, vector<double> Mabc, vector<double> Trans_Miller, int Miller_n, int system_n);

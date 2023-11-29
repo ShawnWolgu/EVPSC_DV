@@ -11,7 +11,7 @@ Process::Process()
     ss_out << setw(11) << "S32" << setw(11)<< "S13" << setw(11)<< "S12" << endl;
     tex_out.open("Tex.out",ios::out);
     disloc_out.open("Disloc.csv",ios::out);
-    time_out.open("RunTimeFrac.csv",ios::out);
+    /* time_out.open("RunTimeFrac.csv",ios::out); */
     rate_out.open("Rate.csv",ios::out);
     crss_out.open("CRSS.csv",ios::out);
     rss_out.open("RSS.csv",ios::out);
@@ -28,7 +28,7 @@ Process::~Process()
     ss_out.close();
     tex_out.close();
     disloc_out.close();
-    time_out.close();
+    /* time_out.close(); */
     rate_out.close();
     crss_out.close();
     euler_out.close();
@@ -133,40 +133,40 @@ void Process::init_grain_info(Polycs::polycrystal &pcrys, int num){
     grain *g_this = &pcrys.g[num];
     int mode_num = g_this->modes_num;
     
-    disloc_out << "EVM,Saturation";
+    disloc_out << "EVM";
     for(int i = 0; i < mode_num; ++i) disloc_out << "," << "Mode" << i+1;
     disloc_out << endl;
     disloc_out << calc_equivalent_value(g_this->get_strain_g()) << ", ";
-    disloc_out << g_this->gmode[0].rho_sat;
-    for(int i = 0; i < mode_num; ++i) disloc_out << "," << g_this->gmode[i].disloc_density;
+    /* disloc_out << g_this->gmode[0].rho_sat; */
+    for(int i = 0; i < mode_num; ++i) disloc_out << "," << g_this->gmode[i]->disloc_density;
     disloc_out << endl;
     
-    time_out << "EVM";
-    for(int i = 0; i < mode_num; ++i) time_out << "," << "Mode" << i+1;
-    time_out << endl;
-    time_out << calc_equivalent_value(g_this->get_strain_g());
-    for(int i = 0; i < mode_num; ++i) time_out << "," << (g_this->gmode[i].t_run)/(g_this->gmode[i].t_wait + g_this->gmode[i].t_run);
-    time_out << endl;
+    /* time_out << "EVM"; */
+    /* for(int i = 0; i < mode_num; ++i) time_out << "," << "Mode" << i+1; */
+    /* time_out << endl; */
+    /* time_out << calc_equivalent_value(g_this->get_strain_g()); */
+    /* for(int i = 0; i < mode_num; ++i) time_out << "," << (g_this->gmode[i].t_run)/(g_this->gmode[i].t_wait + g_this->gmode[i].t_run); */
+    /* time_out << endl; */
     
     rate_out << "EVM";
     for(int i = 0; i < mode_num; ++i) rate_out << "," << "Mode" << i+1;
     rate_out << endl;
     rate_out << calc_equivalent_value(g_this->get_strain_g());
-    for(int i = 0; i < mode_num; ++i) rate_out << "," << abs(g_this->gmode[i].strain_rate_slip);
+    for(int i = 0; i < mode_num; ++i) rate_out << "," << abs(g_this->gmode[i]->shear_rate);
     rate_out << endl;
 
     crss_out << "EVM";
     for(int i = 0; i < mode_num; ++i) crss_out << "," << "Mode" << i+1;
     crss_out << endl;
     crss_out << calc_equivalent_value(g_this->get_strain_g());
-    for(int i = 0; i < mode_num; ++i) crss_out << "," << g_this->gmode[i].crss;
+    for(int i = 0; i < mode_num; ++i) crss_out << "," << g_this->gmode[i]->crss;
     crss_out << endl;
 
     rss_out << "EVM";
     for(int i = 0; i < mode_num; ++i) rss_out << "," << "Mode" << i+1;
     rss_out << endl;
     rss_out << calc_equivalent_value(g_this->get_strain_g());
-    for(int i = 0; i < mode_num; ++i) rss_out << "," << g_this->gmode[i].rss;
+    for(int i = 0; i < mode_num; ++i) rss_out << "," << g_this->gmode[i]->rss;
     rss_out << endl;
     
     euler_out << "EVM,phi1,PHI,phi2\n";
@@ -210,24 +210,24 @@ void Process::Out_grain_info(Polycs::polycrystal &pcrys, int num){
     int mode_num = g_this->modes_num;
 
     disloc_out << calc_equivalent_value(g_this->get_strain_g()) << ", ";
-    disloc_out << g_this->gmode[0].rho_sat;
-    for(int i = 0; i < mode_num; ++i) disloc_out << "," << g_this->gmode[i].disloc_density;
+    /* disloc_out << g_this->gmode[0].rho_sat; */
+    for(int i = 0; i < mode_num; ++i) disloc_out << "," << g_this->gmode[i]->disloc_density;
     disloc_out << endl;
     
-    time_out << calc_equivalent_value(g_this->get_strain_g());
-    for(int i = 0; i < mode_num; ++i) time_out << "," << (g_this->gmode[i].t_run)/(g_this->gmode[i].t_wait + g_this->gmode[i].t_run);
-    time_out << endl;
+    /* time_out << calc_equivalent_value(g_this->get_strain_g()); */
+    /* for(int i = 0; i < mode_num; ++i) time_out << "," << (g_this->gmode[i].t_run)/(g_this->gmode[i].t_wait + g_this->gmode[i].t_run); */
+    /* time_out << endl; */
     
     rate_out << calc_equivalent_value(g_this->get_strain_g());
-    for(int i = 0; i < mode_num; ++i) rate_out << "," << abs(g_this->gmode[i].strain_rate_slip);
+    for(int i = 0; i < mode_num; ++i) rate_out << "," << abs(g_this->gmode[i]->shear_rate);
     rate_out << endl;
     
     crss_out << calc_equivalent_value(g_this->get_strain_g());
-    for(int i = 0; i < mode_num; ++i) crss_out << "," << g_this->gmode[i].crss;
+    for(int i = 0; i < mode_num; ++i) crss_out << "," << g_this->gmode[i]->crss;
     crss_out << endl;
     
     rss_out << calc_equivalent_value(g_this->get_strain_g());
-    for(int i = 0; i < mode_num; ++i) rss_out << "," << g_this->gmode[i].rss;
+    for(int i = 0; i < mode_num; ++i) rss_out << "," << g_this->gmode[i]->rss;
     rss_out << endl;
     
     euler_out << calc_equivalent_value(g_this->get_strain_g());

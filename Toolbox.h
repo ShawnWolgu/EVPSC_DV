@@ -1,16 +1,17 @@
 #ifndef TOOLBOX_H
 #define TOOLBOX_H
 
-#if __INTELLISENSE__
-#undef __ARM_NEON
-#undef __ARM_NEON__
-#endif
-
 #include <iostream>
 #include <Eigen/Dense>
+#include <Eigen/Eigenvalues>
 #include <cmath>
 #include <vector>
 #include <nlohmann/json.hpp>
+#include <cstdlib>
+#include <fstream>
+#include <string>
+#include <time.h> 
+#include <math.h>
 
 #define SQR2 1.41421356237309
 #define RSQ2 0.70710678118654744
@@ -18,12 +19,19 @@
 #define RSQ6 0.40824829046386304
 
 using namespace std;
-using namespace Eigen;
 using json = nlohmann::json;
+using namespace Eigen;
+using Eigen::Matrix3d, Eigen::Vector3d, Eigen::Matrix, Eigen::MatrixXd, Eigen::all, Eigen::last;
+typedef Matrix<double, 6, 1> Vector6d;
+typedef Matrix<double, 6, 6> Matrix6d;
 
 //
 #define Intn 10 //number of integral points in Eshelby calculation
 #define Mtr 8 //number of Multithread
+#define pi 3.14159265358979323846
+#define k_boltzmann 1.380649e-23
+#define eV_to_J 1.60217662e-19
+#define MPa_to_Pa 1e6
 //
 typedef Matrix<double, 6, 6> Matrix6d;
 typedef Matrix<double,5,5> Matrix5d;
@@ -170,4 +178,12 @@ int Jacobi(Matrix3d A,Vector3d &D,Matrix3d &V);
 
 MatrixXd to_matrix(json &j, string key, int n, int m);
 VectorXd to_vector(json &j, string key, int n);
+
+
+int sign(double x);
+double cal_cosine(Vector3d vec_i, Vector3d vec_j);
+double calc_equivalent_value(Matrix3d mat);
+Matrix6d rotate_6d_stiff_modu(Matrix6d modulus, Matrix3d rotate_matrix);
+Matrix6d rotate_6d_compl_modu(Matrix6d modulus, Matrix3d rotate_matrix);
+Vector4d get_twin_euler_vec(Matrix3d euler, double weight, Vector3d n_twin);
 #endif

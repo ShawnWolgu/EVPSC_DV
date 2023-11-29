@@ -1,8 +1,12 @@
 #include "global.h"
+#include "Polycrystals.h"
+#include "Processes.h"
 using namespace std;
 
 double temp_K = 0.0;
 Logger logger;
+Polycs::polycrystal global_polycrys;
+Procs::Process global_proc;
 
 void update_progress(double progress_f)
 {
