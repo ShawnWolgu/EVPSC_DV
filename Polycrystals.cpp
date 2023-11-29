@@ -1172,7 +1172,14 @@ void polycrystal::get_euler(fstream &texfile)
     for(int i = 0; i < grains_num; i++)
     {
         texfile << setprecision(4) << scientific << g[i].get_euler_g().transpose().format(Outformat) << "  ";
-        texfile << setprecision(4) << scientific << g[i].get_weight_g() << endl;
+        texfile << setprecision(4) << scientific << g[i].get_weight_g_eff() << endl;
+        for (int j = 0; j < g[i].modes_num; j++)
+        {
+            if (g[i].gmode[j]->type != mode_type::twin) continue;
+            if (g[i].gmode[j]->disloc_density < 0.001) continue;//disloc_density is child_frac for twinG mode;
+            texfile << setprecision(4) << scientific << g[i].get_euler_g(j).transpose().format(Outformat) << "  ";
+            texfile << setprecision(4) << scientific << g[i].get_weight_g(j) << endl;
+        }
     }
 }
 

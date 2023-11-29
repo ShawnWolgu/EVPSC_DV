@@ -87,8 +87,11 @@ class grain
         //input the euler angle and weights
         void ini_euler_g(Vector4d);
         Vector3d get_euler_g();
+        Vector3d get_euler_g(int mode_num);
         Matrix3d get_Euler_M_g();
         double get_weight_g();
+        double get_weight_g_eff();
+        double get_weight_g(int mode_num);
         void set_weight_g(double);
 
         //input the number of deformation modes
@@ -230,7 +233,7 @@ class PMode
          * [Slip parameters : Voce model]
          * * 0. tau_0, 1. tau_1, 2. h_0, 3. h_1
          * [Twin parameters]
-         * 0. tau_0, 1. tau_1, 2. h_0, 3. h_1, 4. twin_strain, 5. A1 6. A2
+         * 0. tau_0, 1. tau_1, 2. h_0, 3. h_1, 4. twin_strain, 5. A1 6. A2, 7. ref_rate
          */
         vector<double> harden_params, update_params, latent_params;
         double rate_sen, shear_rate, drate_dtau, shear_modulus, disloc_density, crss, acc_strain, rss = 0.0;
@@ -306,6 +309,36 @@ class Twin : public PMode
         int grain_link = -1;
         double t_wait = 0.0, t_run = 0.0, rho_sat = 0.0, child_frac = 0.0;
         void set_parent(int parent_id);
+        // Override funcs
+        void check_hardening_mode() override;
+        void check_sn_mode() override;
+        void update_status(grain &grain, double dtime) override; //update the status of slip/twinning system
+        void update_ssd(Matrix3d strain_rate, double dtime) override;
+        void cal_strain_rate(Matrix3d stress_tensor) override;
+        void cal_drate_dtau(Matrix3d stress_tensor) override;
+        void print() override;
+        void set_status(twin_status s);
+        twin_status get_status() { return status; };
+    };
+
+
+class TwinG : public PMode
+{
+    protected:
+        int flag_harden;
+        double disloc_velocity = 0.0;
+
+    private:
+        twin_status status = twin_status::inactive;
+        double equivalent_frac = 0.0;
+
+    public:
+        TwinG();
+        TwinG(json &j_twin);
+        TwinG(TwinG* t_mode, bool a);
+        int grain_link = -1;
+        double t_wait = 0.0, t_run = 0.0, rho_sat = 0.0, child_frac = 0.0;
+        Vector4d euler_twin;
         // Override funcs
         void check_hardening_mode() override;
         void check_sn_mode() override;

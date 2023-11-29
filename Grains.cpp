@@ -52,7 +52,7 @@ grain::grain(const grain& tp){
                 gmode[i] = new Slip(*(Slip*)tp.gmode[i]);
                 break;
             case mode_type::twin:
-                gmode[i] = new Twin(*(Twin*)tp.gmode[i]);
+                gmode[i] = new TwinG(*(TwinG*)tp.gmode[i]);
                 break;
             case mode_type::undefined:
                 gmode[i] = new PMode(*(PMode*)tp.gmode[i]);
@@ -106,7 +106,7 @@ grain& grain::operator=(const grain& tp){
                 gmode[i] = new Slip(*(Slip*)tp.gmode[i]);
                 break;
             case mode_type::twin:
-                gmode[i] = new Twin(*(Twin*)tp.gmode[i]);
+                gmode[i] = new TwinG(*(TwinG*)tp.gmode[i]);
                 break;
             case mode_type::undefined:
                 gmode[i] = new PMode(*(PMode*)tp.gmode[i]);
@@ -143,9 +143,30 @@ void grain::ini_euler_g(Vector4d vin)
 
 Vector3d grain::get_euler_g(){return Euler_trans(Euler_M);}
 
+Vector3d grain::get_euler_g(int mode_num){
+    if (gmode[mode_num]->type != mode_type::twin){
+        logger.error("Not a twin, cannot output euler");
+        return Vector3d::Zero();
+    }
+    Vector4d euler_vec = ((TwinG*)gmode[mode_num])->euler_twin;
+    Vector3d v_out; v_out << euler_vec(0), euler_vec(1), euler_vec(2);
+    return v_out;
+}
+
 Matrix3d grain::get_Euler_M_g(){return Euler_M;}
 
 double grain::get_weight_g(){return weight;}
+
+double grain::get_weight_g(int mode_num){
+    if (gmode[mode_num]->type != mode_type::twin){
+        logger.error("Not a twin, cannot output euler");
+        return 0;
+    }
+    Vector4d euler_vec = ((TwinG*)gmode[mode_num])->euler_twin;
+    return euler_vec(3);
+}
+
+double grain::get_weight_g_eff(){return weight * (1-child_frac);}
 
 void grain::set_weight_g(double w){weight = w;}
 
@@ -168,7 +189,7 @@ int grain::ini_gmode_g(json &j)
                 gmode[i] = new Slip(j_mode);
                 break;
             case 1:
-                gmode[i] = new Twin(j_mode);
+                gmode[i] = new TwinG(j_mode);
                 break;
             case 2:
                 gmode[i] = new PMode(j_mode);
@@ -199,7 +220,7 @@ int grain::ini_gmode_g(grain &tp)
                 gmode[i] = new Slip((Slip*)tp.gmode[i], new_mode);
                 break;
             case mode_type::twin:
-                gmode[i] = new Twin((Twin*)tp.gmode[i], new_mode);
+                gmode[i] = new TwinG((TwinG*)tp.gmode[i], new_mode);
                 break;
             case mode_type::undefined:
                 gmode[i] = new PMode((PMode*)tp.gmode[i], new_mode);
@@ -766,24 +787,22 @@ void grain::update_orientation(double Tincr, Matrix3d Wij_m, Matrix3d Dije_AV, M
 void grain::update_modes(double Tincr)
 {
     for(int i = 0; i < modes_num; i++)	gmode[i]->update_ssd(Dij_g, Tincr);
-    /* for(int i = 0; i < modes_num; i++)	gmode[i].update_lhparams(Dij_g); */
-    for(int i = 0; i < modes_num; i++)	gmode[i]->update_status(*this, Tincr);
     child_frac = 0.;
     for (int i = 0; i < modes_num; i++) {
         if (gmode[i]->type != mode_type::twin) continue;
-        double probe_child_frac = ((Twin*)gmode[i])->child_frac;
+        double probe_child_frac = ((TwinG*)gmode[i])->child_frac;
         child_frac += probe_child_frac;
     }
-    weight = (1-child_frac) * weight_ref;
     if (child_frac > global_polycrys.twin_threshold) {
         twin_term_flag = true;
         for (int i = 0; i < modes_num; i++) {
             if (gmode[i]->type != mode_type::twin) continue;
-            if (((Twin*)gmode[i])->get_status() == twin_status::governed) continue;
-            ((Twin*)gmode[i])->set_status(twin_status::saturated);
+            ((TwinG*)gmode[i])->set_status(twin_status::saturated);
         }
     }
     else twin_term_flag = false;
+    /* for(int i = 0; i < modes_num; i++)	gmode[i].update_lhparams(Dij_g); */
+    for(int i = 0; i < modes_num; i++)	gmode[i]->update_status(*this, Tincr);
     gamma_total += gamma_delta;
 }
 
