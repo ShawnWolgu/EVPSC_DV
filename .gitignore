@@ -9,3 +9,5 @@ debug/*
 .vimspector.json
 .DS*
 .cache/*
+debug_cases/01_SingleCrystals/*.py
+
