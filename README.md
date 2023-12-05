@@ -8,6 +8,7 @@ To compile this code you can use cmake and refer to the CMakeLists.txt example. 
 - Eigen3
 - nlohmann-json
 - OpenMP
+
 make sure the correct link has been made in your environment.
 
 ## Examples
