@@ -10,4 +10,4 @@ debug/*
 .DS*
 .cache/*
 debug_cases/01_SingleCrystals/*.py
-
+.nvim.lua
