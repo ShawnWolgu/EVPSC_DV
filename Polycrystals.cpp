@@ -998,7 +998,7 @@ int polycrystal::EVPSC(int istep, double Tincr,\
         logger.notice("Error between stress tensors:\t" + std::to_string(err_stress));
         logger.notice("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
         if((errs<errS_m)&&(errd<errD_m)&&(err_g<err_g_AV)&&(err_stress<=err_g_AV*1.)) break;
-        if((errs<0.1* errS_m)&&(errd<0.1*errD_m)&&(err_g<0.1* err_g_AV)&&(err_stress<=err_g_AV*10.)) break;
+        if((errs<0.01* errS_m)&&(errd<0.01*errD_m)&&(err_g<0.01* err_g_AV)) break;
         if ((i == max_iter) || (break_counter == break_th) )return 1;
     }
 
