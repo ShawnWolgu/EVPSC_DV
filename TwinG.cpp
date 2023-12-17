@@ -119,6 +119,7 @@ void TwinG::cal_drate_dtau(Matrix3d stress_tensor){
 }
 
 void TwinG::update_status(grain &gr, double dtime){
+    temperature = gr.temperature;
     double Gamma = 0;
     double tau_0 = harden_params[0], tau_1 = harden_params[1], h_0 = harden_params[2], h_1 = harden_params[3], \
            twin_shear = harden_params[4], upper_bound = global_polycrys.twin_threshold;

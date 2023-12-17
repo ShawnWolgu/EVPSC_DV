@@ -100,7 +100,7 @@ class polycrystal
         
         grain* g = NULL;
         int grains_num = 0;
-        double error_SC = 0., twin_threshold = 1.;
+        double error_SC = 0., twin_threshold = 1., temperature_poly = 298.;
         Matrix3d Dij_m; //the macro strain rate tensor
         Vector5d DVP_AV;
         Matrix5d M_VP_SC; //The visco-plastic compliance C_VP_SC^-1

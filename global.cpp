@@ -3,7 +3,7 @@
 #include "Processes.h"
 using namespace std;
 
-double temp_K = 0.0;
+double temp_atmosphere = 0.0;
 Logger logger;
 Polycs::polycrystal global_polycrys;
 Procs::Process global_proc;

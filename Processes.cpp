@@ -63,6 +63,7 @@ void Process::get_IUdot(Matrix3i Min){IUDWdot = Min;}
 void Process::get_ISdot(Vector6i Vin){ISdot = Vin;}
 
 void Process::loading(Polycs::polycrystal &pcrys){
+    pcrys.temperature_poly = Temp;
     pcrys.set_BC_const(UDWdot_input, Sdot_input, IUDWdot, ISdot);
     Out_sscurves(pcrys);
     double coeff_step = 1, current_step = 1.;

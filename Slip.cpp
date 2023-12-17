@@ -160,6 +160,7 @@ void Slip::update_status(grain &gr_, double dtime){
     Vector3d update_nv = plane_norm;
     /* Pij = 0.5 * (update_bv / update_bv.norm() * update_nv.transpose() + update_nv * update_bv.transpose()/update_bv.norm()); */
     /* Rij = 0.5 * (update_bv / update_bv.norm() * update_nv.transpose() - update_nv * update_bv.transpose()/update_bv.norm()); */
+    temperature = gr_.temperature;
 
     switch (flag_harden)
     {

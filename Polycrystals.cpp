@@ -1010,6 +1010,12 @@ int polycrystal::EVPSC(int istep, double Tincr,\
         Update_Fij(Tincr);
         if(Iupdate_shp) Update_shape();
     }
+    // Update temperature in grains here
+    temperature_poly = 0.0;
+    for(int G_n = 0; G_n < grains_num; ++G_n){
+        g[G_n].update_temperature(Tincr);
+        temperature_poly += g[G_n].temperature * g[G_n].get_weight_g();
+    }
 
     //update the state in deformation systems and 
     // crystalline orientation 

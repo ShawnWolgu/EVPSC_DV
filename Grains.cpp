@@ -863,3 +863,11 @@ void grain::print_latent_matrix(){
         mat_row = "";
     }
 }
+
+// A default template of the temperature evolution
+void grain::update_temperature(double Tincr)
+{
+    double t_a = temp_atmosphere; // temperature of the atmosphere is a global variable, which can be directly used here
+    double t_poly = global_polycrys.temperature_poly; // temperature of the polycrystal can be used like this.
+    temperature = 298.0; // And this is the temperature of the grain, which is a local variable.
+}

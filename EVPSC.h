@@ -75,7 +75,7 @@ class grain
         int grain_i; // The Number
         int modes_num = 0;
         int if_stress = 0; //flag of stress calculation
-        double child_frac = 0.0, weight_ref = 0.0;
+        double child_frac = 0.0, weight_ref = 0.0, temperature = 298.0;
         bool twin_term_flag;
 
         grain();
@@ -206,6 +206,8 @@ class grain
         vector<vector<double>> lat_hard_mat;
         void set_lat_hard_mat();
         void print_latent_matrix();
+        // add temperature
+        void update_temperature(double Tincr);
     };
 
 class PMode
