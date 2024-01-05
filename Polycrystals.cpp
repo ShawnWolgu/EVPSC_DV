@@ -398,7 +398,7 @@ int polycrystal::Selfconsistent_E(int Istep, double ERRM, int ITMAX)
     //(Rotate from crystal to Sample axes according to the euler angle)
     // and sum with the weight
     // the result is CUB
-    Matrix6d CUB;
+    Matrix6d CUB; // CUB is the volume average Elastic stiffness of all grains
     CUB = Matrix6d::Zero();
     double C4SA[3][3][3][3];  // Elastic stiffness Rotate from crystal to Sample axes
     double C4SAS[3][3][3][3]; // ...in Jaumann rate
@@ -408,6 +408,7 @@ int polycrystal::Selfconsistent_E(int Istep, double ERRM, int ITMAX)
 
     double DUMMY = 0; //temporate variable in sum calculation;
 
+    // Calculate CUB
     for(int G_n = 0; G_n < grains_num; G_n++)
     {
         // -2  Rotate the tensor Cijkl in grain to Sample Axes
@@ -439,11 +440,6 @@ int polycrystal::Selfconsistent_E(int Istep, double ERRM, int ITMAX)
         CUB += Chg_basis6(C4SAS) * g[G_n].get_weight_g();
         // CUB is the volume average Elastic stiffness of all grains
     }
-    //cout << "SSC:\n" << SSC << endl;
-    //-1 Calculate the Elastic stiffness in Jaumann rate in all grains
-    //(Rotate to Sample axes according to the euler angle)
-    // and sum with the weight 
-    // the result is CUB
 
     if(Istep == 0)  
         CSC = CUB;  //first step, use the volume average
@@ -475,7 +471,6 @@ int polycrystal::Selfconsistent_E(int Istep, double ERRM, int ITMAX)
         //solve the eshelby tensor in the common ellipsoid
         if(Ishape == 0)
         {
-            //-4
             //rotate the macro Elastic stiffness 
             //from Sample axes to the ellipsoid axes;
             // if Ishape = 0, which means the grains share the same ellipsoid axes 
@@ -484,43 +479,24 @@ int polycrystal::Selfconsistent_E(int Istep, double ERRM, int ITMAX)
             //Rotate the self consistent Elastic stiffness (CSC)
             //from sample axes to ellipsoid axes
             Matrix6d C66 = rotate_C66(voigt(C4SA), axisb_t.transpose());
-            //-4
 
-            //-9
             //calculate the Eshelby tensor
             double S4_EA[3][3][3][3] = {0}; 
             double R4_EA[3][3][3][3] = {0};
-            
             int case_c = Eshelby_case(axis_t);
             g[0].Eshelby_E(S4_EA,R4_EA,axis_t,C66,Gpsets[case_c].Gpaa6,Gpsets[case_c].Gpaaww6,Gpsets[case_c].Gpalpha);
-            //-9
 
-            //-10
-            //rotate the eshelby tensor
-            //back to the sample axes
+            //rotate the eshelby tensor back to the sample axes
             S66 = voigttoB6(rotate_C66(voigt(S4_EA), axisb_t));
             rot_4th(R4_EA, axisb_t, R4_SA);
-            //-10
 
-            //-11
-            //Calculate Ctilde
-            //refer to Equ[5-33] in Manual 7d
-            //M~=(I-S)^-1 * S * M
-            //but here we used C~ = (M~)^-1
-            //that is 
-            // C~ = C * (S^-1 - I)
-            //-12 calculate (S)^-1
+            // Calculate Ctilde refer to Equ[5-33] in Manual 7d
+            // M~=(I-S)^-1 * S * M
+            // C~ = (M~)^-1 = C * (S^-1 - I)
             S66inv = S66.inverse(); // 6x6 of S^-1
-            Matrix6d S66inv_I; // 6x6 of (S^-1 - I)
-            //for(int i = 0; i < 6; i++)
-            //    for(int j = 0; j < 6; j++)
-            //        S66inv_I(i,j) = S66inv(i,j) - Iij(i,j);
-            S66inv_I = S66inv - Matrix6d::Identity();
-            //-12
-            // C~ = C * (S^-1 - I)
+            Matrix6d S66inv_I = S66inv - Matrix6d::Identity(); // 6x6 of (S^-1 - I)
             Ctilde = CSC * S66inv_I;
-            //-11
-	    //cout << "S66: " << S66 << endl;
+
         }
         //end of Ishape == 0
 
@@ -528,54 +504,34 @@ int polycrystal::Selfconsistent_E(int Istep, double ERRM, int ITMAX)
         //#pragma omp parallel for num_threads(Mtr)
         for(int G_n = 0; G_n < grains_num; G_n++)
         {
-	    //logger.debug("SC_E: Thread " + std::to_string(omp_get_thread_num()) + " is processing grain " + std::to_string(G_n));
             //solve the eshelby tensor in all the ellipsoid of grain 
             if(Ishape == 1)
             {
-                //-7
-                //rotate the macro Elastic stiffness
-                //from Sample axes to the ellipsoid axes;
+                //rotate the macro Elastic stiffness from sample axes to the ellipsoid axes;
                 // if Ishape = 1, which means the ellipsoid axes varies in grains,
                 axis_t = g[G_n].get_ell_axis_g();
                 axisb_t = g[G_n].get_ell_axisb_g();
                 Matrix6d C66 = rotate_C66(CSC, axisb_t.transpose());
 
-                //-9
                 //calculate the Eshelby tensor
                 double S4_EA[3][3][3][3] = {0}; 
                 double R4_EA[3][3][3][3] = {0};
                 int case_c = Eshelby_case(axis_t);
                 g[G_n].Eshelby_E(S4_EA,R4_EA,axis_t,C66,Gpsets[case_c].Gpaa6,Gpsets[case_c].Gpaaww6,Gpsets[case_c].Gpalpha);
-                //-9
 
-                //-10
                 //rotate the eshelby tensor
                 //back to the sample axes
                 S66 = rotate_C66(voigt(S4_EA), axisb_t);
                 rot_4th(R4_EA, axisb_t, R4_SA);
-                //-10
             
-                //-11
-                //Calculate Ctilde
-                //refer to Equ[5-33] in Manual 7d
-                //M~=(I-S)^-1 * S * M
-                //but here we used C~ = (M~)^-1
-                //that is 
-                // C~ = C * (S^-1 - I)
-                //-12 calculate (S)^-1
+                // Calculate Ctilde refer to Equ[5-33] in Manual 7d
+                // M~=(I-S)^-1 * S * M
+                // C~ = (M~)^-1 = C * (S^-1 - I)
                 S66inv = S66.inverse(); // 6x6 of S^-1
-                Matrix6d S66inv_I; // 6x6 of (S^-1 - I)
-                //for(int i = 0; i < 6; i++)
-                //    for(int j = 0; j < 6; j++)
-                //        S66inv_I(i,j) = S66inv(i,j) - Iij(i,j);
-                S66inv_I = S66inv - Matrix6d::Identity();
-                //-12
-                // C~ = C * (S^-1 - I)
+                Matrix6d S66inv_I = S66inv - Matrix6d::Identity();
                 Ctilde = CSC * S66inv_I;
-                //-11
             }
-            //-7 end of Ishape == 1;
-
+            // end of Ishape == 1;
 
             //-13 store some matrix into grain
             //store the C~
@@ -607,24 +563,15 @@ int polycrystal::Selfconsistent_E(int Istep, double ERRM, int ITMAX)
             SSC_new += Me_g * B_g * g[G_n].get_weight_g();
             //-15           
         } //loop over grains
-        //#pragma omp barrier
-        //#pragma omp master
-
-        //cout << "\nThe CNEW:\n" << CNEW << endl;
-        //-16
+        //
         //error between CSC and CNEW
         RER=Errorcal(SSC,SSC_new);
         SSC = 0.5*(SSC_new+SSC_new.transpose());
         CSC = SSC.inverse();
-	//cout << "SSC_end: " << SSC << endl;
-        //-16
 	logger.notice("**Error in  ESC iteration "+to_string(IT)+":\t"+to_string(RER));
 	if(isnan(RER)) return 1;
-
     } //while loop
-
     //SSC = Msup * Btovoigt(CSC.inverse());
-
     return 0;
 }
 
