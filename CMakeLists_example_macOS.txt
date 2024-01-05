@@ -20,3 +20,4 @@ link_directories(/usr/local/lib)
 target_link_libraries(EVPSC "-L/usr/local/lib -lomp")
 
 #此处修改为了测试是否可以进行github的交互
+第二次测试
