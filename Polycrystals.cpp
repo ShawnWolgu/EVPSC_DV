@@ -394,64 +394,41 @@ int polycrystal::check_hardening()
 
 int polycrystal::Selfconsistent_E(int Istep, double ERRM, int ITMAX)
 {
-    //-1 Calculate the Elastic stiffness in Jaumann rate in all grains
+    // Calculate the Elastic stiffness in Jaumann rate in all grains
     //(Rotate from crystal to Sample axes according to the euler angle)
     // and sum with the weight
     // the result is CUB
-    Matrix6d CUB;
+    Matrix6d CUB; // CUB is the volume average Elastic stiffness of all grains
     CUB = Matrix6d::Zero();
     double C4SA[3][3][3][3];  // Elastic stiffness Rotate from crystal to Sample axes
     double C4SAS[3][3][3][3]; // ...in Jaumann rate
     Matrix3d sig_g;
 
-    //cout << "\nCijkl:\n" << Cij6 << endl;
-
-    double DUMMY = 0; //temporate variable in sum calculation;
-
+    // Calculate CUB
     for(int G_n = 0; G_n < grains_num; G_n++)
     {
-        // -2  Rotate the tensor Cijkl in grain to Sample Axes
+        // Rotate the tensor Cijkl in grain to Sample Axes
         Matrix3d Euler_M = g[G_n].get_Euler_M_g();
         Matrix3d ET = Euler_M.transpose();
         voigt(rotate_C66(Cij6, ET), C4SA);
         g[G_n].Update_Cij6_SA_g(voigt(C4SA));
-        // -2  Rotate the tensor Cijkl in grain to Sample Axes
-
         sig_g = g[G_n].get_stress_g();
-
-        // -3 ( Eq[2.14] in Wang et al., 2010)
         // the elastic stiffness invovling Jaumann rate
         for(int i = 0; i < 3; i++)
             for(int j = 0; j < 3; j++)
                 for(int k = 0; k < 3; k++)
                     for(int l = 0; l < 3; l++)
-        {
-            C4SAS[i][j][k][l] = C4SA[i][j][k][l] - sig_g(i,j)*Iij(k,l);
-        //                        +0.5*Iij(i,k)*sig_g(j,l) \
-                                -0.5*Iij(i,l)*sig_g(j,l) \
-                                -0.5*Iij(j,l)*sig_g(i,k) \
-                                +0.5*Iij(j,k)*sig_g(i,l);
-        }
-        // -3 ( Eq[2.14] in Wang et al., 2010)
-        // the elastic stiffness invovling Jaumann rate 
+                        C4SAS[i][j][k][l] = C4SA[i][j][k][l] - sig_g(i,j)*Iij(k,l);
         g[G_n].Update_Mij6_J_g(Chg_basis6(C4SAS).inverse());
         //store the Jaumann rate elastic stiffness in grains
         CUB += Chg_basis6(C4SAS) * g[G_n].get_weight_g();
         // CUB is the volume average Elastic stiffness of all grains
     }
-    //cout << "SSC:\n" << SSC << endl;
-    //-1 Calculate the Elastic stiffness in Jaumann rate in all grains
-    //(Rotate to Sample axes according to the euler angle)
-    // and sum with the weight 
-    // the result is CUB
 
-    if(Istep == 0)  
-        CSC = CUB;  //first step, use the volume average
-	SSC = CSC.inverse();
-    
-    //-5
-    //loop to make the guessed elastic stiffness CSC
-    // to the Eshelby calculated CNEW 
+    if(Istep == 0)  CSC = CUB;  //first step, use the volume average
+    SSC = CSC.inverse();
+
+    //loop to make the guessed elastic stiffness CSC to the Eshelby calculated CNEW 
     Matrix6d SSC_new;
 
     int IT = 0; //loop flag
@@ -460,9 +437,8 @@ int polycrystal::Selfconsistent_E(int Istep, double ERRM, int ITMAX)
     {
         IT++;
         SSC_new = Matrix6d::Zero();
-
         Chg_basis(CSC, C4SA);
-        
+
         Matrix6d Ctilde;
         Matrix6d S66; //the Sijkl Equ[5-33] in sample axes in Manual 7d
         double R4_SA[3][3][3][3]; //PIijkl
@@ -475,121 +451,63 @@ int polycrystal::Selfconsistent_E(int Istep, double ERRM, int ITMAX)
         //solve the eshelby tensor in the common ellipsoid
         if(Ishape == 0)
         {
-            //-4
-            //rotate the macro Elastic stiffness 
-            //from Sample axes to the ellipsoid axes;
-            // if Ishape = 0, which means the grains share the same ellipsoid axes 
+            /* Rotate the macro Elastic stiffness from Sample axes to the ellipsoid axes; */
+            /* if Ishape = 0, which means the grains share the same ellipsoid axes  */
             axisb_t = ell_axisb; 
             axis_t = ell_axis; 
-            //Rotate the self consistent Elastic stiffness (CSC)
-            //from sample axes to ellipsoid axes
+            /* Rotate the self consistent Elastic stiffness (CSC) */
+            /* from sample axes to ellipsoid axes */
             Matrix6d C66 = rotate_C66(voigt(C4SA), axisb_t.transpose());
-            //-4
-
-            //-9
             //calculate the Eshelby tensor
             double S4_EA[3][3][3][3] = {0}; 
             double R4_EA[3][3][3][3] = {0};
-            
             int case_c = Eshelby_case(axis_t);
             g[0].Eshelby_E(S4_EA,R4_EA,axis_t,C66,Gpsets[case_c].Gpaa6,Gpsets[case_c].Gpaaww6,Gpsets[case_c].Gpalpha);
-            //-9
-
-            //-10
-            //rotate the eshelby tensor
-            //back to the sample axes
+            //rotate the eshelby tensor back to the sample axes
             S66 = voigttoB6(rotate_C66(voigt(S4_EA), axisb_t));
             rot_4th(R4_EA, axisb_t, R4_SA);
-            //-10
-
-            //-11
-            //Calculate Ctilde
-            //refer to Equ[5-33] in Manual 7d
-            //M~=(I-S)^-1 * S * M
-            //but here we used C~ = (M~)^-1
-            //that is 
-            // C~ = C * (S^-1 - I)
-            //-12 calculate (S)^-1
+            // Calculate Ctilde refer to Equ[5-33] in Manual 7d
+            // M~=(I-S)^-1 * S * M
+            // C~ = (M~)^-1 = C * (S^-1 - I)
             S66inv = S66.inverse(); // 6x6 of S^-1
-            Matrix6d S66inv_I; // 6x6 of (S^-1 - I)
-            //for(int i = 0; i < 6; i++)
-            //    for(int j = 0; j < 6; j++)
-            //        S66inv_I(i,j) = S66inv(i,j) - Iij(i,j);
-            S66inv_I = S66inv - Matrix6d::Identity();
-            //-12
-            // C~ = C * (S^-1 - I)
+            Matrix6d S66inv_I = S66inv - Matrix6d::Identity(); // 6x6 of (S^-1 - I)
             Ctilde = CSC * S66inv_I;
-            //-11
-	    //cout << "S66: " << S66 << endl;
         }
-        //end of Ishape == 0
 
-
-        //#pragma omp parallel for num_threads(Mtr)
         for(int G_n = 0; G_n < grains_num; G_n++)
         {
-	    //logger.debug("SC_E: Thread " + std::to_string(omp_get_thread_num()) + " is processing grain " + std::to_string(G_n));
             //solve the eshelby tensor in all the ellipsoid of grain 
             if(Ishape == 1)
             {
-                //-7
-                //rotate the macro Elastic stiffness
-                //from Sample axes to the ellipsoid axes;
+                //rotate the macro Elastic stiffness from sample axes to the ellipsoid axes;
                 // if Ishape = 1, which means the ellipsoid axes varies in grains,
                 axis_t = g[G_n].get_ell_axis_g();
                 axisb_t = g[G_n].get_ell_axisb_g();
                 Matrix6d C66 = rotate_C66(CSC, axisb_t.transpose());
-
-                //-9
                 //calculate the Eshelby tensor
                 double S4_EA[3][3][3][3] = {0}; 
                 double R4_EA[3][3][3][3] = {0};
                 int case_c = Eshelby_case(axis_t);
                 g[G_n].Eshelby_E(S4_EA,R4_EA,axis_t,C66,Gpsets[case_c].Gpaa6,Gpsets[case_c].Gpaaww6,Gpsets[case_c].Gpalpha);
-                //-9
-
-                //-10
-                //rotate the eshelby tensor
-                //back to the sample axes
+                //rotate the eshelby tensor back to the sample axes
                 S66 = rotate_C66(voigt(S4_EA), axisb_t);
                 rot_4th(R4_EA, axisb_t, R4_SA);
-                //-10
-            
-                //-11
-                //Calculate Ctilde
-                //refer to Equ[5-33] in Manual 7d
-                //M~=(I-S)^-1 * S * M
-                //but here we used C~ = (M~)^-1
-                //that is 
-                // C~ = C * (S^-1 - I)
-                //-12 calculate (S)^-1
+                // Calculate Ctilde refer to Equ[5-33] in Manual 7d
+                // M~=(I-S)^-1 * S * M
+                // C~ = (M~)^-1 = C * (S^-1 - I)
                 S66inv = S66.inverse(); // 6x6 of S^-1
-                Matrix6d S66inv_I; // 6x6 of (S^-1 - I)
-                //for(int i = 0; i < 6; i++)
-                //    for(int j = 0; j < 6; j++)
-                //        S66inv_I(i,j) = S66inv(i,j) - Iij(i,j);
-                S66inv_I = S66inv - Matrix6d::Identity();
-                //-12
-                // C~ = C * (S^-1 - I)
+                Matrix6d S66inv_I = S66inv - Matrix6d::Identity();
                 Ctilde = CSC * S66inv_I;
-                //-11
             }
-            //-7 end of Ishape == 1;
 
-
-            //-13 store some matrix into grain
-            //store the C~
-            g[G_n].Update_Metilde_g(Ctilde.inverse());
-            //store the PI*(S^-1)
+            //store some matrix into grain
+            g[G_n].Update_Metilde_g(Ctilde.inverse()); //store the C~
             double S66inv4th[3][3][3][3] = {0};
             Chg_basis(S66inv,S66inv4th);
             mult_4th(R4_SA,S66inv4th,RSinv_SA);
-            g[G_n].Update_RSinv_C_g(RSinv_SA);
-            //-13
+            g[G_n].Update_RSinv_C_g(RSinv_SA); //store the PI*(S^-1)
 
-            //-14 
-            //Calculate the localization tensor B_g 
-            // _g means the value depends on the grain
+            //Calculate the localization tensor B_g, _g means the value depends on the grain
             //refer to Equ[5-35] in Manual 7d
             // B_g = (M_g + M~)^-1 * (M_ + M~)
             Matrix6d Metilde = Ctilde.inverse();
@@ -598,33 +516,20 @@ int polycrystal::Selfconsistent_E(int Istep, double ERRM, int ITMAX)
             Matrix6d Part1_inv = Part1.inverse();
             Matrix6d Part2 = SSC + Metilde; 
             Matrix6d B_g = Part1_inv * Part2;
-            //-14
 
-            ///////
-            //-15
             //Calculate the New elastic consistent stiffness CNEW
             //refer to Equ[5-40a] in Manual 7d
             SSC_new += Me_g * B_g * g[G_n].get_weight_g();
-            //-15           
         } //loop over grains
-        //#pragma omp barrier
-        //#pragma omp master
-
-        //cout << "\nThe CNEW:\n" << CNEW << endl;
-        //-16
+        //
         //error between CSC and CNEW
         RER=Errorcal(SSC,SSC_new);
         SSC = 0.5*(SSC_new+SSC_new.transpose());
         CSC = SSC.inverse();
-	//cout << "SSC_end: " << SSC << endl;
-        //-16
-	logger.notice("**Error in  ESC iteration "+to_string(IT)+":\t"+to_string(RER));
-	if(isnan(RER)) return 1;
-
+        logger.notice("**Error in  ESC iteration "+to_string(IT)+":\t"+to_string(RER));
+        if(isnan(RER)) return 1;
     } //while loop
-
     //SSC = Msup * Btovoigt(CSC.inverse());
-
     return 0;
 }
 
@@ -634,20 +539,15 @@ int polycrystal::Selfconsistent_P(int Istep, double ERRM, int ITMAX)
     Vector5d D0_new; //the back-extrapolated term updated in every do-while
     Matrix5d B_g_ave; // <B_g> in Equ[5-41a] average of B_g
     Vector5d b_g_ave; // <b_g> in Equ[5-41b] average of b_g
-
-    double DUMMY;
-
     int IT = 0; //loop flag
     double RER = 2*ERRM;
     while((RER >= ERRM) && (IT < ITMAX))
     {   
         IT++;
-
         MNEW = Matrix5d::Zero();
         B_g_ave = Matrix5d::Zero();
         D0_new = Vector5d::Zero();
         b_g_ave = Vector5d::Zero();
-        //
         Matrix5d Mtilde;
         Matrix5d S55;//the Sijkl Equ[5-33] in sample axes in Manual 7d
         double R4_SA[3][3][3][3]; //PIijkl
@@ -656,188 +556,111 @@ int polycrystal::Selfconsistent_P(int Istep, double ERRM, int ITMAX)
         Matrix5d R55;
         Matrix3d axisb_t;
         Vector3d axis_t;
-        //
-
         //solve the eshelby tensor in the common ellipsoid
         if(Ishape == 0)
         {
-            //-1
-            //rotate the macro VP stiffness (C_VP_SC)
-            //from Sample axes to the ellipsoid axes;
-            // if Ishape = 0, which means the ellipsoid axes 
-            // keep unchanged in grains,
-            // the transform matrix should be taken from
-            // the polycrystal 
+            /* Rotate the macro VP stiffness (C_VP_SC) from sample axes to the ellipsoid axes; */
+            /* if Ishape = 0, which means the ellipsoid axes keep unchanged in grains, */
+            /* the transform matrix should be taken from the polycrystal  */
             axisb_t = ell_axisb; 
             axis_t = ell_axis;
-
             Matrix6d C66 = rotate_C66(Btovoigt(C_VP_SC), axisb_t.transpose());
-            //-1
-            
-            //-3
             //Calculate Eshelby tensor
             double S4_EA[3][3][3][3] = {0}; 
             double R4_EA[3][3][3][3] = {0};
-            
             int case_c = Eshelby_case(axis_t);
             g[0].Eshelby_P(S4_EA,R4_EA,axis_t,C66,Gpsets[case_c].Gpaa6,Gpsets[case_c].Gpaaww6,\
-            Gpsets[case_c].Gpalpha,Gpsets[case_c].Gpaww,Gpsets[case_c].Gpww);
-            //-3
-
-            //-4
-            //rotate the eshelby tensor
-            //back to the sample axes
+                           Gpsets[case_c].Gpalpha,Gpsets[case_c].Gpaww,Gpsets[case_c].Gpww);
+            //rotate the eshelby tensor back to the sample axes
             S55 = voigttoB5(rotate_C66(voigt(S4_EA), axisb_t));
             rot_4th(R4_EA, axisb_t, R4_SA);
-            //-4
-
-            //Calculate Mtilde
-            //refer to Equ[5-33] in Manual 7d
+            //Calculate Mtilde refer to Equ[5-33] in Manual 7d
             //M~=(I-S)^-1 * S * M
             Matrix5d I_S55, I_S55_inv; // (I-S) and (I-S)^-1
-            //for(int i = 0; i < 5; i++)
-            //    for(int j = 0; j < 5; j++)
-            //        I_S55(i,j) = Iij(i,j) - S55(i,j);
             I_S55 = Matrix5d::Identity() - S55;
             I_S55_inv = I_S55.inverse();
-
             Mtilde = I_S55_inv * S55 * M_VP_SC;
             S55_inv = S55.inverse();
         }
-        //-1
-
 
         DVP_AV = Vector5d::Zero();
-
-        //#pragma omp parallel for num_threads(Mtr)
         for(int G_n = 0; G_n < grains_num; G_n++)
         {
-	    //logger.debug("SC_P: Thread " + std::to_string(omp_get_thread_num()) + " is processing grain " + std::to_string(G_n));
-            //-2
-            //rotate the macro VP stiffness 
-            //from Sample axes to the ellipsoid axes;
-            // if Ishape = 1, which means the ellipsoid axes varies in grains,
-            // the transform matrix should be taken out of
-            // each grain  
+            /* Rotate the macro VP stiffness (C_VP_SC) from sample axes to the ellipsoid axes; */
+            /* if Ishape = 1, which means the ellipsoid axes varies in grains, */
+            /* the transform matrix should be taken out of each grain   */
             if(Ishape == 1)
             {
                 axis_t = g[G_n].get_ell_axis_g();
                 axisb_t = g[G_n].get_ell_axisb_g();
                 Matrix6d C66 = rotate_C66(Btovoigt(C_VP_SC), axisb_t.transpose());
-                
                 //Calculate Eshelby tensor
                 double S4_EA[3][3][3][3] = {0}; 
                 double R4_EA[3][3][3][3] = {0};
                 int case_c = Eshelby_case(axis_t);
                 g[G_n].Eshelby_P(S4_EA,R4_EA,axis_t,C66,Gpsets[case_c].Gpaa6,Gpsets[case_c].Gpaaww6,\
-                Gpsets[case_c].Gpalpha,Gpsets[case_c].Gpaww,Gpsets[case_c].Gpww);
-                //-3
-
-                //-4
-                //rotate the eshelby tensor
-                //back to the sample axes
+                                 Gpsets[case_c].Gpalpha,Gpsets[case_c].Gpaww,Gpsets[case_c].Gpww);
+                //rotate the eshelby tensor back to the sample axes
                 S55 = voigttoB5(rotate_C66(voigt(S4_EA), axisb_t));
                 rot_4th(R4_EA, axisb_t, R4_SA);
-                //-4
-
-                //-4
-                //Calculate Mtilde
-                //refer to Equ[5-33] in Manual 7d
+                //Calculate Mtilde refer to Equ[5-33] in Manual 7d
                 //M~=(I-S)^-1 * S * M
                 Matrix5d I_S55, I_S55_inv; // (I-S) and (I-S)^-1
-                //for(int i = 0; i < 5; i++)
-                //    for(int j = 0; j < 5; j++)
-                //        I_S55(i,j) = Iij(i,j) - S55(i,j);
                 I_S55 = Matrix5d::Identity() - S55;
                 I_S55_inv = I_S55.inverse();
-
                 Mtilde = I_S55_inv * S55 * M_VP_SC;
                 S55_inv = S55.inverse();
             }
-            //-2
-
-            //-5 store some matrix into grain
-            //store the M~
-            g[G_n].Update_Mptilde_g(Mtilde); 
+            g[G_n].Update_Mptilde_g(Mtilde);  //store the M~
             //only affine case (interaction = 1) 
-            //store the PI*(S^-1)
             double S66inv4th[3][3][3][3] = {0};
             Chg_basis(S55.inverse(),S66inv4th);
             mult_4th(R4_SA,S66inv4th,RSinv_SA);
-            g[G_n].Update_RSinv_VP_g(RSinv_SA);
-            //06.02
-            //-5
+            g[G_n].Update_RSinv_VP_g(RSinv_SA); //store the PI*(S^-1)
 
-            //07.14
-            //Matrix5d M_g = voigttoB5(g[G_n].get_Mpij6_g());
-            //Vector5d d0_g = Chg_basis5(g[G_n].get_d0_g());
             Matrix5d M_g = g[G_n].get_Mpij6_g();
             Vector5d d0_g = g[G_n].get_d0_g(); 
-
             double wei = g[G_n].get_weight_g();
 
-            //-6 
-            //Calculate the localization tensor B_g 
-            // _g means the value depends on the grain
+            //Calculate the localization tensor B_g, _g means the value depends on the grain
             //refer to Equ[5-35] in Manual 7d
             // B_g = (M_g + M~)^-1 * (M_ + M~)
             Matrix5d Part1 = M_g + Mtilde;
             Matrix5d Part1_inv = Part1.inverse();
             Matrix5d Part2 = M_VP_SC + Mtilde; 
             Matrix5d B_g = Part1_inv * Part2;
-            ///
             //refer to Equ[5-35] in Manual 7d
             // b_g = (M_g + M~)^-1 * (d- - d-_g)
-            //Matrix3d dtemp =  voigt(D0) - d0_g;//(d- - d-_g)
-            //Vector6d b_gv =  voigt5to6(Part1_inv) * Msupinv * voigt(dtemp);
             Vector5d b_gv =  Part1_inv * (Chg_basis5(voigt(D0))-d0_g);
-            //Matrix3d b_g =  voigt(b_gv);
-            //-6
-            
-            // MNEW = <M_g * B_g>
-            // Equ[5-40a]
+
+            // MNEW = <M_g * B_g> Equ[5-40a]
             MNEW += M_g * B_g * wei;
-            //<B_g>
+            //<B_g> Equ[5-40b]
             B_g_ave += B_g * wei;
-            // Equ[5-40b]
-            // < M_g * b_g + d0_g>
-            //Vector6d Mr_br =  voigt5to6(M_g) * Msupinv * b_gv; // M_g * b_g
+
             Vector5d Mr_br =  M_g * b_gv; 
             D0_new += ( d0_g +  Mr_br ) * wei; // < M_g * b_g + d0_g>
             // <b_g>
             b_g_ave += b_gv * wei;
-
-            //06.06
             DVP_AV +=  Chg_basis5(g[G_n].get_Dijp_g()) * wei;
-            //06.06
-
         } //loop over grains
-        //#pragma omp barrier
-        //#pragma omp master
 
-    // Equ[5-41a]
-    // <M_g * B_g> * <B_g>^-1
-    MNEW = MNEW * B_g_ave.inverse();
-    Matrix5d MNEW2 = 0.5*(MNEW+MNEW.transpose());
-    MNEW = MNEW2;
-    // Equ[5-41b]
-    // < M_g * b_g + d0_g> - <M_g * B_g> * <B_g>^-1 * <b_g>
-    //<M_g * B_g> * <B_g>^-1 * <b_g>
-    //Vector6d M_bg =  voigt5to6(MNEW) * Msupinv  * b_g_ave;
-    Vector5d M_bg =  MNEW * b_g_ave;
-    D0_new = D0_new - M_bg;
+        // <M_g * B_g> * <B_g>^-1
+        MNEW = MNEW * B_g_ave.inverse();
+        Matrix5d MNEW2 = 0.5*(MNEW+MNEW.transpose());
+        MNEW = MNEW2;
+        // < M_g * b_g + d0_g> - <M_g * B_g> * <B_g>^-1 * <b_g>
+        //<M_g * B_g> * <B_g>^-1 * <b_g>
+        Vector5d M_bg =  MNEW * b_g_ave;
+        D0_new = D0_new - M_bg;
+        /* calculate the error between the input M_VP_SC of do-while loop and the output MNEW of the loop  */
+        RER = Errorcal(M_VP_SC, MNEW);
+        M_VP_SC = MNEW;
+        D0 = voigt(Chg_basis(D0_new));
+        C_VP_SC = M_VP_SC.inverse();
 
-    //calculate the error between 
-    //the input M_VP_SC of do-while loop
-    //and the output MNEW of the loop 
-    RER = Errorcal(M_VP_SC, MNEW);
-    M_VP_SC = MNEW;
-    D0 = voigt(Chg_basis(D0_new));
-
-    C_VP_SC = M_VP_SC.inverse();
-  
-    logger.notice("**Error in VPSC iteration :" + to_string(IT) + "\t" + to_string(RER));
-    if(isnan(RER)) return 1;
+        logger.notice("**Error in VPSC iteration :" + to_string(IT) + "\t" + to_string(RER));
+        if(isnan(RER)) return 1;
     }//while loop
     return 0;
 }
