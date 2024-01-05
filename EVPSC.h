@@ -208,6 +208,7 @@ class grain
         void print_latent_matrix();
         // add temperature
         void update_temperature(double Tincr);
+        void I_tensity(double Tincr);
     };
 
 class PMode

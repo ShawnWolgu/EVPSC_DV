@@ -2,6 +2,7 @@
 #include "Eigen/src/Core/Matrix.h"
 #include "global.h"
 #include <string>
+#include <cmath>
 
 grain::grain()
 {
@@ -861,6 +862,19 @@ void grain::print_latent_matrix(){
         }
         logger.debug(mat_row);
         mat_row = "";
+    }
+}
+
+void grain::I_tensity(double Tincr)
+{
+    double I = 0 //this is global?
+    double dutyt = dutyt
+    T += Tincr
+    double fractionalPart = std::modf(T, &T);
+    if (fractionalPart <= B) {
+    I = I_intensity_input;
+    } else {
+    I = 0;
     }
 }
 
