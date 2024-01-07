@@ -33,7 +33,6 @@ class polycrystal
         Vector3d Cdim; //lattice constant
         Vector3d Cang; //lattice constant
         Vector6d therm; //Thermal expansion coefficients [K^(-1)]
-        double Temp; // /(K^-1)
 
         //the shape of ellipsoid
         //Vector3d ell_axis_o;
@@ -52,6 +51,8 @@ class polycrystal
         Matrix6d CUB;
         Matrix6d COLD;//The initial guessed elastic consistent stiffness
         Matrix6d SSC; //CSC^-1
+        Matrix3d therm_expansion_ave; //The average thermal expansion tensor
+        Matrix3d therm_expans_ave_old; //The average thermal expansion tensor in last increment
         //VPSC
         Matrix5d C_VP_SC; //The visco-plastic stiffness 
         Matrix5d C_VP_SC_old; 
@@ -100,8 +101,10 @@ class polycrystal
         
         grain* g = NULL;
         int grains_num = 0;
-        double error_SC = 0., twin_threshold = 1., temperature_poly = 298.;
+        double error_SC = 0., twin_threshold = 1., temperature_poly = 0., temp_poly_old = 0.;
         Matrix3d Dij_m; //the macro strain rate tensor
+        Matrix3d thermal_strain_m;//the macro thermal strain tensor
+        Matrix3d ther_strain_m_old;//the macro thermal strain tensor in last increment
         Vector5d DVP_AV;
         Matrix5d M_VP_SC; //The visco-plastic compliance C_VP_SC^-1
 
@@ -133,7 +136,7 @@ class polycrystal
         //input the elastic constant in 6X6 tensor
         int check_Cij6();
 
-        int ini_therm(VectorXd);
+        int ini_therm(Vector6d);
         //input the thermal expansion coefficients [K^(-1)]
         int check_therm();
 

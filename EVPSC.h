@@ -39,6 +39,8 @@ class grain
         Matrix3d Dij_g; //the strain rate tensor in grain
         Matrix3d Dije_g; //the elastic strain rate tensor in grain
         Matrix3d Dijp_g; //the vp strain rate tensor in grain
+        Matrix3d therm_expansion_g; //the thermal expansion tensor in grain (grain coordinate)
+        Matrix3d therm_strain_g; //the thermal strain tensor in grain (global coordinate)
         Matrix3d Wij_g; //the rotation rate tensor in grain
         // Udot_g = Dij_g + Wij_g
         Matrix3d eps_g; //strain of grain
@@ -48,6 +50,7 @@ class grain
         Matrix3d Dij_g_old; //strain rate in last step
         Matrix3d Dije_g_old; //elastic strain rate in last step
         Matrix3d Dijp_g_old; //vp strain rate in last step
+        Matrix3d therm_strain_g_old; //the thermal strain tensor in grain in last step
         double RSinv_C_old[3][3][3][3];
         double RSinv_VP_old[3][3][3][3];
 	
@@ -75,7 +78,7 @@ class grain
         int grain_i; // The Number
         int modes_num = 0;
         int if_stress = 0; //flag of stress calculation
-        double child_frac = 0.0, weight_ref = 0.0, temperature = 298.0;
+        double child_frac = 0.0, weight_ref = 0.0, temperature = 0., temp_old = 0.;
         bool twin_term_flag;
 
         grain();
@@ -93,6 +96,8 @@ class grain
         double get_weight_g_eff();
         double get_weight_g(int mode_num);
         void set_weight_g(double);
+        //set thermal expansion tensor
+        void therm_expansion_config(Vector6d therm);
 
         //input the number of deformation modes
         int ini_gmode_g(int);
@@ -132,6 +137,7 @@ class grain
 
         Matrix3d get_Dije_g();
         Matrix3d get_Dijp_g();
+        Matrix3d get_Dij_g();
         Matrix3d get_Udot_g();
         Matrix3d get_Wij_g();
 
@@ -139,8 +145,8 @@ class grain
         //Parameters:
         //double Tincr,
         //Matrix3d Wij_m, Matrix3d Dij_AV, Matrix3d Dije_AV, Matrix3d Dijp_AV,
-        //Matrix3d Sig_m, Matrix3d Sig_m_old
-        void grain_stress(double, Matrix3d, Matrix3d, Matrix3d, Matrix3d, Matrix3d, Matrix3d);
+        //Matrix3d Sig_m, Matrix3d Sig_m_old, Matrix3d thermal_expansion_ave
+        void grain_stress(double, Matrix3d, Matrix3d, Matrix3d, Matrix3d, Matrix3d, Matrix3d, Matrix3d);
 
         //calculate the symmetric components
         Matrix3d cal_Dijp(Matrix3d);
@@ -160,7 +166,11 @@ class grain
         void Update_Mij6_J_g(Matrix6d);
         void Update_Cij6_SA_g(Matrix6d);
         void Update_Metilde_g(Matrix6d);
+        Matrix6d get_Metilde_g();
         Matrix6d get_Mij6_J_g();
+
+        //return alpha matrix in system coordinate
+        Matrix3d get_therm_expansion();
         void Update_RSinv_C_g(double A[3][3][3][3]);
 
         //Visco-plastic consistent
@@ -213,7 +223,7 @@ class grain
 class PMode
     {
     protected:
-        double temperature = 293; // need to be synchronized with the grain;
+        double temperature = 0.; // need to be synchronized with the grain;
         double ref_strain_rate = 0.001;
         Matrix3d Pij;
         Matrix3d Rij;
@@ -245,6 +255,7 @@ class PMode
         double cal_rss(Matrix3d stress_tensor);
         double cal_relative_rss(Matrix3d stress_tensor);
         double update_shear_strain_m();
+        void update_temperature(double temp_in);
         Matrix3d cal_dijpmode(Matrix3d);
         Matrix3d cal_rot_mode();
         Matrix6d get_Fgradm(Matrix3d);
