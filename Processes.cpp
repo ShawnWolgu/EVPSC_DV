@@ -56,14 +56,27 @@ void Process::get_Udot(Matrix3d Min)
     
     //calculate Time increment Tincr
     Vector6d Vtemp = voigt(Ddot_input);
-    Tincr = Eincr / Vtemp(Ictrl);
+    if(Vtemp(Ictrl) == 0 || Eincr == 0){
+        Tincr = 1;
+    }
+    else{
+        Tincr = Eincr / Vtemp(Ictrl);
+    }
 }
 void Process::get_Sdot(Matrix3d Min){Sdot_input = Min;}
 void Process::get_IUdot(Matrix3i Min){IUDWdot = Min;}
 void Process::get_ISdot(Vector6i Vin){ISdot = Vin;}
 
 void Process::loading(Polycs::polycrystal &pcrys){
-    pcrys.temperature_poly = Temp;
+    temp_atmosphere = Temp;
+    if (pcrys.temperature_poly < 1e-3){
+        // Temperature is not set, this is the first loading step, free of thermal stress
+        pcrys.temperature_poly = Temp;
+        temperature_ref = Temp;
+        for (int i = 0; i < pcrys.grains_num; ++i) {
+            pcrys.g[i].temperature = Temp;
+        }
+    }
     pcrys.set_BC_const(UDWdot_input, Sdot_input, IUDWdot, ISdot);
     Out_sscurves(pcrys);
     double coeff_step = 1, current_step = 1.;
@@ -79,23 +92,16 @@ void Process::loading(Polycs::polycrystal &pcrys){
 	    logger.notice("Step " + to_string(istep) + ":\t" + to_string(pct_step) + " to " + to_string(pct_step + current_step));
         int return_SC = pcrys.EVPSC(istep, current_step * Tincr, Iupdate_ori, Iupdate_shp, Iupdate_CRSS);
 	    if (return_SC != 0) {
-            /* pcrys.restore_status(return_SC == 2); */
             pcrys.restore_status(false);
             logger.warn("Not convergent... Retry with a smaller increment.");
             logger.notice("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
             if(isnan(pcrys.error_SC)) coeff_step *= 0.1;
             else coeff_step *= 0.5;
-            /* else coeff_step *= sqrt(sqrt(1/pcrys.error_SC)); */
 	    	if (coeff_step < 1e-10) { logger.error("Not convergent... Abort."); exit(1);}
 		    continue;
 	    }
 	    pct_step += current_step;
 	    update_progress(pct_step);
-	    /* logger.debug("Wij_g = "); */
-	    /* logger.debug(pcrys.g[0].get_Wij_g()); */
-	    /* logger.debug("Udot_g = "); */
-	    /* logger.debug(pcrys.g[0].get_Udot_g()); */
-	    /* coeff_step *= sqrt(sqrt(1/pcrys.error_SC)); */
         coeff_step *= 2;
         coeff_step = min(coeff_step, 1.0);
 	} while (pct_step < 1-1e-10);
@@ -176,10 +182,10 @@ void Process::init_grain_info(Polycs::polycrystal &pcrys, int num){
     for(int i = 0; i < 3; ++i) euler_out << "," << v_out(i);
     euler_out << endl;
 
-    ss_out_csv << "E11,E22,E33,E23,E13,E12,S11,S22,S33,S23,S13,S12\n";
+    ss_out_csv << "E11,E22,E33,E23,E13,E12,S11,S22,S33,S23,S13,S12,TempK\n";
     for(int i = 0; i < 6; ++i) ss_out_csv << pcrys.get_Eps_m()(i) << ",";
     for(int i = 0; i < 5; ++i) ss_out_csv << pcrys.get_Sig_m()(i) << ",";
-    ss_out_csv << pcrys.get_Sig_m()(5) << endl;
+    ss_out_csv << pcrys.get_Sig_m()(5) << "," << pcrys.temperature_poly << endl;
 
     ave_ss_out << "E11,E22,E33,E23,E13,E12,S11,S22,S33,S23,S13,S12\n";
     for(int i = 0; i < 6; ++i) ave_ss_out << pcrys.get_Eps_m()(i) << ",";
@@ -238,7 +244,7 @@ void Process::Out_grain_info(Polycs::polycrystal &pcrys, int num){
 
     for(int i = 0; i < 6; ++i) ss_out_csv << pcrys.get_Eps_m()(i) << ",";
     for(int i = 0; i < 5; ++i) ss_out_csv << pcrys.get_Sig_m()(i) << ",";
-    ss_out_csv << pcrys.get_Sig_m()(5) << endl;
+    ss_out_csv << pcrys.get_Sig_m()(5) << "," << pcrys.temperature_poly << endl;
     
     for(int i = 0; i < 6; ++i) ave_ss_out << pcrys.get_Eps_m()(i) << ",";
     for(int i = 0; i < 5; ++i) ave_ss_out << pcrys.get_Sig_ave()(i) << ",";

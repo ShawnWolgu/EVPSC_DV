@@ -523,6 +523,12 @@ double Errorcal(Vector6d A, Vector6d B)
 
 double Errorcal(Matrix3d A, Matrix3d B)
 {
+    if (A.norm() == 0 && B.norm() == 0){
+        return 0;
+    }
+    if (A.norm() == 0 || B.norm() == 0){
+        return A.norm() + B.norm();
+    }
     double err;
     Matrix3d C1,C2;
     C1 = A - B;
@@ -533,6 +539,12 @@ double Errorcal(Matrix3d A, Matrix3d B)
 
 double Errorcal(Matrix5d A, Matrix5d B)
 {
+    if (A.norm() == 0 && B.norm() == 0){
+        return 0;
+    }
+    if (A.norm() == 0 || B.norm() == 0){
+        return A.norm() + B.norm();
+    }
     double err;
     Matrix5d C1,C2;
     C1 = A - B;
@@ -749,6 +761,12 @@ Vector6d Bbasisadd(Vector6d V6,Vector5d V5)
     return Vout;
 }
 
+Vector6d B5to6(Vector5d V5){
+    Vector6d V6;
+    V6 << V5(0),V5(1),V5(2),V5(3),V5(4),0;
+    return V6;
+}
+
 int Jacobi(Matrix3d A,Vector3d &D,Matrix3d &V)
 {
     int n = 3;
@@ -851,7 +869,7 @@ MatrixXd to_matrix(json &j, string key, int n, int m){
 
 VectorXd to_vector(json &j, string key, int n){
     vector<double> v = j[key];
-    VectorXd v1 = Eigen::Map<Eigen::VectorXd>(v.data(), v.size());
+    VectorXd v1 = Eigen::Map<Eigen::VectorXd>(v.data(), n);
     return v1;
 }
 
@@ -992,11 +1010,18 @@ double cal_cosine(Vector3d vec_i, Vector3d vec_j){
    return vec_i.dot(vec_j)/(vec_i.norm() * vec_j.norm());
 }
 
-
 Vector4d get_twin_euler_vec(Matrix3d euler, double weight, Vector3d n_twin){
     Vector4d vector_out;
     Matrix3d twin_rotation = n_twin * n_twin.transpose() * 2 - Matrix3d::Identity();
     Matrix3d rotated_euler = twin_rotation * euler;
     vector_out << Euler_trans(rotated_euler), weight;
     return vector_out;
+}
+
+double slope_profile(double time, double slope, double intercept){
+    return slope * time + intercept;
+}
+
+double slope_profile_incr(double time_incr, double slope){
+    return slope * time_incr;
 }

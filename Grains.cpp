@@ -1,6 +1,7 @@
 #include "EVPSC.h"
 #include "Eigen/src/Core/Matrix.h"
 #include "global.h"
+#include <locale>
 #include <string>
 
 grain::grain()
@@ -10,6 +11,7 @@ grain::grain()
     sig_g = Matrix3d::Zero();
     Dije_g = Matrix3d::Zero();
     Dijp_g = Matrix3d::Zero();
+    therm_expansion_g = Matrix3d::Zero();
 
     //initial the shape of ellipsoid
     ell_axis_g = Vector3d::Ones();
@@ -26,6 +28,7 @@ grain::grain(const grain& tp){
     sig_g = tp.sig_g;
     Dije_g = tp.Dije_g;
     Dijp_g = tp.Dijp_g;
+    therm_expansion_g = tp.therm_expansion_g;
     ell_axis_g = tp.ell_axis_g;
     ell_axisb_g = tp.ell_axisb_g;
     ellip_ang_g = tp.ellip_ang_g;
@@ -80,6 +83,7 @@ grain& grain::operator=(const grain& tp){
     sig_g = tp.sig_g;
     Dije_g = tp.Dije_g;
     Dijp_g = tp.Dijp_g;
+    therm_expansion_g = tp.therm_expansion_g;
     ell_axis_g = tp.ell_axis_g;
     ell_axisb_g = tp.ell_axisb_g;
     ellip_ang_g = tp.ellip_ang_g;
@@ -420,15 +424,18 @@ Matrix3d grain::get_strain_g(){return eps_g;}
 
 Matrix3d grain::get_Dije_g(){return Dije_g;}
 Matrix3d grain::get_Dijp_g(){return Dijp_g;}
+Matrix3d grain::get_Dij_g(){return Dij_g;}
 Matrix3d grain::get_Udot_g(){return Udot_g;}
 
 void grain::save_status_g(){
+    temp_old = temperature;
     sig_g_old = sig_g;
     Mij6_J_g_old = Mij6_J_g;  Metilde_g_old = Metilde_g;
     Mpij6_g_old = Mpij6_g;    Mptilde_g_old = Mptilde_g;
     Cij6_SA_g_old = Cij6_SA_g;
     Dij_g_old = Dij_g;        
     Dije_g_old = Dije_g;      Dijp_g_old = Dijp_g;
+    therm_strain_g_old = therm_strain_g;
     save_RSinv_g();
 }
 
@@ -441,12 +448,17 @@ void grain::save_RSinv_g(){
 }
 
 void grain::restore_status_g(){
+    temperature = temp_old;
+    for (int i = 0; i < modes_num; ++i){
+        gmode[i]->update_temperature(temperature);
+    }
     sig_g = sig_g_old;
     Mij6_J_g = Mij6_J_g_old;  Metilde_g = Metilde_g_old;
     Mpij6_g = Mpij6_g_old;    Mptilde_g = Mptilde_g_old;
     Cij6_SA_g = Cij6_SA_g_old;
     Dij_g = Dij_g_old;
     Dije_g = Dije_g_old;      Dijp_g = Dijp_g_old;
+    therm_strain_g = therm_strain_g_old;
     Update_RSinv_C_g(RSinv_C_old);
     Update_RSinv_VP_g(RSinv_VP_old);
 }
@@ -454,6 +466,7 @@ void grain::restore_status_g(){
 void grain::Update_Cij6_SA_g(Matrix6d Min){Cij6_SA_g = Min;}
 void grain::Update_Mij6_J_g(Matrix6d Min){Mij6_J_g = Min;}
 void grain::Update_Metilde_g(Matrix6d Min){Metilde_g = Min;}
+Matrix6d grain::get_Metilde_g(){return Metilde_g;}
 void grain::Update_RSinv_C_g(double A[3][3][3][3])
 {
     for(int i = 0; i < 3; i++)
@@ -656,26 +669,29 @@ double grain::cal_RSSxlim(Matrix3d D)
 }
 
 void grain::grain_stress(double Tincr, Matrix3d Wij_m, Matrix3d Dij_m,\
-                         Matrix3d Dije_AV, Matrix3d Dijp_AV, Matrix3d Sig_m, Matrix3d Sig_m_old)
+                         Matrix3d Dije_AV, Matrix3d Dijp_AV, Matrix3d Sig_m, Matrix3d Sig_m_old, Matrix3d therm_expansion_ave)
 {
     if_stress = 1;
     Matrix3d X = sig_g; 
     //according to Equ[5-30] in manual, calculate the wij~ and the Jaumann rate
     Matrix3d wg = Wij_m + mult_4th(RSinv_C,Dije_g-Dije_AV) + mult_4th(RSinv_VP,Dijp_g-Dijp_AV);
-    Matrix3d Xjau = wg * X - X * wg;
-    Matrix3d Sjau = Wij_m * Sig_m - Sig_m * Wij_m; 
+    Matrix3d stress_ave_jau = (Sig_m - Sig_m_old)/Tincr - (Wij_m * Sig_m - Sig_m * Wij_m);
+    Matrix3d stress_g_jau_diff = -sig_g_old/Tincr - wg * X + X * wg; // grain stress jaumannn rate = stress_grain/dt + this term
+    Matrix3d stress_jau_diff = stress_g_jau_diff - stress_ave_jau; // Difference in jaumann rate is stress_grain/dt + this term
 
     //solve the interaction equation of grain
-    Vector6d DB = Chg_basis6(Dij_m);
-    Matrix3d Mt = Sig_m - Sig_m_old + sig_g_old;
-    DB += Metilde_g * Chg_basis6(Mt)/Tincr \
-        + Mij6_J_g * Chg_basis6(sig_g_old)/Tincr; 
-    Mt = Xjau-Sjau;
-    DB += Mij6_J_g *Chg_basis6(Xjau) + Metilde_g * Chg_basis6(Mt);
-    DB = Bbasisadd(DB, Mptilde_g * Chg_basis5(Sig_m));
+    Vector6d Me_tilde_term = Metilde_g * Chg_basis6(stress_jau_diff);
+    Vector6d Me_g_term = Mij6_J_g * Chg_basis6(stress_g_jau_diff);
+    Vector6d Mp_tilde_term = B5to6(Mptilde_g * Chg_basis5(Sig_m));
+    Vector6d F_ind_terms = Chg_basis6(Dij_m) - Me_tilde_term - Me_g_term + Mp_tilde_term;
+    //thermal expansion part of interaction
+    double temperature_diff = temperature - temperature_ref;
+    Matrix3d therm_expansion_g_sys = Euler_M.transpose() * therm_expansion_g * Euler_M;
+    Matrix3d thermal_strain_rate = (therm_expansion_g_sys * temperature_diff - therm_strain_g_old) / Tincr;
+    F_ind_terms -= Chg_basis6(thermal_strain_rate);
 
     //Newton-Rapthon iteration
-    Vector6d Xv = Chg_basis6(X), Xold = Xv, F;
+    Vector6d Xv = Chg_basis6(X), Xold = Xv, F = Vector6d::Zero();
     /* logger.debug("initial Xv:"); logger.debug(Xv); */
     Vector5d dijpgv;
     Matrix6d Fgrad, Mtemp = (Metilde_g + Mij6_J_g)/Tincr;
@@ -683,20 +699,16 @@ void grain::grain_stress(double Tincr, Matrix3d Wij_m, Matrix3d Dij_m,\
     int NR_max_iter = 7, DH_max_iter = 25;
     for(int it = 0; it < NR_max_iter; it ++ )
     {
-        F = -DB +  Mtemp * Xv;
-        F =  Bbasisadd(F, Mptilde_g * Chg_basis5(Chg_basis(Xv)));
+        Vector6d Metilde_g_xterm = Metilde_g * Xv / Tincr;
+        Vector6d M_J_g_xterm = Mij6_J_g * Xv / Tincr;
+        Vector6d Mp_tilde_g_xterm = B5to6(Mptilde_g * Chg_basis5(Chg_basis(Xv)));
         dijpgv = Chg_basis5(cal_Dijp(Chg_basis(Xv)));
-        F = Bbasisadd(F,dijpgv);
+        Vector6d dp_g_xterm = B5to6(dijpgv);
+        F = -F_ind_terms +  Metilde_g_xterm + M_J_g_xterm + Mp_tilde_g_xterm + dp_g_xterm;
         Fgrad = -Bbasisadd(Mtemp,Mptilde_g+cal_Fgrad(Chg_basis(Xv)));
         Xold = Xv;
         Xv = Xold + Fgrad.inverse() * F;
         err_iter = Errorcal(Xv, Xold);
-        /* if (isnan(err_iter)){ */
-        /*     logger.debug("F_grad: "); logger.debug(Fgrad);  */
-        /*     logger.debug("Mtemp: "); logger.debug(Mtemp); */
-        /*     logger.debug("Mptilde_g: "); logger.debug(Mptilde_g); */
-        /* } */
-        /* if(grain_i == 0) logger.debug("Grain stress iteration: " + to_string(it) + ", F_norm: " + to_string(F.norm()) + ", err_iter: " + to_string(err_iter)); */
         if(err_iter < Errm) break;
     }
     if (isnan(err_iter)){
@@ -710,10 +722,13 @@ void grain::grain_stress(double Tincr, Matrix3d Wij_m, Matrix3d Dij_m,\
         /* logger.warn("Entering downhill ..."); */
         double F_norm = F.norm();
         for (int it = 0; F_norm >= F_err; it++) {
-            F = -DB + Mtemp * Xv;
-            F = Bbasisadd(F, Mptilde_g * Chg_basis5(Chg_basis(Xv)));
+            Vector6d Metilde_g_xterm = Metilde_g * Xv / Tincr;
+            Vector6d M_J_g_xterm = Mij6_J_g * Xv / Tincr;
+            Vector6d Mp_tilde_g_xterm = B5to6(Mptilde_g * Chg_basis5(Chg_basis(Xv)));
             dijpgv = Chg_basis5(cal_Dijp(Chg_basis(Xv)));
-            F = Bbasisadd(F, dijpgv);
+            Vector6d dp_g_xterm = B5to6(dijpgv);
+            F = -F_ind_terms +  Metilde_g_xterm + M_J_g_xterm + Mp_tilde_g_xterm + dp_g_xterm;
+
             if (F.norm() < F_norm) {
                 F_norm = F.norm();
                 coeff = min(1., coeff * 2);
@@ -738,15 +753,13 @@ void grain::grain_stress(double Tincr, Matrix3d Wij_m, Matrix3d Dij_m,\
     }
     /**/
     sig_g = Chg_basis(Xv);
-    logger.debug("Grain number = " + to_string(grain_i) + ", F_norm = " + to_string(F.norm()));
+    /* logger.debug("Grain number = " + to_string(grain_i) + ", F_norm = " + to_string(F.norm())); */
     /* logger.debug("Grain number = " + to_string(grain_i) + ", sig_g = "); logger.debug(sig_g); */
-    Vector6d dijegv =  Mij6_J_g *((Xv - Chg_basis6(sig_g_old))/Tincr - Chg_basis6(Xjau)); 
+    Vector6d dijegv =  Mij6_J_g *(Xv/Tincr + Chg_basis6(stress_g_jau_diff)); 
     dijpgv = Chg_basis5(cal_Dijp(sig_g));
     Dije_g = Chg_basis(dijegv); Dijp_g = Chg_basis(dijpgv);
-    Dij_g = Dije_g + Dijp_g;
-
-    /* logger.debug("Grain number = %d" + to_string(grain_i)); */
-    /* logger.debug(Mpij6_g); */
+    therm_strain_g = therm_expansion_g_sys * temperature_diff;
+    Dij_g = Dije_g + Dijp_g + thermal_strain_rate;
     Update_Mpij6_g();
 }
 
@@ -864,10 +877,21 @@ void grain::print_latent_matrix(){
     }
 }
 
+void grain::therm_expansion_config(Vector6d therm){
+    /* order: 11 22 33 23 13 12 */
+    therm_expansion_g = voigt(therm);
+}
+
+Matrix3d grain::get_therm_expansion(){
+    return Euler_M.transpose() * therm_expansion_g * Euler_M;
+}
+
 // A default template of the temperature evolution
 void grain::update_temperature(double Tincr)
 {
     double t_a = temp_atmosphere; // temperature of the atmosphere is a global variable, which can be directly used here
     double t_poly = global_polycrys.temperature_poly; // temperature of the polycrystal can be used like this.
-    temperature = 298.0; // And this is the temperature of the grain, which is a local variable.
+    temperature += 0; // And this is the temperature of the grain, which is a local variable.
+    /* temperature += slope_profile_incr(Tincr, -10); */
+    /* logger.debug("Temperature of grain " + to_string(grain_i) + " is " + to_string(temperature) + " K."); */
 }

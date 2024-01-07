@@ -3,7 +3,8 @@
 #include "Processes.h"
 using namespace std;
 
-double temp_atmosphere = 0.0;
+double temp_atmosphere = 0.0; // temperature of the atmosphere
+double temperature_ref = 0.0; // reference temperature: free of thermal stress
 Logger logger;
 Polycs::polycrystal global_polycrys;
 Procs::Process global_proc;

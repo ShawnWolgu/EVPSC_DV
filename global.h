@@ -11,7 +11,7 @@
 #include <ctime>
 #include <Eigen/Dense>
 
-extern double temp_atmosphere;
+extern double temp_atmosphere, temperature_ref;
 extern std::ofstream outfile;
 extern Polycs::polycrystal global_polycrys;
 extern Procs::Process global_proc;

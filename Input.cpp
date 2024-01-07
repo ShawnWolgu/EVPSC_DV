@@ -380,6 +380,7 @@ void add_thermal_coefficient(VectorXd ther, json &sx_json){
     vector<double> ther_consts;
     for(int i = 0; i < ther.size(); i++) ther_consts.push_back(ther(i));
     sx_json["therm"] = ther_consts;
+    temperature_ref = 293.15; //default reference temperature
 }
 
 MatrixXd cal_sn_info(MatrixXd &Min, vector<double> m_abc, vector<double> transMl, int Miller_n, int system_n){

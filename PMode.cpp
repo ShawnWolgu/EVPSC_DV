@@ -74,6 +74,10 @@ void PMode::cal_shear_modulus(Matrix6d elastic_modulus){
     shear_modulus = rotate_6d_stiff_modu(elastic_modulus, rotation_mat.transpose())(3,3);
 }
 
+void PMode::update_temperature(double temp_in){
+    temperature = temp_in;
+}
+
 void PMode::print(){
     logger.info("Undefined mode number: " + to_string(num));
 }

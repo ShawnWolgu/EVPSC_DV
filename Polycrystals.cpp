@@ -1,4 +1,5 @@
 #include "Polycrystals.h"
+#include "Toolbox.h"
 #include "global.h"
 #include <memory>
 
@@ -318,9 +319,13 @@ int polycrystal::check_Cij6()
     return 0;
 }
 
-int polycrystal::ini_therm(VectorXd vin)
+int polycrystal::ini_therm(Vector6d vin)
 {
     therm = vin;
+    for(int i = 0; i < grains_num; i++)
+    {
+        g[i].therm_expansion_config(therm);
+    }
     return 0;
 }
 
@@ -362,7 +367,7 @@ int polycrystal::check_gmode()
 void polycrystal::ini_from_json(json &sx_json){
     ini_cry(sx_json);
     ini_Cij6(to_matrix(sx_json, "Cij6", 6, 6));
-    ini_therm(to_vector(sx_json, "therm", 6));
+    ini_therm((Vector6d)(to_vector(sx_json, "therm", 6)));
     ini_GZ(sx_json["GZ"]);
     ini_gmode(sx_json);
     for(int i = 0; i < grains_num; ++i) g[i].set_lat_hard_mat();
@@ -408,9 +413,8 @@ int polycrystal::Selfconsistent_E(int Istep, double ERRM, int ITMAX)
     for(int G_n = 0; G_n < grains_num; G_n++)
     {
         // Rotate the tensor Cijkl in grain to Sample Axes
-        Matrix3d Euler_M = g[G_n].get_Euler_M_g();
-        Matrix3d ET = Euler_M.transpose();
-        voigt(rotate_C66(Cij6, ET), C4SA);
+        Matrix3d euler_g = g[G_n].get_Euler_M_g();
+        voigt(rotate_C66(Cij6, euler_g.transpose()), C4SA);
         g[G_n].Update_Cij6_SA_g(voigt(C4SA));
         sig_g = g[G_n].get_stress_g();
         // the elastic stiffness invovling Jaumann rate
@@ -422,7 +426,6 @@ int polycrystal::Selfconsistent_E(int Istep, double ERRM, int ITMAX)
         g[G_n].Update_Mij6_J_g(Chg_basis6(C4SAS).inverse());
         //store the Jaumann rate elastic stiffness in grains
         CUB += Chg_basis6(C4SAS) * g[G_n].get_weight_g();
-        // CUB is the volume average Elastic stiffness of all grains
     }
 
     if(Istep == 0)  CSC = CUB;  //first step, use the volume average
@@ -474,6 +477,8 @@ int polycrystal::Selfconsistent_E(int Istep, double ERRM, int ITMAX)
             Ctilde = CSC * S66inv_I;
         }
 
+        Matrix6d B_g_ave = Matrix6d::Zero(); //<B_g>
+
         for(int G_n = 0; G_n < grains_num; G_n++)
         {
             //solve the eshelby tensor in all the ellipsoid of grain 
@@ -516,11 +521,12 @@ int polycrystal::Selfconsistent_E(int Istep, double ERRM, int ITMAX)
             Matrix6d Part1_inv = Part1.inverse();
             Matrix6d Part2 = SSC + Metilde; 
             Matrix6d B_g = Part1_inv * Part2;
-
+            B_g_ave += B_g * g[G_n].get_weight_g();
             //Calculate the New elastic consistent stiffness CNEW
             //refer to Equ[5-40a] in Manual 7d
             SSC_new += Me_g * B_g * g[G_n].get_weight_g();
         } //loop over grains
+        SSC_new = SSC_new * B_g_ave.inverse();
         //
         //error between CSC and CNEW
         RER=Errorcal(SSC,SSC_new);
@@ -529,6 +535,18 @@ int polycrystal::Selfconsistent_E(int Istep, double ERRM, int ITMAX)
         logger.notice("**Error in  ESC iteration "+to_string(IT)+":\t"+to_string(RER));
         if(isnan(RER)) return 1;
     } //while loop
+    // Thermal Expansion Part
+    Matrix6d B_g_ret_ave = Matrix6d::Zero(); //<B_g_retro>
+    Vector6d B_g_ret_thrmexp = Vector6d::Zero(); //<B_g_retro*alpha_g>
+    for(int G_n = 0; G_n < grains_num; G_n++){
+        Matrix6d Me_tilde_g = g[G_n].get_Metilde_g();
+        Matrix6d Me_g = g[G_n].get_Mij6_J_g();
+        Matrix6d B_g_retro = (Me_tilde_g + SSC) * (Me_tilde_g + Me_g).inverse();
+        B_g_ret_ave += B_g_retro * g[G_n].get_weight_g();
+        Vector6d therm_exp_g_basis = Chg_basis6(g[G_n].get_therm_expansion());
+        B_g_ret_thrmexp += B_g_retro * therm_exp_g_basis * g[G_n].get_weight_g();
+    }
+    therm_expansion_ave = Chg_basis(B_g_ret_ave.inverse() * B_g_ret_thrmexp);
     //SSC = Msup * Btovoigt(CSC.inverse());
     return 0;
 }
@@ -839,13 +857,16 @@ int polycrystal::EVPSC(int istep, double Tincr,\
         g[G_n].update_temperature(Tincr);
         temperature_poly += g[G_n].temperature * g[G_n].get_weight_g();
     }
+    /* logger.debug("Temperature in atmosphere: " + std::to_string(temp_atmosphere) + " K"); */
+    /* logger.debug("Temperature in polycrystal: " + std::to_string(temperature_poly) + " K"); */
+
 
     //update the state in deformation systems and 
     // crystalline orientation 
      for(int G_n = 0; G_n < grains_num; ++G_n)
     {
-        logger.debug("Stress in grain " + std::to_string(G_n) + ":");
-        logger.debug(g[G_n].get_stress_g());
+        /* logger.debug("Stress in grain " + std::to_string(G_n) + ":"); */
+        /* logger.debug(g[G_n].get_stress_g()); */
         g[G_n].Update_shear_strain(Tincr);//seems this function is no more needed
         g[G_n].update_strain(Tincr);
         if(Iupdate_ori) g[G_n].update_orientation(Tincr, Wij_m, Dije_AV, Dijp_AV);
@@ -861,33 +882,40 @@ int polycrystal::EVPSC(int istep, double Tincr,\
 }
 
 void polycrystal::save_status(){
-   // Save Wij_m, Dij_m, Dije_AV, Dijp_AV, Sig_m;
-   Wij_m_old = Wij_m;
-   Dij_m_old = Dij_m;
-   Dije_AV_old = Dije_AV;
-   Dijp_AV_old = Dijp_AV;
-   Sig_m_old = Sig_m;
-   COLD = CSC;
-   C_VP_SC_old = C_VP_SC;
-   for(int G_n = 0; G_n < grains_num; ++G_n)
-	g[G_n].save_status_g();
+    // Save the current status after a successful iteration
+    temp_poly_old = temperature_poly;
+    Wij_m_old = Wij_m;
+    Dij_m_old = Dij_m;
+    Dije_AV_old = Dije_AV;
+    Dijp_AV_old = Dijp_AV;
+    Sig_m_old = Sig_m;
+    COLD = CSC;
+    therm_expans_ave_old = therm_expansion_ave;
+    ther_strain_m_old = thermal_strain_m;
+    C_VP_SC_old = C_VP_SC;
+    for(int G_n = 0; G_n < grains_num; ++G_n)
+        g[G_n].save_status_g();
 }
 
 void polycrystal::restore_status(bool flag){
-   // Restore Wij_m, Dij_m, Dije_AV, Dijp_AV, Sig_m;
-   Wij_m = Wij_m_old;
-   Dij_m = Dij_m_old;
-   Dije_AV = Dije_AV_old;
-   Dijp_AV = Dijp_AV_old;
-   Sig_m = Sig_m_old;
-   CSC = COLD;  C_VP_SC = C_VP_SC_old;
-   SSC = CSC.inverse();  M_VP_SC = C_VP_SC.inverse();
-   for(int G_n = 0; G_n < grains_num; ++G_n)
+    // Restore the status before the iteration
+    temperature_poly = temp_poly_old;
+    Wij_m = Wij_m_old;
+    Dij_m = Dij_m_old;
+    Dije_AV = Dije_AV_old;
+    Dijp_AV = Dijp_AV_old;
+    Sig_m = Sig_m_old;
+    CSC = COLD;  C_VP_SC = C_VP_SC_old;
+    therm_expansion_ave = therm_expans_ave_old;
+    thermal_strain_m = ther_strain_m_old;
+    SSC = CSC.inverse();  M_VP_SC = C_VP_SC.inverse();
+    for(int G_n = 0; G_n < grains_num; ++G_n)
         g[G_n].restore_status_g();
 }
 
 void polycrystal::Cal_Sig_m(double Tincr)
 {
+    double temperature_diff = temperature_poly - temperature_ref;
     Wij_m = Matrix3d::Zero();
     //why not Wij = Udot - Dij ?
     //because the Udot need be update
@@ -913,19 +941,15 @@ void polycrystal::Cal_Sig_m(double Tincr)
         Udot_m(i,j) = Dij_m(i,j) + Wij_m(i,j);
     }
 
-    //calculate the Jaumann rate
-    Matrix3d Sig_J = Wij_m * Sig_m - Sig_m * Wij_m;
-    //calulate the De = D - Dp - D0
-    Vector6d De = Bbasisadd(Chg_basis6(Dij_m), -DVP_AV);
-    //Calculate AX = B
-    //X is the macro stress
+    Matrix3d Sig_J = Wij_m * Sig_m - Sig_m * Wij_m; //Jaumann rate part
+    Matrix3d therm_strain_rate = (therm_expansion_ave * temperature_diff - ther_strain_m_old)/Tincr;
+    Vector6d De = Bbasisadd(Chg_basis6(Dij_m), -DVP_AV) - Chg_basis6(therm_strain_rate); //De = D - Dp - D0 - Dt
+    //Calculate AX = B, X is the macro stress
     Matrix6d A = SSC/Tincr;
-    //B
     Matrix3d Mtemp = Sig_m_old / Tincr;
     Vector6d B = De + SSC * ( Chg_basis6(Mtemp) + Chg_basis6(Sig_J));
-    //According to the IUdot and ISDOT to solve AX = B
-    //transform to solve At Xt = Bt
-    // Xt in the unkown set of Udot and Sig
+    /* According to the IUdot and ISDOT to solve AX = B, transform to solve At Xt = Bt */
+    /* Xt in the unkown set of Udot and Sig */
     Vector6i Is = ISdot;
     Vector6i Id = IDdot;
     Vector6d profac;
@@ -941,10 +965,9 @@ void polycrystal::Cal_Sig_m(double Tincr)
     for(int i = 0; i != 6; i++){
         AUX11(i) = -Id(i)*BC_D(i);
         for(int j = 0; j != 6; j++){
-		AUX11(i) = AUX11(i) + AUX2(i,j)*Is(j)*BC_S(j)*profac(j);
-                //AUX21(i,j) = Is(j)*(i+1)/(j+1)*(j+1)/(i+1) - Id(j)*AUX2(i,j)*profac(j);
-                AUX21(i,j) = Is(j)*int(i==j) - Id(j)*AUX2(i,j)*profac(j);
-            }
+            AUX11(i) = AUX11(i) + AUX2(i,j)*Is(j)*BC_S(j)*profac(j);
+            AUX21(i,j) = Is(j)*int(i==j) - Id(j)*AUX2(i,j)*profac(j);
+        }
     }
     Vector6d AUX6 = AUX21.inverse()*AUX11;
 
@@ -952,8 +975,8 @@ void polycrystal::Cal_Sig_m(double Tincr)
     B_x = mult_dot(BC_D,Id) + mult_dot(AUX6,Is);
     Sig_x = mult_dot(BC_S,Is) + mult_dot(AUX6,Id);
     De = Chg_basis6(voigt(B_x)) - SSC * ( Chg_basis6(Mtemp) + Chg_basis6(Sig_J));
-    //calulate the D = De + Dp + D0
-    Vector6d Dij_m_v = Bbasisadd(De, DVP_AV);
+    Vector6d Dij_m_v = Bbasisadd(De, DVP_AV) + Chg_basis6(therm_strain_rate); //D = De + Dp + D0 + Dt
+    thermal_strain_m = therm_expansion_ave * temperature_diff;
     Dij_m = Chg_basis(Dij_m_v);
     Sig_m = voigt(Sig_x);
 }
@@ -963,7 +986,7 @@ double polycrystal::Cal_Sig_g(double Tincr)
     #pragma omp parallel for num_threads(Mtr)
     for(int G_n = 0; G_n < grains_num; G_n++){
 	//logger.debug("Cal_sig: Thread " + std::to_string(omp_get_thread_num()) + " is processing grain " + std::to_string(G_n));
-        g[G_n].grain_stress(Tincr, Wij_m, Dij_m, Dije_AV, Dijp_AV, Sig_m, Sig_m_old);
+        g[G_n].grain_stress(Tincr, Wij_m, Dij_m, Dije_AV, Dijp_AV, Sig_m, Sig_m_old, therm_expansion_ave);
     }
     #pragma omp barrier
     int stress_count = 0;
@@ -988,13 +1011,14 @@ void polycrystal::Update_AV()
         Dijp_AV += g[G_n].get_Dijp_g() * wei;
         Sig_AV += g[G_n].get_stress_g() * wei;
         Udot_AV += g[G_n].get_Udot_g() * wei;
+        Dij_AV += g[G_n].get_Dij_g() * wei;
     }
-    Dij_AV = Dije_AV + Dijp_AV;
 }
 
 Vector6d polycrystal::get_Sig_m(){return voigt(Sig_m);}
 Vector6d polycrystal::get_Sig_ave(){return voigt(Sig_AV);}
 Vector6d polycrystal::get_Eps_m(){return voigt(Eps_m);}
+
 void polycrystal::get_euler(fstream &texfile)
 {
     IOFormat Outformat(StreamPrecision);
