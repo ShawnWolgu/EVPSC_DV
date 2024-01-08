@@ -12,7 +12,7 @@ $$ \overline{\boldsymbol \alpha}=\langle\boldsymbol B^{e+}\rangle^{-1}:\langle\b
 
 $$ \widetilde{\boldsymbol d} = -\widetilde{\boldsymbol M}^e:(\dot{\boldsymbol\sigma^\nabla}-\dot{\boldsymbol\Sigma^\nabla})-\widetilde{\boldsymbol M}^{vp}:(\boldsymbol\sigma-\boldsymbol\Sigma) $$
 
-$$ \widetilde{\boldsymbol d}=\boldsymbol d-\overline{\boldsymbol d}=\boldsymbol d_e + \boldsymbol d_p+\boldsymbol d_t $$
+$$ \widetilde{\boldsymbol d}=\boldsymbol d-\overline{\boldsymbol d}=\boldsymbol d_e + \boldsymbol d_p+\boldsymbol d_t -\overline{\boldsymbol d}$$
 
 $$ \boldsymbol d_t=\frac{d\boldsymbol\alpha\delta T}{dt} $$
 
