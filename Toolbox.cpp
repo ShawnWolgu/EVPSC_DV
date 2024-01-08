@@ -1,4 +1,5 @@
 #include "Toolbox.h"
+#include <cmath>
 using namespace std;
 using namespace Eigen;
 
@@ -1025,3 +1026,13 @@ double slope_profile(double time, double slope, double intercept){
 double slope_profile_incr(double time_incr, double slope){
     return slope * time_incr;
 }
+
+double J_intensity_pulse(double time_acc, double duty_ratio, double amplitude_J, double frequency){
+    double int_real_duty;
+    double frac_real_duty = std::modf(time_acc*frequency, &int_real_duty);
+    if (frac_real_duty <= duty_ratio){
+        return amplitude_J;
+    }else{
+        return 0;
+    }
+}// This part is to define a pulsing function.
