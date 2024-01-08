@@ -894,4 +894,5 @@ void grain::update_temperature(double Tincr)
     temperature += 0; // And this is the temperature of the grain, which is a local variable.
     /* temperature += slope_profile_incr(Tincr, -10); */
     /* logger.debug("Temperature of grain " + to_string(grain_i) + " is " + to_string(temperature) + " K."); */
+    
 }
