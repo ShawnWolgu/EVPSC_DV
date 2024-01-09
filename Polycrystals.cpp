@@ -859,7 +859,11 @@ int polycrystal::EVPSC(int istep, double Tincr,\
     }
     /* logger.debug("Temperature in atmosphere: " + std::to_string(temp_atmosphere) + " K"); */
     /* logger.debug("Temperature in polycrystal: " + std::to_string(temperature_poly) + " K"); */
-
+    temperature_poly += (Tincr*Surface/(V_sample*rho_material*Cp_material))*(h_ext*(temp_atmosphere-temperature_poly)+sigma_k*(pow(temp_atmosphere,4)-pow(temperature_poly)));
+    // we have to redistribute the temperature? every loop temperature_poly is reset to 0
+    for(int G_n = 0; G_n < grains_num; ++G_n){
+        g[G_n].temperature = 
+    }
 
     //update the state in deformation systems and 
     // crystalline orientation 

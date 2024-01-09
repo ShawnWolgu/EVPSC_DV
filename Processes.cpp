@@ -68,7 +68,7 @@ void Process::get_IUdot(Matrix3i Min){IUDWdot = Min;}
 void Process::get_ISdot(Vector6i Vin){ISdot = Vin;}
 
 void Process::loading(Polycs::polycrystal &pcrys){
-    temp_atmosphere = Temp;
+    temp_atmosphere = Temp; //loading temp_init from the txt.in 
     if (pcrys.temperature_poly < 1e-3){
         // Temperature is not set, this is the first loading step, free of thermal stress
         pcrys.temperature_poly = Temp;
