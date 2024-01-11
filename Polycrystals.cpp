@@ -866,6 +866,7 @@ int polycrystal::EVPSC(int istep, double Tincr,\
     for(int G_n = 0; G_n < grains_num; ++G_n){
         g[G_n].temperature = temperature_poly;
        }
+    // this is to calculate the temperature after the thermal conduction.
 
     //update the state in deformation systems and 
     // crystalline orientation 

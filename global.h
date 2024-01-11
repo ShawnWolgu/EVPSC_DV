@@ -13,6 +13,7 @@
 
 extern double temp_atmosphere, temperature_ref;
 extern double rho_material, Cp_material, sigma_e_mat, h_ext, Surface, V_sample, sigma_k;
+extern double duty_ratio_J, Amplitude_J, Frequency;
 extern std::ofstream outfile;
 extern Polycs::polycrystal global_polycrys;
 extern Procs::Process global_proc;

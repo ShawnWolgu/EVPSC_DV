@@ -146,6 +146,20 @@ int sxinput(string fname, Polycs::polycrystal &pcrys)
         getline(sxinp, tp);  //skip a line;
         getline(sxinp, tp);  VectorXd therm = getnum(tp, 6); //Thermal coefficients
         add_thermal_coefficient(therm, sx_json);
+        getline(sxinp ,tp);
+        getline(sxinp, tp); VectorXd thermal_coeff = getnum(tp, 7);
+        rho_material = thermal_coeff(0);
+        Cp_material = thermal_coeff(1);
+        sigma_e_mat = thermal_coeff(2);
+        h_ext = thermal_coeff(3);
+        Surface = thermal_coeff(4);
+        V_sample = thermal_coeff(5);
+        sigma_k = thermal_coeff(6);
+        getline(sxinp ,tp);
+        getline(sxinp, tp); VectorXd electric_coeff = getnum(tp, 3);
+        duty_ratio_J = electric_coeff(0);
+        Amplitude_J = electric_coeff(1);
+        Frequency = electric_coeff(2);
         //关于传热的直接在这边赋值
         getline(sxinp, tp);  //skip a line;        //Start reading slip and twinning modes
         getline(sxinp, tp);  int nmodesx = int(getnum(tp, 1)(0)); //total mode number in file
@@ -264,7 +278,6 @@ VectorXd getnum(string strin, int num)
 {
     int i = 0;
     VectorXd Vtemp(num);
-
     //string pattern("\\d+(\\.\\d+)?");
     string pattern("[+-]?[\\d]+([\\.][\\d]*)?([Ee][+-]?[\\d]+)?");
     regex r(pattern);
