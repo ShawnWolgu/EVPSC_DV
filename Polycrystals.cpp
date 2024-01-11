@@ -369,6 +369,7 @@ void polycrystal::ini_from_json(json &sx_json){
     ini_Cij6(to_matrix(sx_json, "Cij6", 6, 6));
     ini_therm((Vector6d)(to_vector(sx_json, "therm", 6)));
     ini_GZ(sx_json["GZ"]);
+    //ini_heateffect//自己写
     ini_gmode(sx_json);
     for(int i = 0; i < grains_num; ++i) g[i].set_lat_hard_mat();
     logger.debug("Latent hardening matrix:");
@@ -859,11 +860,12 @@ int polycrystal::EVPSC(int istep, double Tincr,\
     }
     /* logger.debug("Temperature in atmosphere: " + std::to_string(temp_atmosphere) + " K"); */
     /* logger.debug("Temperature in polycrystal: " + std::to_string(temperature_poly) + " K"); */
-    temperature_poly += (Tincr*Surface/(V_sample*rho_material*Cp_material))*(h_ext*(temp_atmosphere-temperature_poly)+sigma_k*(pow(temp_atmosphere,4)-pow(temperature_poly)));
-    // we have to redistribute the temperature? every loop temperature_poly is reset to 0
+    double Delta_T = (Tincr*Surface/(V_sample*rho_material*Cp_material))*(h_ext*(temp_atmosphere-temperature_poly)+sigma_k*(pow(temp_atmosphere,4)-pow(temperature_poly)));
+    temperature_poly += Delta_T; 
+    // we have to redistribute the temperature?
     for(int G_n = 0; G_n < grains_num; ++G_n){
-        g[G_n].temperature = 
-    }
+        g[G_n].temperature = temperature_poly;
+       }
 
     //update the state in deformation systems and 
     // crystalline orientation 

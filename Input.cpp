@@ -146,7 +146,7 @@ int sxinput(string fname, Polycs::polycrystal &pcrys)
         getline(sxinp, tp);  //skip a line;
         getline(sxinp, tp);  VectorXd therm = getnum(tp, 6); //Thermal coefficients
         add_thermal_coefficient(therm, sx_json);
-
+        //关于传热的直接在这边赋值
         getline(sxinp, tp);  //skip a line;        //Start reading slip and twinning modes
         getline(sxinp, tp);  int nmodesx = int(getnum(tp, 1)(0)); //total mode number in file
         getline(sxinp, tp);  int nmodes = int(getnum(tp, 1)(0));  //considered in current run

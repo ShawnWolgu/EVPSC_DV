@@ -889,7 +889,8 @@ Matrix3d grain::get_therm_expansion(){
 // A default template of the temperature evolution
 void grain::update_temperature(double Tincr)
 {
-    int n_iter = 0;
+
+    //不用赋予初值，在processes里面有
     double t_grain_init = temp_atmosphere; // temperature of the atmosphere is a global variable, which can be directly used here
     ///double t_poly = global_polycrys.temperature_poly; // temperature of the polycrystal can be used like this.
     //double t_grain_old = t_grain;
@@ -898,9 +899,10 @@ void grain::update_temperature(double Tincr)
     }else{
         temperature = temperature + ()
     }
-
+    grain_stress//应力
+    Dij_g
+    cwiseProduct//双点积
     temperature += 0; // And this is the temperature of the grain, which is a local variable.
     /* temperature += slope_profile_incr(Tincr, -10); */
     /* logger.debug("Temperature of grain " + to_string(grain_i) + " is " + to_string(temperature) + " K."); */
-    n_iter += 1; 
 }
