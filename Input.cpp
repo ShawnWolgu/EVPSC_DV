@@ -112,6 +112,12 @@ int loadinput(string fname, Procs::Process &Proc)
             temp = getnum(tp, 1);
             Sig_m(2)=temp(0);
 
+            getline(sxinp ,tp);//skip one line
+            getline(sxinp, tp); VectorXd electric_coeff = getnum(tp, 3);
+            duty_ratio_J = electric_coeff(0);
+            Amplitude_J = electric_coeff(1);
+            Frequency = electric_coeff(2);
+            //I-intensity input
             Proc.get_Sdot(voigt(Sig_m));
 
             loadinp.close(); //close the file object.
@@ -155,11 +161,6 @@ int sxinput(string fname, Polycs::polycrystal &pcrys)
         Surface = thermal_coeff(4);
         V_sample = thermal_coeff(5);
         sigma_k = thermal_coeff(6);
-        getline(sxinp ,tp);
-        getline(sxinp, tp); VectorXd electric_coeff = getnum(tp, 3);
-        duty_ratio_J = electric_coeff(0);
-        Amplitude_J = electric_coeff(1);
-        Frequency = electric_coeff(2);
         //关于传热的直接在这边赋值
         getline(sxinp, tp);  //skip a line;        //Start reading slip and twinning modes
         getline(sxinp, tp);  int nmodesx = int(getnum(tp, 1)(0)); //total mode number in file
