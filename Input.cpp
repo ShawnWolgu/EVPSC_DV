@@ -112,8 +112,8 @@ int loadinput(string fname, Procs::Process &Proc)
             temp = getnum(tp, 1);
             Sig_m(2)=temp(0);
 
-            getline(sxinp ,tp);//skip one line
-            getline(sxinp, tp); VectorXd electric_coeff = getnum(tp, 3);
+            getline(loadinp ,tp);//skip one line
+            getline(loadinp, tp); VectorXd electric_coeff = getnum(tp, 3);
             duty_ratio_J = electric_coeff(0);
             Amplitude_J = electric_coeff(1);
             Frequency = electric_coeff(2);
