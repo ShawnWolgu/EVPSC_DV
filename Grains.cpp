@@ -893,7 +893,7 @@ void grain::update_temperature(double Tincr)
 {
     // temperature = temperature + (Tincr/(rho_material*Cp_material))*(Dijp_g.cwiseProduct(sig_g).sum()+pow(J_intensity_pulse(Tincr,duty_ratio_J,Amplitude_J,Frequency),2)/sigma_e_mat);
     //不用赋予初值，在processes里面有// temperature of the atmosphere is a global variable, which can be directly used here
-    temperature = 400.0; //test mode
+    temperature = 293.0; //test mode
     /* temperature += slope_profile_incr(Tincr, -10); //test mode
     /* logger.debug("Temperature of grain " + to_string(grain_i) + " is " + to_string(temperature) + " K."); */
 }
