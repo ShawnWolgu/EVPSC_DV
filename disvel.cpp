@@ -60,7 +60,7 @@ vector<double> Slip::disl_velocity_grad(double rss){
      * [hardening parameters] 
      *  8. forest hardening coefficient
      * [DD evolution parameters] 
-     *  0. SSD_density, 9. multiplication coefficient, 10. drag stressD, 11. reference strain rate, 12. c/g 
+     *  10. SSD_density, 9. multiplication coefficient, 10. drag stressD, 11. reference strain rate, 12. c/g 
      *
      * update parameters:
      * 0: burgers, 1: mean_free_path, 2: disl_density_resist, 3: forest_stress,

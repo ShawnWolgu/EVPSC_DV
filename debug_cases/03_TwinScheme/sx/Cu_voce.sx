@@ -11,11 +11,9 @@ CUBIC                                crysym
 *Thermal expansion coefficients of single crystal[K^(-1)]
   5.7e-6   5.7e-6  10.3e-6   0.0e0   0.0e0   0.0e0
 *rho_material, Cp_material, sigma_e_mat, h_ext, Surface, V_sample, sigma_k
-//not added
-*duty_ratio_J, Amplitude_J, Frequency
-0.05  167.7  25
+1.0 1.0 1.0 1.0 1.0 1.0 1.0
 SLIP AND TWINNING MODES
-2                               nmodesx
+1                               nmodesx
 1                               nmodes
 1                               mode(i)
 # Slip System: FCC{111}<1-10>
