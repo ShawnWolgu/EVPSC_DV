@@ -1007,6 +1007,13 @@ double calc_equivalent_value(Matrix3d mat){
     return sqrt(2./3. * sum);
 }
 
+double calc_equivalent_value(Vector6d mat6){
+    Matrix3d mat = voigt(mat6);
+    Matrix3d dev_mat = mat - Matrix3d::Identity() * mat.trace();
+    double sum = (dev_mat.cwiseProduct(dev_mat)).sum();
+    return sqrt(2./3. * sum);
+}
+
 double cal_cosine(Vector3d vec_i, Vector3d vec_j){
    return vec_i.dot(vec_j)/(vec_i.norm() * vec_j.norm());
 }

@@ -174,7 +174,7 @@ int sxinput(string fname, Polycs::polycrystal &pcrys)
             getline(sxinp, tp);  //skip a line;
             getline(sxinp, tp);  VectorXd mode_info = getnum(tp, 4);
             /* mode_info 0: the serial number 
-             * 1: number of mechnical systems
+             * 1: number of deformation systems
              * 2: flag of slip (0 for twin; 1 for slip) 
              * 3: flag of twin (1 for twin; 0 for slip)
             */ 
@@ -197,6 +197,8 @@ int sxinput(string fname, Polycs::polycrystal &pcrys)
                 sx_modes.push_back(this_mode);
             }                
         }
+        sx_json["family_num"] = nmodesx;
+        sx_json["modes_count_by_family"] = mode_count;
         sx_json["modes_num"] = modes_num;
 
         getline(sxinp, tp);  //skip a line;

@@ -149,10 +149,11 @@ VectorXd to_vector(json &j, string key, int n);
 int sign(double x);
 double cal_cosine(Vector3d vec_i, Vector3d vec_j);
 double calc_equivalent_value(Matrix3d mat);
+double calc_equivalent_value(Vector6d mat);
 Matrix6d rotate_6d_stiff_modu(Matrix6d modulus, Matrix3d rotate_matrix);
 Matrix6d rotate_6d_compl_modu(Matrix6d modulus, Matrix3d rotate_matrix);
 Vector4d get_twin_euler_vec(Matrix3d euler, double weight, Vector3d n_twin);
-
+int get_interaction_mode(Vector3d burgers_i, Vector3d plane_i, Vector3d burgers_j, Vector3d plane_j);
 //Profile functions, time is the independent variable
 //Slope profile function
 double slope_profile(double time, double slope, double intercept);

@@ -1,6 +1,7 @@
 #include "EVPSC.h"
 #include "Eigen/src/Core/Matrix.h"
 #include "global.h"
+#include "Toolbox.h"
 #include <locale>
 #include <string>
 
@@ -165,7 +166,7 @@ double grain::get_weight_g(){return weight;}
 
 double grain::get_weight_g(int mode_num){
     if (gmode[mode_num]->type != mode_type::twin){
-        logger.error("Not a twin, cannot output euler");
+        logger.error("Not a twin, cannot output weight");
         return 0;
     }
     Vector4d euler_vec = ((TwinG*)gmode[mode_num])->euler_twin;
@@ -816,7 +817,7 @@ void grain::update_modes(double Tincr)
         }
     }
     else twin_term_flag = false;
-    /* for(int i = 0; i < modes_num; i++)	gmode[i].update_lhparams(Dij_g); */
+    for(int i = 0; i < modes_num; i++)	gmode[i]->update_ssd_coplanar_reaction(modes_num, gmode, Tincr);
     for(int i = 0; i < modes_num; i++)	gmode[i]->update_status(*this, Tincr);
     gamma_total += gamma_delta;
 }
@@ -844,28 +845,6 @@ void grain::set_lat_hard_mat(){
         }
     }
     lat_hard_mat = latent_matrix;
-}
-
-int grain::get_interaction_mode(Vector3d burgers_i, Vector3d plane_i, Vector3d burgers_j, Vector3d plane_j){
-    /*
-     * Return the dislocation interaction mode code between two slip system.
-     * 0: No Junction, 1: Hirth Lock, 2: Coplanar Junction, 3: Glissile Junction, 4: Sessile Junction
-     */
-    double perp = 0.02, prll = 0.98;
-    double cos_b_angle = cal_cosine(burgers_i, burgers_j);
-    if(abs(cos_b_angle) < perp) return 1;
-    else {
-        if(abs(cos_b_angle) > prll) return 0;
-        else{
-            if (abs(cal_cosine(plane_i, plane_j)) > prll) return 2;
-            else{
-                bool if_glide_i = (abs(cal_cosine(plane_i, burgers_i+burgers_j)) < perp);
-                bool if_glide_j = (abs(cal_cosine(plane_j, burgers_i+burgers_j)) < perp);
-                if (if_glide_i || if_glide_j) return 3;
-                else return 4;
-            }
-        }
-    }
 }
 
 void grain::print_latent_matrix(){

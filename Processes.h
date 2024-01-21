@@ -32,21 +32,6 @@ class Process
         double Temp; // /(K) temperature 
         double Tincr;
 
-        //Output files
-        fstream ss_out; //output of the macro stress-strain curves
-        fstream ave_ss_out;
-        fstream tex_out; //output of the texture
-        fstream disloc_out; //output of the grain information
-        fstream time_out; //output of the dislocation velocity
-        fstream rate_out; //output of the dislocation glide rate
-        fstream crss_out; 
-        fstream rss_out; 
-        fstream euler_out;
-        fstream ss_out_csv;
-        fstream ss_grain_out;
-        fstream de_out;
-        fstream Mvp_out;
-
         int texctrl; //print the texture every n steps(0 means only print at the end)
 
         //update

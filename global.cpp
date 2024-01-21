@@ -19,6 +19,13 @@ Logger logger;
 Polycs::polycrystal global_polycrys;
 Procs::Process global_proc;
 
+vector<double> custom_vars(10,0.0); //custom variables
+fstream tex_out("Tex.out", ios::out); //output of the texture
+fstream density_out("Density.csv",ios::out); //output of the grain information
+fstream ss_out_csv("str_str.csv",ios::out); //output of the macro stress-strain curves
+fstream ave_ss_out("ave_str_str.csv",ios::out); //output of the average stress-strain curves
+fstream custom_out("custom.csv",ios::out); //output of the custom variables
+
 void update_progress(double progress_f)
 {
     const int bar_width = 70;
@@ -37,3 +44,4 @@ void update_progress(double progress_f)
     std::cout << "] " << (int)(progress_f * 100) << "%\r";
     std::cout.flush();
 }
+

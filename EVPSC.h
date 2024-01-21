@@ -72,7 +72,6 @@ class grain
 
         double gamma_total = 0;
         double gamma_delta = 0; //the increment of gamma
-        int get_interaction_mode(Vector3d burgers_i, Vector3d plane_i, Vector3d burgers_j, Vector3d plane_j);
 
     public:
         int grain_i; // The Number
@@ -248,7 +247,8 @@ class PMode
          * 0. tau_0, 1. tau_1, 2. h_0, 3. h_1, 4. twin_strain, 5. A1 6. A2, 7. ref_rate
          */
         vector<double> harden_params, update_params, latent_params;
-        double rate_sen, shear_rate, drate_dtau, shear_modulus, disloc_density, crss, acc_strain, rss = 0.0;
+        double rate_sen, shear_rate, drate_dtau, shear_modulus, disloc_density, crss, acc_strain, rss = 0.0, velocity = 0.0;
+        double rho_init = 0.0, rho_H=0.0;
         // Original Contents
         double get_gamma0();
         double get_nrsx();
@@ -264,6 +264,7 @@ class PMode
         virtual void check_sn_mode() {};
         virtual void update_status(grain &grain, double dtime) {}; //update the status of slip/twinning system
         virtual void update_ssd(Matrix3d strain_rate, double dtime) {};
+        virtual void update_ssd_coplanar_reaction(int modes_num, PMode** sys, double time_incr) {};
         virtual void print();
         virtual void cal_strain_rate(Matrix3d stress_tensor) {};
         virtual void cal_drate_dtau(Matrix3d stress_tensor) {};
@@ -297,6 +298,7 @@ class Slip : public PMode
         void check_sn_mode() override;
         void update_status(grain &grain, double dtime) override; //update the status of slip/twinning system
         void update_ssd(Matrix3d strain_rate, double dtime) override;
+        void update_ssd_coplanar_reaction(int modes_num, PMode** sys, double time_incr) override;
         void cal_strain_rate(Matrix3d stress_tensor) override;
         void cal_drate_dtau(Matrix3d stress_tensor) override;
         void print() override;

@@ -371,8 +371,11 @@ void polycrystal::ini_from_json(json &sx_json){
     ini_GZ(sx_json["GZ"]);
     //ini_heateffect//自己写
     ini_gmode(sx_json);
+    family_count = sx_json["family_num"];
+    VectorXd temp_vec = to_vector(sx_json, "modes_count_by_family", family_count);
+    for (int i = 0; i < family_count; i++) modes_count_by_family.push_back(temp_vec(i));
+    for (int i = 0; i < family_count; i++) density_by_family.push_back(0.0);
     for(int i = 0; i < grains_num; ++i) g[i].set_lat_hard_mat();
-    logger.debug("Latent hardening matrix:");
     g[0].print_latent_matrix();
 	for(int i = 0; i < grains_num; ++i){
 	   for(int j = 0; j < g[i].modes_num; ++j){
@@ -887,6 +890,7 @@ int polycrystal::EVPSC(int istep, double Tincr,\
         }
         if(Iupdate_CRSS) update_twin_control();
     }
+    update_density_by_family();
     return 0;
 }
 
@@ -1064,3 +1068,19 @@ void polycrystal::update_twin_control(){
     twin_threshold = min(1.0, A_1 + A_2 * (V_eff / V_acc));
 }
 
+void polycrystal::update_density_by_family(){
+    PMode* modePtr = nullptr;
+    for (int family_id = 0; family_id < family_count; family_id++){
+        int modes_from = 0;
+        if (family_id != 0) modes_from = modes_count_by_family[family_id - 1];
+        int modes_to = modes_count_by_family[family_id];
+        double density_in_family = 0.;
+        for (int grain_i = 0; grain_i < grains_num; grain_i++){
+            for (int mode_i = modes_from; mode_i < modes_to; mode_i++){
+                modePtr = g[grain_i].gmode[mode_i];
+                density_in_family += modePtr->disloc_density * g[grain_i].get_weight_g();
+            }
+        }
+        density_by_family[family_id] = density_in_family;
+    }
+}

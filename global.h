@@ -12,9 +12,16 @@
 #include <Eigen/Dense>
 
 extern double temp_atmosphere, temperature_ref;
-extern double rho_material, Cp_material, sigma_e_mat, h_ext, Surface, V_sample, sigma_k;
-extern double duty_ratio_J, Amplitude_J, Frequency;
-extern std::ofstream outfile;
+extern vector<double> custom_vars;
+extern fstream tex_out; //output of the texture
+extern fstream density_out; //output of the grain information
+extern fstream ss_out_csv; //output of the macro stress-strain curves
+extern fstream ave_ss_out; //output of the average stress-strain curves
+extern fstream custom_out; //output of the custom variables
+
+void initial_output_files();
+void output_info();
+
 extern Polycs::polycrystal global_polycrys;
 extern Procs::Process global_proc;
 class Logger;
