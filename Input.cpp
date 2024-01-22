@@ -197,7 +197,7 @@ int sxinput(string fname, Polycs::polycrystal &pcrys)
                 sx_modes.push_back(this_mode);
             }                
         }
-        sx_json["family_num"] = nmodesx;
+        sx_json["family_num"] = nmodes;
         sx_json["modes_count_by_family"] = mode_count;
         sx_json["modes_num"] = modes_num;
 
@@ -206,7 +206,7 @@ int sxinput(string fname, Polycs::polycrystal &pcrys)
         getline(sxinp, tp);  bool irate = bool(getnum(tp, 1)(0)); //"rate sensitive" flag(1: Y; 0: N)
         getline(sxinp, tp);  sx_json["GZ"] = getnum(tp, 1)(0); //grain size: um
         int harden_size;
-        if(iharden == 0) harden_size = 4; else harden_size = 13;
+        if(iharden == 0) harden_size = 4; else harden_size = 16;
 
         //Read hardening parameters of modes
         double nrsx; vector<double> CRSS_p, hst;
@@ -215,7 +215,7 @@ int sxinput(string fname, Polycs::polycrystal &pcrys)
             getline(sxinp, tp);  //skip a line;
             getline(sxinp, tp);  nrsx = getnum(tp, 1)(0); //rate sensitivity
             getline(sxinp, tp);  //CRSS parameters
-            if (iharden == 1) CRSS_p = getnum_vec(tp, 15);
+            if (iharden == 1) CRSS_p = getnum_vec(tp, 16);
             else CRSS_p = getnum_vec(tp, 4);
             //hst
             getline(sxinp, tp);  hst = getnum_vec(tp, 6); //6 types of hardening

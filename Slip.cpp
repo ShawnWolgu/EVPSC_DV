@@ -289,6 +289,8 @@ void Slip::update_ssd_coplanar_reaction(int modes_num, PMode** mode_sys, double 
                             disloc_density * velocity * sqrt(mode_sys[index_1]->disloc_density);
         d_term_coplanar -= minus_term;
     }
+    custom_vars[0] = max(custom_vars[0], d_term_coplanar);
+    custom_vars[1] = max(custom_vars[1], coeff_coplanar);
     d_term_coplanar = d_term_coplanar * coeff_coplanar * time_incr;
     if (d_term_coplanar + disloc_density < 0) d_term_coplanar = -disloc_density * 0.5;
     rho_H = disloc_density + d_term_coplanar;

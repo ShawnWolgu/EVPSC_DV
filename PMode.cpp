@@ -81,3 +81,27 @@ void PMode::update_temperature(double temp_in){
 void PMode::print(){
     logger.info("Undefined mode number: " + to_string(num));
 }
+
+void PMode::save_status(){
+    shear_rate_old = shear_rate;
+    drate_dtau_old = drate_dtau;
+    disloc_density_old = disloc_density;
+    crss_old = crss;
+    acc_strain_old = acc_strain;
+    rss_old = rss;
+    velocity_old = velocity;
+    rho_init_old = rho_init;
+    rho_H_old = rho_H;
+}
+
+void PMode::restore_status(){
+    shear_rate = shear_rate_old;
+    drate_dtau = drate_dtau_old;
+    disloc_density = disloc_density_old;
+    crss = crss_old;
+    acc_strain = acc_strain_old;
+    rss = rss_old;
+    velocity = velocity_old;
+    rho_init = rho_init_old;
+    rho_H = rho_H_old;
+}

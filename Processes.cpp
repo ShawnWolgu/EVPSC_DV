@@ -59,6 +59,7 @@ void Process::loading(Polycs::polycrystal &pcrys){
         logger.info("");
         logger.info("**********\tSTEP\t"+ to_string(istep) + "\t**********");
         logger.info("");
+        bool is_convergent = true;
         double pct_step = 0; 
         update_progress(pct_step);
         do{
@@ -71,7 +72,11 @@ void Process::loading(Polycs::polycrystal &pcrys){
                 logger.notice("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
                 if(isnan(pcrys.error_SC)) coeff_step *= 0.1;
                 else coeff_step *= 0.5;
-                if (coeff_step < 1e-10) { logger.error("Not convergent... Abort."); exit(1);}
+                if (coeff_step < 1e-10) {
+                    logger.error("Not convergent... Abort.");
+                    is_convergent = false;
+                    break;
+                }
                 continue;
             }
             pct_step += current_step;
@@ -83,6 +88,8 @@ void Process::loading(Polycs::polycrystal &pcrys){
         if(!((istep+1)%texctrl))
             Out_texture(pcrys,istep);
         output_info();
+        output_grain_info(0);
+        if(!is_convergent) break;
     }
     Out_texture(pcrys,Nsteps);
 }

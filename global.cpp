@@ -21,9 +21,11 @@ Procs::Process global_proc;
 
 vector<double> custom_vars(10,0.0); //custom variables
 fstream tex_out("Tex.out", ios::out); //output of the texture
-fstream density_out("Density.csv",ios::out); //output of the grain information
+fstream density_out("Density.csv",ios::out); 
+fstream acc_strain_out("Acc_Strain.csv",ios::out);
 fstream ss_out_csv("str_str.csv",ios::out); //output of the macro stress-strain curves
 fstream ave_ss_out("ave_str_str.csv",ios::out); //output of the average stress-strain curves
+fstream grain_out("grain_info.csv",ios::out); //output of the grain information"
 fstream custom_out("custom.csv",ios::out); //output of the custom variables
 
 void update_progress(double progress_f)

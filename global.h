@@ -15,12 +15,15 @@ extern double temp_atmosphere, temperature_ref;
 extern vector<double> custom_vars;
 extern fstream tex_out; //output of the texture
 extern fstream density_out; //output of the grain information
+extern fstream acc_strain_out;
 extern fstream ss_out_csv; //output of the macro stress-strain curves
 extern fstream ave_ss_out; //output of the average stress-strain curves
+extern fstream grain_out; //output of the grain information
 extern fstream custom_out; //output of the custom variables
 
 void initial_output_files();
 void output_info();
+void output_grain_info(int i);
 
 extern Polycs::polycrystal global_polycrys;
 extern Procs::Process global_proc;

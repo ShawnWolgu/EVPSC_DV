@@ -207,7 +207,7 @@ int grain::ini_gmode_g(json &j)
         }
         ++i;
     }
-    logger.info("Grain "+std::to_string(grain_i)+" has initiated "+std::to_string(modes_num)+" modes");
+    logger.notice("Grain "+std::to_string(grain_i)+" has initiated "+std::to_string(modes_num)+" modes");
     /* for (int i = 0; i < modes_num; ++i){ */
     /*     gmode[i]->print(); */
     /* } */
@@ -238,7 +238,7 @@ int grain::ini_gmode_g(grain &tp)
         }
     }
     gamma_delta_gmode = new double[modes_num];
-    logger.info("Grain "+std::to_string(grain_i)+" has initiated "+std::to_string(modes_num)+" modes");
+    logger.notice("Grain "+std::to_string(grain_i)+" has initiated "+std::to_string(modes_num)+" modes");
     /* for (int i = 0; i < modes_num; ++i){ */
     /*     gmode[i]->print(); */
     /* } */
@@ -440,6 +440,9 @@ void grain::save_status_g(){
     Dije_g_old = Dije_g;      Dijp_g_old = Dijp_g;
     therm_strain_g_old = therm_strain_g;
     save_RSinv_g();
+    for (int i = 0; i < modes_num; ++i){
+        gmode[i]->save_status();
+    }
 }
 
 void grain::save_RSinv_g(){
@@ -453,6 +456,7 @@ void grain::save_RSinv_g(){
 void grain::restore_status_g(){
     temperature = temp_old;
     for (int i = 0; i < modes_num; ++i){
+        gmode[i]->restore_status();
         gmode[i]->update_temperature(temperature);
     }
     sig_g = sig_g_old;
@@ -803,6 +807,7 @@ void grain::update_orientation(double Tincr, Matrix3d Wij_m, Matrix3d Dije_AV, M
 void grain::update_modes(double Tincr)
 {
     for(int i = 0; i < modes_num; i++)	gmode[i]->update_ssd(Dij_g, Tincr);
+    for(int i = 0; i < modes_num; i++)	gmode[i]->update_ssd_coplanar_reaction(modes_num, gmode, Tincr);
     child_frac = 0.;
     for (int i = 0; i < modes_num; i++) {
         if (gmode[i]->type != mode_type::twin) continue;
@@ -817,7 +822,6 @@ void grain::update_modes(double Tincr)
         }
     }
     else twin_term_flag = false;
-    for(int i = 0; i < modes_num; i++)	gmode[i]->update_ssd_coplanar_reaction(modes_num, gmode, Tincr);
     for(int i = 0; i < modes_num; i++)	gmode[i]->update_status(*this, Tincr);
     gamma_total += gamma_delta;
 }

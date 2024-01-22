@@ -226,6 +226,7 @@ class PMode
         double ref_strain_rate = 0.001;
         Matrix3d Pij;
         Matrix3d Rij;
+        double shear_rate_old, drate_dtau_old, disloc_density_old, crss_old, acc_strain_old, rss_old, velocity_old, rho_init_old, rho_H_old;
 
     public:
         PMode();
@@ -259,6 +260,8 @@ class PMode
         Matrix3d cal_dijpmode(Matrix3d);
         Matrix3d cal_rot_mode();
         Matrix6d get_Fgradm(Matrix3d);
+        void save_status();
+        void restore_status();
         // Virtual funcs
         virtual void check_hardening_mode(){};
         virtual void check_sn_mode() {};
