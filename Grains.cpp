@@ -438,6 +438,7 @@ void grain::save_status_g(){
     Cij6_SA_g_old = Cij6_SA_g;
     Dij_g_old = Dij_g;        
     Dije_g_old = Dije_g;      Dijp_g_old = Dijp_g;
+    d0_g_old = d0_g;
     therm_strain_g_old = therm_strain_g;
     save_RSinv_g();
     for (int i = 0; i < modes_num; ++i){
@@ -465,6 +466,7 @@ void grain::restore_status_g(){
     Cij6_SA_g = Cij6_SA_g_old;
     Dij_g = Dij_g_old;
     Dije_g = Dije_g_old;      Dijp_g = Dijp_g_old;
+    d0_g = d0_g_old;
     therm_strain_g = therm_strain_g_old;
     Update_RSinv_C_g(RSinv_C_old);
     Update_RSinv_VP_g(RSinv_VP_old);
@@ -501,7 +503,10 @@ void grain::Update_RSinv_VP_g(double A[3][3][3][3])
 void grain::Update_Mpij6_g()
 {
     Mpij6_g = 1e-10 * Matrix5d::Identity() + cal_Fgrad(sig_g) ;
-    d0_g = Chg_basis5(Dijp_g) - Mpij6_g * Chg_basis5(sig_g);
+    Matrix5d M_secant = 1e-10 * Matrix5d::Identity() + cal_M_secant(sig_g);
+    Vector5d d0_g_tg = Chg_basis5(Dijp_g) - Mpij6_g * Chg_basis5(sig_g);
+    Vector5d d0_g_affine = (M_secant - Mpij6_g) * Chg_basis5(sig_g);
+    d0_g = d0_g_affine;
 }
 
 void grain::Update_shape_g()
@@ -640,12 +645,22 @@ Matrix5d grain::cal_Fgrad(Matrix3d Min)
     Matrix3d E = Euler_M;
     Matrix3d ET = E.transpose();
     X = E * X * ET;
-
     Matrix6d Fgrad = Matrix6d::Zero();
     for(int i = 0; i < modes_num; i++)
         Fgrad += gmode[i]->get_Fgradm(X);
-    //return Chg_basis5(rotate_C66(Fgrad, E));
     return Chg_basis5(rotate_C66(Fgrad, ET));
+}
+
+Matrix5d grain::cal_M_secant(Matrix3d Min)
+{
+    Matrix3d X = devia(Min);
+    Matrix3d E = Euler_M;
+    Matrix3d ET = E.transpose();
+    X = E * X * ET;
+    Matrix6d M_sec = Matrix6d::Zero();
+    for(int i = 0; i < modes_num; i++)
+        M_sec += gmode[i]->get_M_secant(X);
+    return Chg_basis5(rotate_C66(M_sec, ET));
 }
 
 double grain::cal_RSSxmax(Matrix3d Min)
@@ -760,8 +775,6 @@ void grain::grain_stress(double Tincr, Matrix3d Wij_m, Matrix3d Dij_m,\
     }
     /**/
     sig_g = Chg_basis(Xv);
-    /* logger.debug("Grain number = " + to_string(grain_i) + ", F_norm = " + to_string(F.norm())); */
-    /* logger.debug("Grain number = " + to_string(grain_i) + ", sig_g = "); logger.debug(sig_g); */
     Vector6d dijegv =  Mij6_J_g *(Xv/Tincr + Chg_basis6(stress_g_jau_diff)); 
     dijpgv = Chg_basis5(cal_Dijp(sig_g));
     Dije_g = Chg_basis(dijegv); Dijp_g = Chg_basis(dijpgv);

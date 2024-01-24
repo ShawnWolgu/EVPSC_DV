@@ -6,6 +6,7 @@ Process::Process(){};
 
 Process::~Process()
 {
+    /* Out_texture(global_polycrys, istep); */
     tex_out.close();
     density_out.close();
     ss_out_csv.close();
@@ -54,7 +55,7 @@ void Process::loading(Polycs::polycrystal &pcrys){
     pcrys.set_BC_const(UDWdot_input, Sdot_input, IUDWdot, ISdot);
     initial_output_files();
     double coeff_step = 1, current_step = 1.;
-    for(int istep = 0; istep < Nsteps; ++istep)
+    for(istep = 0; istep < Nsteps; ++istep)
     {
         logger.info("");
         logger.info("**********\tSTEP\t"+ to_string(istep) + "\t**********");
@@ -89,15 +90,18 @@ void Process::loading(Polycs::polycrystal &pcrys){
             Out_texture(pcrys,istep);
         output_info();
         output_grain_info(0);
-        if(!is_convergent) break;
+        if(!is_convergent) {
+            Out_texture(pcrys, istep);
+            break;
+        }
     }
-    Out_texture(pcrys,Nsteps);
+    /* Out_texture(pcrys,Nsteps); */
 }
 
 void Process::Out_texture(Polycs::polycrystal &pcrys, int istep)
 {
     IOFormat Outformat(StreamPrecision);
-    logger.notice("Output texture at step " + to_string(istep+1));
+    logger.notice("Output texture at step " + to_string(istep));
     tex_out << "TEXTURE AT STEP = " << istep+1 << endl;
     tex_out << setprecision(4) << pcrys.get_ell_axis().transpose().format(Outformat)<< endl; 
     tex_out << setprecision(4) << pcrys.get_ellip_ang().transpose().format(Outformat) << endl << endl;

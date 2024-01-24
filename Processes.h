@@ -29,6 +29,7 @@ class Process
         double Eincr; //the increment of strain in every istep
         int Ictrl;
         int Nsteps; // total steps
+        int istep; // current step
         double Temp; // /(K) temperature 
         double Tincr;
 

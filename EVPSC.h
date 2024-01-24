@@ -50,6 +50,7 @@ class grain
         Matrix3d Dij_g_old; //strain rate in last step
         Matrix3d Dije_g_old; //elastic strain rate in last step
         Matrix3d Dijp_g_old; //vp strain rate in last step
+        Vector5d d0_g_old; //d0 in last step
         Matrix3d therm_strain_g_old; //the thermal strain tensor in grain in last step
         double RSinv_C_old[3][3][3][3];
         double RSinv_VP_old[3][3][3][3];
@@ -154,6 +155,7 @@ class grain
         Matrix3d cal_rotslip();
 
         Matrix5d cal_Fgrad(Matrix3d);
+        Matrix5d cal_M_secant(Matrix3d);
 
         double cal_RSSxmax(Matrix3d); //Calculate the maxinum RSS/CRSS
         double cal_RSSxlim(Matrix3d); //Calculate the limit of RSS/CRSS
@@ -260,6 +262,7 @@ class PMode
         Matrix3d cal_dijpmode(Matrix3d);
         Matrix3d cal_rot_mode();
         Matrix6d get_Fgradm(Matrix3d);
+        Matrix6d get_M_secant(Matrix3d);
         void save_status();
         void restore_status();
         // Virtual funcs

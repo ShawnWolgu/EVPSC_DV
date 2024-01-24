@@ -539,7 +539,7 @@ int polycrystal::Selfconsistent_E(int Istep, double ERRM, int ITMAX)
         RER=Errorcal(SSC,SSC_new);
         SSC = 0.5*(SSC_new+SSC_new.transpose());
         CSC = SSC.inverse();
-        logger.notice("**Error in  ESC iteration "+to_string(IT)+":\t"+to_string(RER));
+        logger.notice("**Error in ESC iteration "+to_string(IT)+":\t\t"+to_string(RER));
         if(isnan(RER)) return 1;
     } //while loop
     // Thermal Expansion Part
@@ -563,7 +563,8 @@ int polycrystal::Selfconsistent_P(int Istep, double ERRM, int ITMAX)
     Matrix5d MNEW; //VP compliance updated in every do-while
     Vector5d D0_new; //the back-extrapolated term updated in every do-while
     Matrix5d B_g_ave; // <B_g> in Equ[5-41a] average of B_g
-    Vector5d b_g_ave; // <b_g> in Equ[5-41b] average of b_g
+    Matrix5d B_g_switch_ave;
+    Vector5d B_switch_d0_ave;
     int IT = 0; //loop flag
     double RER = 2*ERRM;
     while((RER >= ERRM) && (IT < ITMAX))
@@ -571,8 +572,9 @@ int polycrystal::Selfconsistent_P(int Istep, double ERRM, int ITMAX)
         IT++;
         MNEW = Matrix5d::Zero();
         B_g_ave = Matrix5d::Zero();
+        B_g_switch_ave = Matrix5d::Zero();
+        B_switch_d0_ave = Vector5d::Zero();
         D0_new = Vector5d::Zero();
-        b_g_ave = Vector5d::Zero();
         Matrix5d Mtilde;
         Matrix5d S55;//the Sijkl Equ[5-33] in sample axes in Manual 7d
         double R4_SA[3][3][3][3]; //PIijkl
@@ -645,39 +647,29 @@ int polycrystal::Selfconsistent_P(int Istep, double ERRM, int ITMAX)
 
             Matrix5d M_g = g[G_n].get_Mpij6_g();
             Vector5d d0_g = g[G_n].get_d0_g(); 
-            double wei = g[G_n].get_weight_g();
+            double weight_g = g[G_n].get_weight_g();
 
             //Calculate the localization tensor B_g, _g means the value depends on the grain
-            //refer to Equ[5-35] in Manual 7d
-            // B_g = (M_g + M~)^-1 * (M_ + M~)
-            Matrix5d Part1 = M_g + Mtilde;
-            Matrix5d Part1_inv = Part1.inverse();
-            Matrix5d Part2 = M_VP_SC + Mtilde; 
-            Matrix5d B_g = Part1_inv * Part2;
-            //refer to Equ[5-35] in Manual 7d
+            // B_g = (M_g + M~)^-1 * (M_ + M~) 
+            Matrix5d term_M = (M_g + Mtilde).inverse();
+            Matrix5d B_g = term_M * (M_VP_SC + Mtilde);
+            Matrix5d B_g_switch = (M_VP_SC + Mtilde) * term_M;
             // b_g = (M_g + M~)^-1 * (d- - d-_g)
-            Vector5d b_gv =  Part1_inv * (Chg_basis5(voigt(D0))-d0_g);
-
+            Vector5d b_gv =  term_M * (Chg_basis5(voigt(D0))-d0_g);
             // MNEW = <M_g * B_g> Equ[5-40a]
-            MNEW += M_g * B_g * wei;
+            MNEW += M_g * B_g * weight_g;
             //<B_g> Equ[5-40b]
-            B_g_ave += B_g * wei;
-
-            Vector5d Mr_br =  M_g * b_gv; 
-            D0_new += ( d0_g +  Mr_br ) * wei; // < M_g * b_g + d0_g>
-            // <b_g>
-            b_g_ave += b_gv * wei;
-            DVP_AV +=  Chg_basis5(g[G_n].get_Dijp_g()) * wei;
+            B_g_ave += B_g * weight_g;
+            B_g_switch_ave += B_g_switch * weight_g;
+            B_switch_d0_ave += B_g_switch * d0_g * weight_g;
+            DVP_AV +=  Chg_basis5(g[G_n].get_Dijp_g()) * weight_g;
         } //loop over grains
 
         // <M_g * B_g> * <B_g>^-1
         MNEW = MNEW * B_g_ave.inverse();
         Matrix5d MNEW2 = 0.5*(MNEW+MNEW.transpose());
         MNEW = MNEW2;
-        // < M_g * b_g + d0_g> - <M_g * B_g> * <B_g>^-1 * <b_g>
-        //<M_g * B_g> * <B_g>^-1 * <b_g>
-        Vector5d M_bg =  MNEW * b_g_ave;
-        D0_new = D0_new - M_bg;
+        D0_new = B_g_switch_ave.inverse() * B_switch_d0_ave;
         /* calculate the error between the input M_VP_SC of do-while loop and the output MNEW of the loop  */
         RER = Errorcal(M_VP_SC, MNEW);
         M_VP_SC = MNEW;
@@ -805,7 +797,7 @@ int polycrystal::EVPSC(int istep, double Tincr,\
  bool Iupdate_ori,bool Iupdate_shp,bool Iupdate_CRSS)
 {   
     double errd, errs, err_g, err_av;
-    int max_iter = 30, break_th = 10, break_counter = 0;
+    int max_iter = 30, break_th = 5, break_counter = 0;
     save_status();
 
     for(int i = 0; i <= max_iter; ++i)
@@ -1001,7 +993,6 @@ double polycrystal::Cal_Sig_g(double Tincr)
 {
     #pragma omp parallel for num_threads(Mtr)
     for(int G_n = 0; G_n < grains_num; G_n++){
-	//logger.debug("Cal_sig: Thread " + std::to_string(omp_get_thread_num()) + " is processing grain " + std::to_string(G_n));
         g[G_n].grain_stress(Tincr, Wij_m, Dij_m, Dije_AV, Dijp_AV, Sig_m, Sig_m_old, therm_expansion_ave);
     }
     #pragma omp barrier

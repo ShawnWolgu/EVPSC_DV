@@ -223,9 +223,15 @@ void Slip::update_disvel(PMode** slip_sys, vector<vector<double>> lat_hard_mat, 
     burgers = bv * 1e-10;
     forest_stress = c_forest * shear_modulus * burgers * sqrt(disl_density_resist + 0.707*joint_density);// + HP_stress
     crss = forest_stress + resistance_slip;
-    mfp = c_mfp / sqrt(disloc_density);
+    mfp = c_mfp / sqrt(disl_density_for);
     acc_strain += abs(shear_rate) * dtime;
     update_params[0] = burgers, update_params[1] = mfp, update_params[2] = disl_density_resist, update_params[3] = forest_stress;
+    if (num == 0){
+        custom_vars[0] = sqrt(disl_density_resist + 0.707*joint_density);
+        custom_vars[1] = shear_modulus;
+        custom_vars[2] = c_forest;
+        custom_vars[3] = burgers * 1e10;
+    }
 }
 
 void Slip::update_ssd(Matrix3d strain_rate, double dtime){
@@ -259,9 +265,9 @@ void Slip::update_ssd(Matrix3d strain_rate, double dtime){
         double term_multi = c_multi / mfp; 
         c_annih = (term_multi + term_nuc) / rho_sat;
         double disloc_incre = (term_multi + term_nuc - c_annih * disloc_density) * abs(shear_rate) * dtime;
-        if (disloc_incre > rho_sat){
-            disloc_incre = 0.1 * disloc_density;
-        }
+        /* if (disloc_incre > rho_sat){ */
+        /*     disloc_incre = 0.1 * disloc_density; */
+        /* } */
         disloc_density += disloc_incre;
         rho_mov = disloc_density;
         if(disloc_density < rho_init) rho_init = disloc_density;
@@ -289,8 +295,6 @@ void Slip::update_ssd_coplanar_reaction(int modes_num, PMode** mode_sys, double 
                             disloc_density * velocity * sqrt(mode_sys[index_1]->disloc_density);
         d_term_coplanar -= minus_term;
     }
-    custom_vars[0] = max(custom_vars[0], d_term_coplanar);
-    custom_vars[1] = max(custom_vars[1], coeff_coplanar);
     d_term_coplanar = d_term_coplanar * coeff_coplanar * time_incr;
     if (d_term_coplanar + disloc_density < 0) d_term_coplanar = -disloc_density * 0.5;
     rho_H = disloc_density + d_term_coplanar;
