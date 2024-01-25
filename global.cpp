@@ -4,7 +4,17 @@
 using namespace std;
 
 double temp_atmosphere = 0.0; // temperature of the atmosphere
-double temperature_ref = 0.0; // reference temperature: free of thermal stress
+double temperature_ref = 0.0; // reference temperature: free of thermal stress used to characterize the thermal expansion strain quantity
+double rho_material; // the density of the mat //在程序任意地方调用，然后在
+double Cp_material; // the specific heat of the mat
+double sigma_e_mat; //the electricity conductivity
+double h_ext; // the convection constant between the mat and the atmos
+double Surface; //surface of the sample
+double sigma_k = 5.67e-8; // the stefan-boltzmann const W/(K^4*m^2)
+double V_sample; // the volume of the sample
+double duty_ratio_J;//
+double Amplitude_J;//
+double Frequency; 
 Logger logger;
 Polycs::polycrystal global_polycrys;
 Procs::Process global_proc;

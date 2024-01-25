@@ -157,5 +157,5 @@ Vector4d get_twin_euler_vec(Matrix3d euler, double weight, Vector3d n_twin);
 //Slope profile function
 double slope_profile(double time, double slope, double intercept);
 double slope_profile_incr(double time_incr, double slope);
-
+double J_intensity_pulse(double time_acc, double duty_ratio, double amplitude_J, double frequency);
 #endif
