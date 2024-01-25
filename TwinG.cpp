@@ -135,9 +135,16 @@ void TwinG::update_status(grain &gr, double dtime){
 }
 
 void TwinG::update_ssd(Matrix3d strain_rate, double dtime){
-    acc_strain += shear_rate * dtime;
+    acc_strain += abs(shear_rate) * dtime;
     double lower_bound = 1e-3, upper_bound = global_polycrys.twin_threshold;
-    child_frac += shear_rate / harden_params[4] * dtime; // need to be modified
+    double fraction_incre = shear_rate / harden_params[4] * dtime; 
+    if (child_frac + fraction_incre > 1){
+        fraction_incre = min(1 - child_frac, 0.5 * child_frac);
+    } 
+    else if (child_frac + fraction_incre < 0) {
+        fraction_incre = sign(fraction_incre) * min(abs(child_frac), 0.5 * child_frac);
+    }
+    child_frac += fraction_incre;
     disloc_density = child_frac;
     if (child_frac < lower_bound) status = twin_status::inactive;
     else if (child_frac > upper_bound) status = twin_status::saturated;

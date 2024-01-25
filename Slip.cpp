@@ -224,7 +224,6 @@ void Slip::update_disvel(PMode** slip_sys, vector<vector<double>> lat_hard_mat, 
     forest_stress = c_forest * shear_modulus * burgers * sqrt(disl_density_resist + 0.707*joint_density);// + HP_stress
     crss = forest_stress + resistance_slip;
     mfp = c_mfp / sqrt(disl_density_for);
-    acc_strain += abs(shear_rate) * dtime;
     update_params[0] = burgers, update_params[1] = mfp, update_params[2] = disl_density_resist, update_params[3] = forest_stress;
     if (num == 0){
         custom_vars[0] = max(custom_vars[0], disl_density_for);
@@ -245,9 +244,8 @@ void Slip::update_ssd(Matrix3d strain_rate, double dtime){
      * update parameters:
      * 0: burgers, 1: mean_free_path, 2: disl_density_resist, 3: forest_stress
      */
-    if (flag_harden == 0){
-        acc_strain += abs(shear_rate) * dtime;
-    }
+    acc_strain += abs(shear_rate) * dtime;
+    if (flag_harden == 0){ return; }
     if (flag_harden == 1){ 
         double c_forest = harden_params[8], c_nuc = harden_params[9], tau_nuc = harden_params[10],\
                c_multi = harden_params[11], c_annih = 0.,\
@@ -262,9 +260,8 @@ void Slip::update_ssd(Matrix3d strain_rate, double dtime){
         double term_multi = c_multi / mfp; 
         c_annih = (term_multi + term_nuc) / rho_sat;
         double disloc_incre = (term_multi + term_nuc - c_annih * disloc_density) * abs(shear_rate) * dtime;
-        if (disloc_incre > rho_sat){
-            disloc_incre = 0.1 * disloc_density;
-        }
+        if (disloc_incre > rho_sat) disloc_incre = 0.1 * disloc_density; 
+        else if (disloc_incre + disloc_density < 0) disloc_incre = -0.1 * disloc_density; 
         disloc_density += disloc_incre;
         rho_mov = disloc_density;
         if(disloc_density < rho_init) rho_init = disloc_density;
@@ -294,6 +291,7 @@ void Slip::update_ssd_coplanar_reaction(int modes_num, PMode** mode_sys, double 
     }
     d_term_coplanar = d_term_coplanar * coeff_coplanar * time_incr;
     if (d_term_coplanar + disloc_density < 0) d_term_coplanar = -disloc_density * 0.5;
+    else if (d_term_coplanar > 2 * rho_sat) d_term_coplanar = disloc_density * 0.5;
     rho_H = disloc_density + d_term_coplanar;
     rho_init = min(rho_H, rho_init);
 }
