@@ -1043,3 +1043,26 @@ double J_intensity_pulse(double time_acc, double duty_ratio, double amplitude_J,
         return 0;
     }
 }// This part is to define a pulsing function.
+
+int get_interaction_mode(Vector3d burgers_i, Vector3d plane_i, Vector3d burgers_j, Vector3d plane_j){
+    /*
+     * Return the dislocation interaction mode code between two slip system.
+     * 0: No Junction, 1: Hirth Lock, 2: Coplanar Junction, 3: Glissile Junction, 4: Sessile Junction
+     */
+    double perp = 0.02, prll = 0.98;
+    double cos_b_angle = cal_cosine(burgers_i, burgers_j);
+    if(abs(cos_b_angle) < perp) return 1;
+    else {
+        if(abs(cos_b_angle) > prll) return 0;
+        else{
+            if (abs(cal_cosine(plane_i, plane_j)) > prll) return 2;
+            else{
+                bool if_glide_i = (abs(cal_cosine(plane_i, burgers_i+burgers_j)) < perp);
+                bool if_glide_j = (abs(cal_cosine(plane_j, burgers_i+burgers_j)) < perp);
+                if (if_glide_i || if_glide_j) return 3;
+                else return 4;
+            }
+        }
+    }
+}
+

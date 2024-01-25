@@ -13,6 +13,8 @@
 
 extern double temp_atmosphere, temperature_ref;
 extern vector<double> custom_vars;
+extern double rho_material, Cp_material, sigma_e_mat, h_ext, Surface, V_sample, sigma_k;
+extern double duty_ratio_J, Amplitude_J, Frequency;
 extern fstream tex_out; //output of the texture
 extern fstream density_out; //output of the grain information
 extern fstream acc_strain_out;

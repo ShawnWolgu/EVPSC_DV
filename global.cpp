@@ -12,9 +12,9 @@ double h_ext; // the convection constant between the mat and the atmos
 double Surface; //surface of the sample
 double sigma_k = 5.67e-8; // the stefan-boltzmann const W/(K^4*m^2)
 double V_sample; // the volume of the sample
-double duty_ratio_J;//
-double Amplitude_J;//
-double Frequency; 
+double duty_ratio_J = 0.0;//
+double Amplitude_J = 0.0;//
+double Frequency = 0.0; 
 Logger logger;
 Polycs::polycrystal global_polycrys;
 Procs::Process global_proc;
