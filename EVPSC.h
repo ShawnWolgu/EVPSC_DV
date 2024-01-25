@@ -174,8 +174,11 @@ class grain
         Matrix3d get_therm_expansion();
         void Update_RSinv_C_g(double A[3][3][3][3]);
 
-        //Visco-plastic consistent
-        void Update_Mpij6_g();
+        // [Visco-plastic consistent Function]
+        //
+        // Calculate the Viscoplastic Modulus using different linearization method.
+        // 1 = Affine; 2 = Tangent; 3 = Secant
+        void Update_Mpij6_g(int);
         void Update_Mptilde_g(Matrix5d);
         Matrix5d get_Mpij6_g(); 
         Vector5d get_d0_g();

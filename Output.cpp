@@ -33,6 +33,13 @@ void initial_output_files(){
     for(int i = 0; i < family_num; ++i) acc_strain_out << "," << 0.0;
     acc_strain_out << endl;
 
+    crss_out << "EVM";
+    for(int i = 0; i < family_num; ++i) crss_out << "," << "Mode " << i+1;
+    crss_out << endl;
+    crss_out << 0.0;
+    for(int i = 0; i < family_num; ++i) crss_out << "," << 0.0;
+    crss_out << endl;
+
     int custom_length = custom_vars.size();
     custom_out << "EVM";
     for(int i = 0; i < custom_length; ++i) custom_out << "," << "Custom Var " << i+1;
@@ -79,6 +86,10 @@ void output_info(){
     for(int i = 0; i < family_num; ++i) acc_strain_out << "," << pcrys->acc_strain_by_family[i];
     acc_strain_out << endl;
 
+    crss_out << equi_strain;
+    for(int i = 0; i < family_num; ++i) crss_out << "," << pcrys->crss_by_family[i];
+    crss_out << endl;
+    
     int custom_length = custom_vars.size();
     custom_out << equi_strain;
     for(int i = 0; i < custom_length; ++i) custom_out << "," << custom_vars[i];

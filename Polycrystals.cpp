@@ -377,6 +377,7 @@ void polycrystal::ini_from_json(json &sx_json){
         modes_count_by_family.push_back(temp_vec(i));
         density_by_family.push_back(0.0);
         acc_strain_by_family.push_back(0.0);
+        crss_by_family.push_back(0.0);
     }
     for(int i = 0; i < grains_num; ++i) g[i].set_lat_hard_mat();
     g[0].print_latent_matrix();
@@ -539,7 +540,7 @@ int polycrystal::Selfconsistent_E(int Istep, double ERRM, int ITMAX)
         RER=Errorcal(SSC,SSC_new);
         SSC = 0.5*(SSC_new+SSC_new.transpose());
         CSC = SSC.inverse();
-        logger.notice("**Error in ESC iteration "+to_string(IT)+":\t\t"+to_string(RER));
+        logger.notice("**Error in ESC iteration "+to_string(IT)+": \t"+to_string(RER));
         if(isnan(RER)) return 1;
     } //while loop
     // Thermal Expansion Part
@@ -837,7 +838,8 @@ int polycrystal::EVPSC(int istep, double Tincr,\
         logger.notice("Error in average grain stress:\t" + std::to_string(err_g));
         logger.notice("Error between stress tensors:\t" + std::to_string(err_stress));
         logger.notice("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
-        if((errs<errS_m)&&(errd<errD_m)&&(err_g<err_g_AV)&&(err_stress<=err_g_AV*1.)) break;
+        bool err_stress_flag = (err_stress <= err_g_AV*1.)||(err_stress*calc_equivalent_value(Sig_m)<0.5);
+        if((errs<errS_m)&&(errd<errD_m)&&(err_g<err_g_AV)&&err_stress_flag) break;
         if((errs<0.01* errS_m)&&(errd<0.01*errD_m)&&(err_g<0.01* err_g_AV)) break;
         if ((i == max_iter) || (break_counter == break_th) )return 1;
     }
@@ -1068,16 +1070,18 @@ void polycrystal::update_info_by_family(){
     for (int family_id = 0; family_id < family_count; family_id++){
         if (family_id != 0) modes_from += modes_count_by_family[family_id - 1];
         modes_to += modes_count_by_family[family_id];
-        double density_in_family = 0., acc_strain_in_family = 0.;
+        double density_in_family = 0., acc_strain_in_family = 0., crss_in_family = 0.;
         for (int grain_i = 0; grain_i < grains_num; grain_i++){
             double weight_g = g[grain_i].get_weight_g();
             for (int mode_i = modes_from; mode_i < modes_to; mode_i++){
                 modePtr = g[grain_i].gmode[mode_i];
                 density_in_family += modePtr->disloc_density * weight_g;
                 acc_strain_in_family += modePtr->acc_strain * weight_g;
+                crss_in_family += (modePtr->crss/((double)(modes_to-modes_from))) * weight_g;
             }
         }
         density_by_family[family_id] = density_in_family;
         acc_strain_by_family[family_id] = acc_strain_in_family;
+        crss_by_family[family_id] = crss_in_family;
     }
 }

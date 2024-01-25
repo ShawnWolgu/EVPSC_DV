@@ -12,6 +12,7 @@ Process::~Process()
     ss_out_csv.close();
     ave_ss_out.close();
     custom_out.close();
+    crss_out.close();
 }
 
 void Process::load_ctrl(Vector4d Vin)

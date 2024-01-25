@@ -500,13 +500,35 @@ void grain::Update_RSinv_VP_g(double A[3][3][3][3])
                     RSinv_VP[i][j][m][n] = A[i][j][m][n];
 }
 
-void grain::Update_Mpij6_g()
+void grain::Update_Mpij6_g(int linear_mode)
 {
-    Mpij6_g = 1e-10 * Matrix5d::Identity() + cal_Fgrad(sig_g) ;
+    Matrix5d M_tangent = 1e-10 * Matrix5d::Identity() + cal_Fgrad(sig_g) ;
     Matrix5d M_secant = 1e-10 * Matrix5d::Identity() + cal_M_secant(sig_g);
-    Vector5d d0_g_tg = Chg_basis5(Dijp_g) - Mpij6_g * Chg_basis5(sig_g);
-    Vector5d d0_g_affine = (M_secant - Mpij6_g) * Chg_basis5(sig_g);
-    d0_g = d0_g_affine;
+    Vector5d d0_g_tg = Chg_basis5(Dijp_g) - M_tangent * Chg_basis5(sig_g);
+    Vector5d d0_g_affine = (M_secant - M_tangent) * Chg_basis5(sig_g);
+    /* Affine Linearization: */
+    if (linear_mode == 1){
+        Mpij6_g = M_tangent;
+        d0_g = d0_g_affine;
+    }
+    /* Tangent Linearization: */
+    if (linear_mode == 2){
+        Mpij6_g = M_tangent;
+        d0_g = d0_g_tg;
+    }
+    /* Secant Linearization: */
+    if (linear_mode == 3){
+        Mpij6_g = M_secant;
+        d0_g = Chg_basis5(Dijp_g) - Mpij6_g * Chg_basis5(sig_g);
+    }
+    else{
+        Mpij6_g = M_secant;
+        d0_g = Chg_basis5(Dijp_g) - Mpij6_g * Chg_basis5(sig_g);
+    }
+    if ((isnan(Mpij6_g.determinant())) || (isnan(d0_g.norm()))){
+        logger.warn("Mpij6_g or d0_g is nan, Grain number" + to_string(grain_i));
+        Mpij6_g = Mpij6_g_old; d0_g = d0_g_old;
+    }
 }
 
 void grain::Update_shape_g()
@@ -717,7 +739,7 @@ void grain::grain_stress(double Tincr, Matrix3d Wij_m, Matrix3d Dij_m,\
     /* logger.debug("initial Xv:"); logger.debug(Xv); */
     Vector5d dijpgv;
     Matrix6d Fgrad, Mtemp = (Metilde_g + Mij6_J_g)/Tincr;
-    double Errm = 1e-3, F_err = 1e-4, err_iter = Errm*10, coeff = 1;
+    double Errm = 1e-3, F_err = 1e-3, err_iter = Errm*10, coeff = 1;
     int NR_max_iter = 7, DH_max_iter = 25;
     for(int it = 0; it < NR_max_iter; it ++ )
     {
@@ -735,7 +757,7 @@ void grain::grain_stress(double Tincr, Matrix3d Wij_m, Matrix3d Dij_m,\
     }
     if (isnan(err_iter)){
         logger.warn("Grain stress iteration failed (nan)! Grain " + to_string(grain_i));
-        Xv = Chg_basis6(X) + Chg_basis6(Sig_m) - Chg_basis6(Sig_m_old);
+        Xv = Chg_basis6(sig_g); F = Vector6d::Ones();
         if_stress = 0;
     }
     /* logger.debug("Xv after NR iteration: "); logger.debug(Xv); */
@@ -767,7 +789,8 @@ void grain::grain_stress(double Tincr, Matrix3d Wij_m, Matrix3d Dij_m,\
             /* if(grain_i == 0) logger.debug("Grain stress iteration: " + to_string(it) + ", F_norm: " + to_string(F_norm) + ", coeff: " + to_string(coeff)); */
             if ((it == DH_max_iter) || (coeff < 1e-4)) {
                 logger.warn("Grain stress iteration failed ! Grain " + to_string(grain_i) + ", F_norm: " + to_string(F_norm));
-                Xv = Chg_basis6(X) + Chg_basis6(Sig_m) - Chg_basis6(Sig_m_old);
+                /* Xv = Chg_basis6(X) + Chg_basis6(Sig_m) - Chg_basis6(Sig_m_old); */
+                Xv = Chg_basis6(Sig_m);
                 if_stress = 0;
                 break;
             }
@@ -780,7 +803,7 @@ void grain::grain_stress(double Tincr, Matrix3d Wij_m, Matrix3d Dij_m,\
     Dije_g = Chg_basis(dijegv); Dijp_g = Chg_basis(dijpgv);
     therm_strain_g = therm_expansion_g_sys * temperature_diff;
     Dij_g = Dije_g + Dijp_g + thermal_strain_rate;
-    Update_Mpij6_g();
+    Update_Mpij6_g(3);
 }
 
 void grain::Update_shear_strain(double Tincr)

@@ -103,7 +103,7 @@ class polycrystal
         int grains_num = 0;
         int family_count = 0;
         vector<int> modes_count_by_family;
-        vector<double> density_by_family, acc_strain_by_family;
+        vector<double> density_by_family, acc_strain_by_family, crss_by_family;
         double error_SC = 0., twin_threshold = 1., temperature_poly = 0., temp_poly_old = 0.;
         Matrix3d Dij_m; //the macro strain rate tensor
         Matrix3d thermal_strain_m;//the macro thermal strain tensor
