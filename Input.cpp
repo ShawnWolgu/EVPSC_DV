@@ -23,11 +23,10 @@ int EVPSCinput(string &ftex,string &fsx,string &fload, Procs::Process &Proc)
             getline(ininp, tp); //skip
             getline(ininp, tp); //skip
             getline(ininp, tp); 
-            VectorXd temp1 = getnum(tp, 3);
-            Vector3i temp2;
-            for(int i=0; i<3; i++)
-                temp2(i) = int(temp1(i));
-            Proc.Update_ctrl(temp2);
+            VectorXd temp1 = getnum(tp, 4);
+            Vector4i temp2;
+            for(int i=0; i<4; i++) temp2(i) = int(temp1(i));
+            set_control_flags(temp2);
 
             //read output control
             getline(ininp, tp); //skip
@@ -241,10 +240,11 @@ int sxinput(string fname, Polycs::polycrystal &pcrys)
             getline(sxinp, tp);  //skip a line;
             getline(sxinp, tp);  nrsx = getnum(tp, 1)(0); //rate sensitivity
             getline(sxinp, tp);  //CRSS parameters
-            if (iharden == 1) CRSS_p = getnum_vec(tp, 16);
-            else CRSS_p = getnum_vec(tp, 4);
-            //hst
-            getline(sxinp, tp);  hst = getnum_vec(tp, 6); //6 types of hardening
+            if (sx_modes[imode]["type"] == 0) CRSS_p = getnum_vec(tp, harden_size);
+            else CRSS_p = getnum_vec(tp, 8);
+            getline(sxinp, tp);  //latent hardening parameters
+            if (sx_modes[imode]["type"] == 0) hst = getnum_vec(tp, 6); //6 types of hardening
+            else hst = getnum_vec(tp, 2);
             sx_modes[imode]["nrsx"] = nrsx;
             sx_modes[imode]["CRSS_p"] = CRSS_p;
             sx_modes[imode]["hst"] = hst;
@@ -307,7 +307,6 @@ VectorXd getnum(string strin, int num)
 {
     int i = 0;
     VectorXd Vtemp(num);
-    //string pattern("\\d+(\\.\\d+)?");
     string pattern("[+-]?[\\d]+([\\.][\\d]*)?([Ee][+-]?[\\d]+)?");
     regex r(pattern);
     smatch results;
@@ -317,9 +316,14 @@ VectorXd getnum(string strin, int num)
     while (regex_search(iter_begin, iter_end,  results,  r))
     {
         if (i >= num) break;
-        Vtemp(i)=stof(results[0].str());
+        Vtemp(i)=stod(results[0].str());
         iter_begin = results[0].second;	
         i++;
+    }
+    if (i < num) {
+        logger.error("Error code 1: getnum() cannot find enough numbers, expected " + to_string(num) + " numbers, but only found " + to_string(i) + " numbers.");
+        logger.error("The involved line is " + strin);
+        exit(1);
     }
     return Vtemp;
 }
@@ -338,6 +342,11 @@ vector<double> getnum_vec(string strin, int num){
         Vtemp.push_back(stof(results[0].str()));
         iter_begin = results[0].second;	
         i++;
+    }
+    if (i < num) {
+        logger.error("Error code 1: getnum() cannot find enough numbers, expected " + to_string(num) + " numbers, but only found " + to_string(i) + " numbers.");
+        logger.error("The involved line is " + strin);
+        exit(1);
     }
     return Vtemp;
 }
@@ -422,7 +431,6 @@ void add_thermal_coefficient(VectorXd ther, json &sx_json){
     vector<double> ther_consts;
     for(int i = 0; i < ther.size(); i++) ther_consts.push_back(ther(i));
     sx_json["therm"] = ther_consts;
-    temperature_ref = 293.15; //default reference temperature
 }
 
 MatrixXd cal_sn_info(MatrixXd &Min, vector<double> m_abc, vector<double> transMl, int Miller_n, int system_n){

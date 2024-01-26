@@ -806,18 +806,6 @@ void grain::grain_stress(double Tincr, Matrix3d Wij_m, Matrix3d Dij_m,\
     Update_Mpij6_g(3);
 }
 
-void grain::Update_shear_strain(double Tincr)
-{
-    double temp = 0;
-    gamma_delta = 0;
-    for(int i = 0; i < modes_num; i++)
-    {         
-        temp = Tincr * gmode[i]->update_shear_strain_m();
-        gamma_delta_gmode[i] = temp;
-        gamma_delta += temp;
-    }    
-}
-
 void grain::update_strain(double Tincr)
 {
     eps_g += Dij_g * Tincr;
@@ -908,11 +896,14 @@ Matrix3d grain::get_therm_expansion(){
 }
 
 // A default template of the temperature evolution
-void grain::update_temperature(double Tincr)
+void grain::update_temperature(double time_incre)
 {
-    /* temperature = temperature + (Tincr/(rho_material*Cp_material))*(Dijp_g.cwiseProduct(sig_g).sum()+pow(J_intensity_pulse(Tincr,duty_ratio_J,Amplitude_J,Frequency),2)/sigma_e_mat); */
-    //不用赋予初值，在processes里面有// temperature of the atmosphere is a global variable, which can be directly used here
-    temperature = 293.0; //test mode
-    /* temperature += slope_profile_incr(Tincr, -10); //test mode */
-    /* logger.debug("Temperature of grain " + to_string(grain_i) + " is " + to_string(temperature) + " K."); */
+    double electric_intensity = J_intensity_pulse(time_incre,duty_ratio_J,Amplitude_J,Frequency);
+
+    double scale = time_incre / (rho_material * Cp_material);
+    double plas_dissipation_term = Dijp_g.cwiseProduct(sig_g).sum();
+    double electricity_induced_term = pow(electric_intensity,2) / sigma_e_mat;
+    double temperature_incre = scale * (plas_dissipation_term + electricity_induced_term);
+    temperature = temperature + temperature_incre;
+    // temperature of the atmosphere is a global variable, which can be directly used here
 }

@@ -700,39 +700,21 @@ int polycrystal::Update_Fij(double Tincr)
 
 int polycrystal::Update_shape()
 {
-    //-1 F.transpose()*F
-    //BX = Matrix3d::Zero();
-    //for(int i = 0; i < 3; i++)
-    //    for(int j = 0; j < 3; j++)
-    //        BX(i,j) = Fij_g.row(i)*Fij_g.col(j);
-    Matrix3d BX;
     Matrix3d FT = Fij_m.transpose();
-    BX =  Fij_m*FT;
-    //-1 F.transpose()*F
+    Matrix3d BX = Fij_m * FT;
 
-    //-2 solve the eigen vector of BX
-    //and sort the value from largest to smallest
-    //EigenSolver<Matrix3d> es(BX);
+    //Solve the eigen vector of BX and sort the value from largest to smallest
     Matrix3d BX_vectors;
     Vector3d BX_value;
     Jacobi(BX,BX_value,BX_vectors);
-    //BX_value = (es.eigenvalues()).real();
-    //BX_vectors = (es.eigenvectors()).real();
-
     Eigsrt(BX_vectors, BX_value);
-
-    //-2 solve the eigen vector of BX
-    //and sort the value from largest to smallest
     
     Matrix3d B = BX_vectors;
     Vector3d W = BX_value;
-    //-3 
-    //redefine Axis(1) (the second) to be the largest  
-    //to improve the accuracy in calculation of Eshelby tensor
-    //IF DET(B)<0 MEANS THAT THE SYSTEM IS LEFT HANDED. IT IS MADE RIGHT
-    //HANDED BY EXCHANGING 1 AND 2.
-    double Sign = -1;
-    double temp;
+
+    /* Redefine Axis(1) (the second) to be the largest to improve the accuracy in calculation of Eshelby tensor */
+    /* IF DET(B)<0 MEANS THAT THE SYSTEM IS LEFT HANDED. IT IS MADE RIGHT HANDED BY EXCHANGING 1 AND 2. */
+    double Sign = -1, temp = 0.0;
     if(B.determinant() <= 0) Sign = 1;
     for(int i = 0; i < 3; i++)
     {
@@ -741,62 +723,36 @@ int polycrystal::Update_shape()
         B(i,1) = temp * Sign;
     }
     temp = W(0); W(0) = W(1); W(1) = temp;
-    //-3 
 
-    //-4 update the stretching of ellipsoid
+    // Update the stretching of ellipsoid
     double Ratmax=sqrt(W(1)/W(2));
     double Ratmin=sqrt(W(0)/W(2));
-
     ell_axisb = B;
-    if(!Iflat) //if Iflat = 0
+    if(!Iflat)
         for(int i = 0; i < 3; i++)
             ell_axis(i) = sqrt(W(i));
-    //if Iflat = 1, the axis of ellipsoid keeps unchange
-    //-4 update the stretching of ellipsoid
+    // if Iflat = 1, the axis of ellipsoid keeps unchange
     
-    //-5 update the ellipsoid orientation
+    // Update the ellipsoid orientation
     Matrix3d BT = B.transpose();
     ellip_ang = Euler_trans(BT);
     
-    //-5
+    // Update the Iflat_g according to the Max axes ratio of ellipsoid
+    if((!Iflat)&&(Ratmax >= ell_crit_shape)) Iflat = 1;
 
-    //-6 Update the Iflat_g according to the Max axes ratio of ellipsoid
-    if((!Iflat)&&(Ratmax >= ell_crit_shape))
-    {
-        Iflat = 1;
-    }
-    //-6
-
-    //-7 Iflat_g = 1; recaculates the Fij_g in grain
+    // Iflat_g = 1; recaculates the Fij_g in grain
     else if((Iflat)&&(Ratmax >= ell_crit_shape))
     {
         W(1) = W(1)/4;
-        if(Ratmin >= 0.5 * ell_crit_shape)
-            W(0) = W(0)/4;
-        for(int i = 0; i < 3; i++)
-            ell_axis(i) = sqrt(W(i));
-        
-        Matrix3d Fijx;
-        for(int i = 0; i < 3; i++)
-            for(int j = 0; j < 3; j++)
-                Fijx(i,j) = Iij(i,j) * ell_axis(i);
-        
-        for(int i = 0; i < 3; i++)
-            for(int j = 0; j < 3; j++)
-        {
-            Fij_m(i,j) = 0;
-            for(int k = 0; k < 3; k++)
-                for(int l = 0; l < 3; l++)
-                    Fij_m(i,j) = Fij_m(i,j) + B(i,k)*B(j,l)*Fijx(k,l);
-        }
+        if(Ratmin >= 0.5 * ell_crit_shape) W(0) = W(0)/4;
+        for(int i = 0; i < 3; i++) ell_axis(i) = sqrt(W(i));
+        Matrix3d Fijx(ell_axis.asDiagonal());
+        Fij_m = B * Fijx * BT;
     }
     return 0;
 }
 
-
-int polycrystal::EVPSC(int istep, double Tincr,\
- bool Iupdate_ori,bool Iupdate_shp,bool Iupdate_CRSS)
-{   
+int polycrystal::EVPSC(int istep, double Tincr){
     double errd, errs, err_g, err_av;
     int max_iter = 30, break_th = 5, break_counter = 0;
     save_status();
@@ -846,47 +802,8 @@ int polycrystal::EVPSC(int istep, double Tincr,\
 
     Eps_m += Dij_m * Tincr; //update the macro strain tensor
 
-    //update the shape of ellipsoid
-    if(Ishape == 0)
-    {
-        Update_Fij(Tincr);
-        if(Iupdate_shp) Update_shape();
-    }
-    // Update temperature in grains here
-    temperature_poly = 0.0;
-    for(int G_n = 0; G_n < grains_num; ++G_n){
-        g[G_n].update_temperature(Tincr);
-        temperature_poly += g[G_n].temperature * g[G_n].get_weight_g();
-    }
-    /* logger.debug("Temperature in atmosphere: " + std::to_string(temp_atmosphere) + " K"); */
-    /* logger.debug("Temperature in polycrystal: " + std::to_string(temperature_poly) + " K"); */
-    // double Delta_T = (Tincr*Surface/(V_sample*rho_material*Cp_material))*(h_ext*(temp_atmosphere-temperature_poly)+sigma_k*(pow(temp_atmosphere,4)-pow(temperature_poly)));
-    // temperature_poly += Delta_T; 
-    // // we have to redistribute the temperature?
-    // for(int G_n = 0; G_n < grains_num; ++G_n){
-    //     g[G_n].temperature = temperature_poly;
-    //    }
-//test mode 1.14
-
-    // this is to calculate the temperature after the thermal conduction.
-
-    //update the state in deformation systems and 
-    // crystalline orientation 
-     for(int G_n = 0; G_n < grains_num; ++G_n)
-    {
-        /* logger.debug("Stress in grain " + std::to_string(G_n) + ":"); */
-        /* logger.debug(g[G_n].get_stress_g()); */
-        g[G_n].Update_shear_strain(Tincr);//seems this function is no more needed
-        g[G_n].update_strain(Tincr);
-        if(Iupdate_ori) g[G_n].update_orientation(Tincr, Wij_m, Dije_AV, Dijp_AV);
-        if(Iupdate_CRSS) g[G_n].update_modes(Tincr);
-        if(Ishape == 1)
-        {
-            g[G_n].Update_Fij_g(Tincr);
-            if(Iupdate_shp) g[G_n].Update_shape_g();
-        }
-        if(Iupdate_CRSS) update_twin_control();
-    }
+    if(update_temperature_required) update_temperature(Tincr);
+    update_status(Tincr);
     update_info_by_family();
     return 0;
 }
@@ -921,6 +838,27 @@ void polycrystal::restore_status(bool flag){
     SSC = CSC.inverse();  M_VP_SC = C_VP_SC.inverse();
     for(int G_n = 0; G_n < grains_num; ++G_n)
         g[G_n].restore_status_g();
+}
+
+// update the state in deformation systems and crystalline orientation and shapes
+void polycrystal::update_status(double time_incre){
+    if(Ishape == 0)
+    {
+        Update_Fij(time_incre);
+        if(update_shape_required) Update_shape();
+    }
+    #pragma omp parallel for num_threads(Mtr)
+    for(int G_n = 0; G_n < grains_num; ++G_n){
+        g[G_n].update_strain(time_incre);
+        if(update_orientation_required) g[G_n].update_orientation(time_incre, Wij_m, Dije_AV, Dijp_AV);
+        if(update_CRSS_required) g[G_n].update_modes(time_incre);
+        if(update_CRSS_required) update_twin_control();
+        if(Ishape == 0) continue;
+        g[G_n].Update_Fij_g(time_incre);
+        if(update_shape_required) g[G_n].Update_shape_g();
+    }
+    #pragma omp barrier
+    update_info_by_family();
 }
 
 void polycrystal::Cal_Sig_m(double Tincr)
@@ -1084,4 +1022,27 @@ void polycrystal::update_info_by_family(){
         acc_strain_by_family[family_id] = acc_strain_in_family;
         crss_by_family[family_id] = crss_in_family;
     }
+}
+
+void polycrystal::set_temperature(double temperature_in){
+    temperature_poly = temperature_in;
+    for (int i = 0; i < grains_num; ++i) {
+        g[i].temperature = temperature_in;
+    }
+}
+
+// Calculate the temperature after the thermal conduction.
+void polycrystal::update_temperature(double time_incre){
+    temperature_poly = 0.0;
+    for(int G_n = 0; G_n < grains_num; ++G_n){
+        g[G_n].update_temperature(time_incre);
+        temperature_poly += g[G_n].temperature * g[G_n].get_weight_g();
+    }
+    double scale = time_incre * Surface / (V_sample * rho_material * Cp_material);
+    double convection_term = h_ext * (temp_atmosphere - temperature_poly);
+    double radiation_term = sigma_k * (pow(temp_atmosphere, 4) - pow(temperature_poly, 4));
+    double Delta_T = (convection_term + radiation_term) * scale;
+    temperature_poly += Delta_T; 
+    // we have to redistribute the temperature?
+    set_temperature(temperature_poly);
 }

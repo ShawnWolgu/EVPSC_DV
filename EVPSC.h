@@ -199,9 +199,6 @@ class grain
         //double Tincr: the time increment
         void Update_Fij_g(double);
 
-        //update the accumulate shear strain in all deformation modes
-        void Update_shear_strain(double);
-
         //update the grain orientation
         //parameters:
         //double Tincr, Matrix3d Wij_m

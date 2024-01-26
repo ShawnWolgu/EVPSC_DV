@@ -1,4 +1,5 @@
 #include "Toolbox.h"
+#include "global.h"
 #include <cmath>
 using namespace std;
 using namespace Eigen;
@@ -1066,3 +1067,33 @@ int get_interaction_mode(Vector3d burgers_i, Vector3d plane_i, Vector3d burgers_
     }
 }
 
+
+void update_progress(double progress_f)
+{
+    const int bar_width = 70;
+    int bar_position = (int)(bar_width * progress_f);
+
+    std::cout << "[";
+    for (int i = 0; i < bar_width; ++i) {
+        if (i < bar_position) {
+            std::cout << "=";
+        } else if (i == bar_position) {
+            std::cout << ">";
+        } else {
+            std::cout << " ";
+        }
+    }
+    std::cout << "] " << (int)(progress_f * 100) << "%\r";
+    std::cout.flush();
+}
+
+void set_control_flags(Vector4i input){
+    update_orientation_required = input(0);
+    update_shape_required = input(1);
+    update_CRSS_required = input(2);
+    update_temperature_required = input(3);
+    logger.info("Orientation update control:" + std::to_string(update_orientation_required));
+    logger.info("Shape update control:" + std::to_string(update_shape_required));
+    logger.info("CRSS update control:" + std::to_string(update_CRSS_required));
+    logger.info("Temperature update control:" + std::to_string(update_temperature_required));
+}

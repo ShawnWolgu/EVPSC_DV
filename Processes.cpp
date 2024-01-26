@@ -20,7 +20,7 @@ void Process::load_ctrl(Vector4d Vin)
     Nsteps = int(Vin(0));
     Ictrl = int(Vin(1)) - 1;
     Eincr = Vin(2);
-    Temp = Vin(3);
+    temperature_input = Vin(3);
 
     if(!texctrl) texctrl = Nsteps;
 }
@@ -33,10 +33,10 @@ void Process::get_Udot(Matrix3d Min)
     //calculate Time increment Tincr
     Vector6d Vtemp = voigt(Ddot_input);
     if(Vtemp(Ictrl) == 0 || Eincr == 0){
-        Tincr = 1;
+        max_timestep = 1;
     }
     else{
-        Tincr = Eincr / Vtemp(Ictrl);
+        max_timestep = Eincr / Vtemp(Ictrl);
     }
 }
 void Process::get_Sdot(Matrix3d Min){Sdot_input = Min;}
@@ -44,18 +44,14 @@ void Process::get_IUdot(Matrix3i Min){IUDWdot = Min;}
 void Process::get_ISdot(Vector6i Vin){ISdot = Vin;}
 
 void Process::loading(Polycs::polycrystal &pcrys){
-    temp_atmosphere = Temp; //loading temp_init from the txt.in 
-    if (pcrys.temperature_poly < 1e-3){
-        // Temperature is not set, this is the first loading step, free of thermal stress
-        pcrys.temperature_poly = Temp;
-        temperature_ref = Temp;
-        for (int i = 0; i < pcrys.grains_num; ++i) {
-            pcrys.g[i].temperature = Temp;
-        }
-    }
+    temp_atmosphere = temperature_input; //loading temp_init from the txt.in 
+    // Temperature is not set, this is the first loading step, free of thermal stress
+    if (temperature_ref < 1e-3)  temperature_ref = temperature_input;
+    if (pcrys.temperature_poly < 1e-3)  pcrys.set_temperature(temperature_input);
     pcrys.set_BC_const(UDWdot_input, Sdot_input, IUDWdot, ISdot);
     initial_output_files();
     double coeff_step = 1, current_step = 1.;
+    int success_count = 0;
     for(istep = 0; istep < Nsteps; ++istep)
     {
         logger.info("");
@@ -67,13 +63,14 @@ void Process::loading(Polycs::polycrystal &pcrys){
         do{
             current_step = min(1.0 - pct_step, coeff_step);
             logger.notice("Step " + to_string(istep) + ":\t" + to_string(pct_step) + " to " + to_string(pct_step + current_step));
-            int return_SC = pcrys.EVPSC(istep, current_step * Tincr, Iupdate_ori, Iupdate_shp, Iupdate_CRSS);
+            int return_SC = pcrys.EVPSC(istep, current_step * max_timestep);
             if (return_SC != 0) {
+                success_count = 0;
                 pcrys.restore_status(false);
                 logger.warn("Not convergent... Retry with a smaller increment.");
                 logger.notice("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
                 if(isnan(pcrys.error_SC)) coeff_step *= 0.1;
-                else coeff_step *= 0.5;
+                else coeff_step *= 0.66;
                 if (coeff_step < 1e-10) {
                     logger.error("Not convergent... Abort.");
                     is_convergent = false;
@@ -83,12 +80,13 @@ void Process::loading(Polycs::polycrystal &pcrys){
             }
             pct_step += current_step;
             update_progress(pct_step);
-            coeff_step *= 2;
+            success_count++;
+            if (success_count > 3) coeff_step *= 1.5;
+            else if (success_count > 6) coeff_step *= 2;
             coeff_step = min(coeff_step, 1.0);
         } while (pct_step < 1-1e-10);
         cout.flush();
-        if(!((istep+1)%texctrl))
-            Out_texture(pcrys,istep);
+        if(!((istep+1)%texctrl)) Out_texture(pcrys,istep);
         output_info();
         output_grain_info(0);
         if(!is_convergent) {
@@ -112,8 +110,3 @@ void Process::Out_texture(Polycs::polycrystal &pcrys, int istep)
 
 void Process::Out_texset(int input){texctrl = input;}
 
-void Process::Update_ctrl(Vector3i input){
-    Iupdate_ori = input(0);
-    Iupdate_shp = input(1);
-    Iupdate_CRSS = input(2);
-    }

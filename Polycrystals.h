@@ -171,15 +171,19 @@ class polycrystal
         Vector3d get_ellip_ang(); 
 
         //the singular step according to a certain process
-        int EVPSC(int, double, bool, bool, bool);
+        int EVPSC(int, double);
 
         //calculate the macro&grain elastic compliance
         int Selfconsistent_E(int, double, int); 
-	void save_status();
-	void restore_status(bool reset);
 
         //calculate the macro&grain VP compliance
         int Selfconsistent_P(int, double, int); 
+
+        // status management
+        void save_status();
+        void restore_status(bool reset);
+        void update_status(double time_incre);
+        void update_twin_control();
 
         // calculate the Sig_m and Dij_m
         void Cal_Sig_m(double);  
@@ -187,18 +191,19 @@ class polycrystal
         // calculate the Sig_g and Dij_g including the elastic and vp part
         double Cal_Sig_g(double);
 
-	void restore_stress();
-	void Update_AV(); //update the volume average value
+        void Update_AV(); //update the volume average value
 
         //output
         Vector6d get_Sig_m();
         Vector6d get_Sig_ave();
         Vector6d get_Eps_m();
         void get_euler(fstream &);
-
-        void update_twin_control();
         void update_info_by_family();
-        
+
+        // Set the temperature in polyX and all grains to the given value
+        void set_temperature(double);
+        // Update the temperature in polyX and all grains by the given increment
+        void update_temperature(double time_incre);
 };
 
 

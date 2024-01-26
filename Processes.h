@@ -30,15 +30,10 @@ class Process
         int Ictrl;
         int Nsteps; // total steps
         int istep; // current step
-        double Temp; // /(K) temperature 
-        double Tincr;
+        double temperature_input; // /(K) temperature 
+        double max_timestep;
 
         int texctrl; //print the texture every n steps(0 means only print at the end)
-
-        //update
-        bool Iupdate_ori; //update the orientation 1:yes 0:no
-        bool Iupdate_shp; //update the ellipsoid shape 1:yes 0:no
-        bool Iupdate_CRSS; //update the CRSS 1:yes 0:no
 
     public:
         Process();
@@ -47,9 +42,6 @@ class Process
         //get the total steps and increment of a process from files
         //Vector4d 0: Nsteps; 1: Ictrl; 2: Eincr; 3: Temperature;
         void load_ctrl(Vector4d);
-
-        //
-        void Update_ctrl(Vector3i);
 
         //get the velocity gradient in a process file
         void get_Udot(Matrix3d);
@@ -79,5 +71,4 @@ class Process
 };
 
 }
-
 #endif
