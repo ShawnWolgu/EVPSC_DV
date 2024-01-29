@@ -1,8 +1,5 @@
 #include "Toolbox.h"
-<<<<<<< HEAD
-=======
 #include "global.h"
->>>>>>> 6f8c8fa27d07fdc544418580ee2acaef7ff1449d
 #include <cmath>
 using namespace std;
 using namespace Eigen;
@@ -1046,9 +1043,6 @@ double J_intensity_pulse(double time_acc, double duty_ratio, double amplitude_J,
     }else{
         return 0;
     }
-<<<<<<< HEAD
-}// This part is to define a pulsing function.
-=======
 }// This part is to define a pulsing function.
 
 int get_interaction_mode(Vector3d burgers_i, Vector3d plane_i, Vector3d burgers_j, Vector3d plane_j){
@@ -1103,4 +1097,3 @@ void set_control_flags(Vector4i input){
     logger.info("CRSS update control:" + std::to_string(update_CRSS_required));
     logger.info("Temperature update control:" + std::to_string(update_temperature_required));
 }
->>>>>>> 6f8c8fa27d07fdc544418580ee2acaef7ff1449d

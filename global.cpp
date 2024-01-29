@@ -13,30 +13,20 @@ bool update_temperature_required = false; //update the temperature 1:yes 0:no
 // [Temperature]
 double temp_atmosphere = 0.0; // temperature of the atmosphere
 double temperature_ref = 0.0; // reference temperature: free of thermal stress used to characterize the thermal expansion strain quantity
-<<<<<<< HEAD
-double rho_material; // the density of the mat //在程序任意地方调用，然后在
-=======
 
 // [Some Material Properties]
 double rho_material; // the density of the mat
->>>>>>> 6f8c8fa27d07fdc544418580ee2acaef7ff1449d
 double Cp_material; // the specific heat of the mat
 double sigma_e_mat; //the electricity conductivity
 double h_ext; // the convection constant between the mat and the atmos
 double Surface; //surface of the sample
 double sigma_k = 5.67e-8; // the stefan-boltzmann const W/(K^4*m^2)
 double V_sample; // the volume of the sample
-<<<<<<< HEAD
-double duty_ratio_J;//
-double Amplitude_J;//
-double Frequency; 
-=======
 double duty_ratio_J = 0.0;//
 double Amplitude_J = 0.0;//
 double Frequency = 0.0; 
 
 // [Some global objects]
->>>>>>> 6f8c8fa27d07fdc544418580ee2acaef7ff1449d
 Logger logger;
 Polycs::polycrystal global_polycrys;
 Procs::Process global_proc;

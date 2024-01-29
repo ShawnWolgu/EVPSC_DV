@@ -802,53 +802,9 @@ int polycrystal::EVPSC(int istep, double Tincr){
 
     Eps_m += Dij_m * Tincr; //update the macro strain tensor
 
-<<<<<<< HEAD
-    //update the shape of ellipsoid
-    if(Ishape == 0)
-    {
-        Update_Fij(Tincr);
-        if(Iupdate_shp) Update_shape();
-    }
-    // Update temperature in grains here
-    temperature_poly = 0.0;
-    for(int G_n = 0; G_n < grains_num; ++G_n){
-        g[G_n].update_temperature(Tincr);
-        temperature_poly += g[G_n].temperature * g[G_n].get_weight_g();
-    }
-    /* logger.debug("Temperature in atmosphere: " + std::to_string(temp_atmosphere) + " K"); */
-    /* logger.debug("Temperature in polycrystal: " + std::to_string(temperature_poly) + " K"); */
-    // double Delta_T = (Tincr*Surface/(V_sample*rho_material*Cp_material))*(h_ext*(temp_atmosphere-temperature_poly)+sigma_k*(pow(temp_atmosphere,4)-pow(temperature_poly)));
-    // temperature_poly += Delta_T; 
-    // // we have to redistribute the temperature?
-    // for(int G_n = 0; G_n < grains_num; ++G_n){
-    //     g[G_n].temperature = temperature_poly;
-    //    }
-//test mode 1.14
-
-    // this is to calculate the temperature after the thermal conduction.
-
-    //update the state in deformation systems and 
-    // crystalline orientation 
-     for(int G_n = 0; G_n < grains_num; ++G_n)
-    {
-        /* logger.debug("Stress in grain " + std::to_string(G_n) + ":"); */
-        /* logger.debug(g[G_n].get_stress_g()); */
-        g[G_n].Update_shear_strain(Tincr);//seems this function is no more needed
-        g[G_n].update_strain(Tincr);
-        if(Iupdate_ori) g[G_n].update_orientation(Tincr, Wij_m, Dije_AV, Dijp_AV);
-        if(Iupdate_CRSS) g[G_n].update_modes(Tincr);
-        if(Ishape == 1)
-        {
-            g[G_n].Update_Fij_g(Tincr);
-            if(Iupdate_shp) g[G_n].Update_shape_g();
-        }
-        if(Iupdate_CRSS) update_twin_control();
-    }
-=======
     if(update_temperature_required) update_temperature(Tincr);
     update_status(Tincr);
     update_info_by_family();
->>>>>>> 6f8c8fa27d07fdc544418580ee2acaef7ff1449d
     return 0;
 }
 

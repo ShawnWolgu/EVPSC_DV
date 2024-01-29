@@ -112,12 +112,6 @@ int loadinput(string fname, Procs::Process &Proc)
             Sig_m(2)=temp(0);
 
             getline(loadinp ,tp);//skip one line
-<<<<<<< HEAD
-            getline(loadinp, tp); VectorXd electric_coeff = getnum(tp, 3);
-            duty_ratio_J = electric_coeff(0);
-            Amplitude_J = electric_coeff(1);
-            Frequency = electric_coeff(2);
-=======
             if (!loadinp.eof()) //if the file ends, return
             {
                 if (tp.find("duty") != tp.npos){
@@ -130,7 +124,6 @@ int loadinput(string fname, Procs::Process &Proc)
             logger.debug("duty_ratio_J = " + to_string(duty_ratio_J));
             logger.debug("Amplitude_J = " + to_string(Amplitude_J));
             logger.debug("Frequency = " + to_string(Frequency));
->>>>>>> 6f8c8fa27d07fdc544418580ee2acaef7ff1449d
             //I-intensity input
             Proc.get_Sdot(voigt(Sig_m));
 
@@ -166,19 +159,6 @@ int sxinput(string fname, Polycs::polycrystal &pcrys)
         getline(sxinp, tp);  //skip a line;
         getline(sxinp, tp);  VectorXd therm = getnum(tp, 6); //Thermal coefficients
         add_thermal_coefficient(therm, sx_json);
-<<<<<<< HEAD
-        getline(sxinp ,tp);
-        getline(sxinp, tp); VectorXd thermal_coeff = getnum(tp, 7);
-        rho_material = thermal_coeff(0);
-        Cp_material = thermal_coeff(1);
-        sigma_e_mat = thermal_coeff(2);
-        h_ext = thermal_coeff(3);
-        Surface = thermal_coeff(4);
-        V_sample = thermal_coeff(5);
-        sigma_k = thermal_coeff(6);
-        //关于传热的直接在这边赋值
-        getline(sxinp, tp);  //skip a line;        //Start reading slip and twinning modes
-=======
         getline(sxinp ,tp); // this line is for thermal coeffs check or read plasitcity modes
         if (tp.find("rho_material") != tp.npos){
             getline(sxinp, tp); VectorXd thermal_coeff = getnum(tp, 7);
@@ -208,7 +188,6 @@ int sxinput(string fname, Polycs::polycrystal &pcrys)
         logger.debug("V_sample = " + to_string(V_sample));
         logger.debug("sigma_k = " + to_string(sigma_k));
         //关于传热的直接在这边赋值
->>>>>>> 6f8c8fa27d07fdc544418580ee2acaef7ff1449d
         getline(sxinp, tp);  int nmodesx = int(getnum(tp, 1)(0)); //total mode number in file
         getline(sxinp, tp);  int nmodes = int(getnum(tp, 1)(0));  //considered in current run
         getline(sxinp, tp);  VectorXd mode_i = getnum(tp, nmodes);  //the index of modes(mode_i)
@@ -328,10 +307,6 @@ VectorXd getnum(string strin, int num)
 {
     int i = 0;
     VectorXd Vtemp(num);
-<<<<<<< HEAD
-    //string pattern("\\d+(\\.\\d+)?");
-=======
->>>>>>> 6f8c8fa27d07fdc544418580ee2acaef7ff1449d
     string pattern("[+-]?[\\d]+([\\.][\\d]*)?([Ee][+-]?[\\d]+)?");
     regex r(pattern);
     smatch results;

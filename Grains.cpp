@@ -899,20 +899,23 @@ Matrix3d grain::get_therm_expansion(){
 // A default template of the temperature evolution
 void grain::update_temperature(double time_incre)
 {
-<<<<<<< HEAD
     //temperature = temperature + (Tincr/(rho_material*Cp_material))*(Dijp_g.cwiseProduct(sig_g).sum()+pow(J_intensity_pulse(Tincr,duty_ratio_J,Amplitude_J,Frequency),2)/sigma_e_mat);
     //不用赋予初值，在processes里面有// temperature of the atmosphere is a global variable, which can be directly used here
     temperature = 293.0; //test mode
     /* temperature += slope_profile_incr(Tincr, -10); //test mode
     /* logger.debug("Temperature of grain " + to_string(grain_i) + " is " + to_string(temperature) + " K."); */
-=======
-    double electric_intensity = J_intensity_pulse(time_incre,duty_ratio_J,Amplitude_J,Frequency);
 
-    double scale = time_incre / (rho_material * Cp_material);
-    double plas_dissipation_term = Dijp_g.cwiseProduct(sig_g).sum();
-    double electricity_induced_term = pow(electric_intensity,2) / sigma_e_mat;
-    double temperature_incre = scale * (plas_dissipation_term + electricity_induced_term);
-    temperature = temperature + temperature_incre;
+//1.29 test mode
+    // double electric_intensity = J_intensity_pulse(time_incre,duty_ratio_J,Amplitude_J,Frequency);
+
+    // double scale = time_incre / (rho_material * Cp_material);
+    // double plas_dissipation_term = Dijp_g.cwiseProduct(sig_g).sum();
+    // double electricity_induced_term = pow(electric_intensity,2) / sigma_e_mat;
+    // double temperature_incre = scale * (plas_dissipation_term + electricity_induced_term);
+    // temperature = temperature + temperature_incre;
+
+//1.29 test mode
+
     // temperature of the atmosphere is a global variable, which can be directly used here
->>>>>>> 6f8c8fa27d07fdc544418580ee2acaef7ff1449d
+
 }

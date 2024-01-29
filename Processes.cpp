@@ -44,15 +44,6 @@ void Process::get_IUdot(Matrix3i Min){IUDWdot = Min;}
 void Process::get_ISdot(Vector6i Vin){ISdot = Vin;}
 
 void Process::loading(Polycs::polycrystal &pcrys){
-<<<<<<< HEAD
-    temp_atmosphere = Temp; //loading temp_init from the txt.in 
-    if (pcrys.temperature_poly < 1e-3){
-        // Temperature is not set, this is the first loading step, free of thermal stress
-        pcrys.temperature_poly = Temp;
-        temperature_ref = Temp;
-        for (int i = 0; i < pcrys.grains_num; ++i) {
-            pcrys.g[i].temperature = Temp;
-=======
     temp_atmosphere = temperature_input; //loading temp_init from the txt.in 
     // Temperature is not set, this is the first loading step, free of thermal stress
     if (temperature_ref < 1e-3)  temperature_ref = temperature_input;
@@ -101,7 +92,6 @@ void Process::loading(Polycs::polycrystal &pcrys){
         if(!is_convergent) {
             Out_texture(pcrys, istep);
             break;
->>>>>>> 6f8c8fa27d07fdc544418580ee2acaef7ff1449d
         }
     }
     /* Out_texture(pcrys,Nsteps); */
