@@ -13,7 +13,7 @@ SET( OMP_INCLUDE_DIR "/usr/local/include")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Xclang -fopenmp -O3")
 # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Xclang -fopenmp")
 include_directories(${EIGEN3_INCLUDE_DIR} ${OMP_INCLUDE_DIR} ${JSON_INCLUDE_DIR})
-add_executable(EVPSC EVPSC_CPP_intest.cpp Toolbox.cpp Input.cpp Processes.cpp Polycrystals.cpp Grains.cpp PMode.cpp Slip.cpp Twin.cpp TwinG.cpp disvel.cpp global.cpp)
+add_executable(EVPSC EVPSC_CPP_intest.cpp Toolbox.cpp Input.cpp Processes.cpp Polycrystals.cpp Grains.cpp PMode.cpp Slip.cpp Twin.cpp TwinG.cpp disvel.cpp global.cpp Output.cpp)
 target_compile_options(EVPSC PUBLIC ${OpenMP_CXX_FLAGS})
 
 link_directories(/usr/local/lib)

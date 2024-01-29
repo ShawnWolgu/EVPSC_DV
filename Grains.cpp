@@ -1,6 +1,7 @@
 #include "EVPSC.h"
 #include "Eigen/src/Core/Matrix.h"
 #include "global.h"
+#include "Toolbox.h"
 #include <locale>
 #include <string>
 
@@ -165,7 +166,7 @@ double grain::get_weight_g(){return weight;}
 
 double grain::get_weight_g(int mode_num){
     if (gmode[mode_num]->type != mode_type::twin){
-        logger.error("Not a twin, cannot output euler");
+        logger.error("Not a twin, cannot output weight");
         return 0;
     }
     Vector4d euler_vec = ((TwinG*)gmode[mode_num])->euler_twin;
@@ -206,7 +207,7 @@ int grain::ini_gmode_g(json &j)
         }
         ++i;
     }
-    logger.info("Grain "+std::to_string(grain_i)+" has initiated "+std::to_string(modes_num)+" modes");
+    logger.notice("Grain "+std::to_string(grain_i)+" has initiated "+std::to_string(modes_num)+" modes");
     /* for (int i = 0; i < modes_num; ++i){ */
     /*     gmode[i]->print(); */
     /* } */
@@ -237,7 +238,7 @@ int grain::ini_gmode_g(grain &tp)
         }
     }
     gamma_delta_gmode = new double[modes_num];
-    logger.info("Grain "+std::to_string(grain_i)+" has initiated "+std::to_string(modes_num)+" modes");
+    logger.notice("Grain "+std::to_string(grain_i)+" has initiated "+std::to_string(modes_num)+" modes");
     /* for (int i = 0; i < modes_num; ++i){ */
     /*     gmode[i]->print(); */
     /* } */
@@ -437,8 +438,12 @@ void grain::save_status_g(){
     Cij6_SA_g_old = Cij6_SA_g;
     Dij_g_old = Dij_g;        
     Dije_g_old = Dije_g;      Dijp_g_old = Dijp_g;
+    d0_g_old = d0_g;
     therm_strain_g_old = therm_strain_g;
     save_RSinv_g();
+    for (int i = 0; i < modes_num; ++i){
+        gmode[i]->save_status();
+    }
 }
 
 void grain::save_RSinv_g(){
@@ -452,6 +457,7 @@ void grain::save_RSinv_g(){
 void grain::restore_status_g(){
     temperature = temp_old;
     for (int i = 0; i < modes_num; ++i){
+        gmode[i]->restore_status();
         gmode[i]->update_temperature(temperature);
     }
     sig_g = sig_g_old;
@@ -460,6 +466,7 @@ void grain::restore_status_g(){
     Cij6_SA_g = Cij6_SA_g_old;
     Dij_g = Dij_g_old;
     Dije_g = Dije_g_old;      Dijp_g = Dijp_g_old;
+    d0_g = d0_g_old;
     therm_strain_g = therm_strain_g_old;
     Update_RSinv_C_g(RSinv_C_old);
     Update_RSinv_VP_g(RSinv_VP_old);
@@ -493,10 +500,35 @@ void grain::Update_RSinv_VP_g(double A[3][3][3][3])
                     RSinv_VP[i][j][m][n] = A[i][j][m][n];
 }
 
-void grain::Update_Mpij6_g()
+void grain::Update_Mpij6_g(int linear_mode)
 {
-    Mpij6_g = 1e-10 * Matrix5d::Identity() + cal_Fgrad(sig_g) ;
-    d0_g = Chg_basis5(Dijp_g) - Mpij6_g * Chg_basis5(sig_g);
+    Matrix5d M_tangent = 1e-10 * Matrix5d::Identity() + cal_Fgrad(sig_g) ;
+    Matrix5d M_secant = 1e-10 * Matrix5d::Identity() + cal_M_secant(sig_g);
+    Vector5d d0_g_tg = Chg_basis5(Dijp_g) - M_tangent * Chg_basis5(sig_g);
+    Vector5d d0_g_affine = (M_secant - M_tangent) * Chg_basis5(sig_g);
+    /* Affine Linearization: */
+    if (linear_mode == 1){
+        Mpij6_g = M_tangent;
+        d0_g = d0_g_affine;
+    }
+    /* Tangent Linearization: */
+    if (linear_mode == 2){
+        Mpij6_g = M_tangent;
+        d0_g = d0_g_tg;
+    }
+    /* Secant Linearization: */
+    if (linear_mode == 3){
+        Mpij6_g = M_secant;
+        d0_g = Chg_basis5(Dijp_g) - Mpij6_g * Chg_basis5(sig_g);
+    }
+    else{
+        Mpij6_g = M_secant;
+        d0_g = Chg_basis5(Dijp_g) - Mpij6_g * Chg_basis5(sig_g);
+    }
+    if ((isnan(Mpij6_g.determinant())) || (isnan(d0_g.norm()))){
+        logger.warn("Mpij6_g or d0_g is nan, Grain number" + to_string(grain_i));
+        Mpij6_g = Mpij6_g_old; d0_g = d0_g_old;
+    }
 }
 
 void grain::Update_shape_g()
@@ -636,12 +668,22 @@ Matrix5d grain::cal_Fgrad(Matrix3d Min)
     Matrix3d E = Euler_M;
     Matrix3d ET = E.transpose();
     X = E * X * ET;
-
     Matrix6d Fgrad = Matrix6d::Zero();
     for(int i = 0; i < modes_num; i++)
         Fgrad += gmode[i]->get_Fgradm(X);
-    //return Chg_basis5(rotate_C66(Fgrad, E));
     return Chg_basis5(rotate_C66(Fgrad, ET));
+}
+
+Matrix5d grain::cal_M_secant(Matrix3d Min)
+{
+    Matrix3d X = devia(Min);
+    Matrix3d E = Euler_M;
+    Matrix3d ET = E.transpose();
+    X = E * X * ET;
+    Matrix6d M_sec = Matrix6d::Zero();
+    for(int i = 0; i < modes_num; i++)
+        M_sec += gmode[i]->get_M_secant(X);
+    return Chg_basis5(rotate_C66(M_sec, ET));
 }
 
 double grain::cal_RSSxmax(Matrix3d Min)
@@ -698,7 +740,7 @@ void grain::grain_stress(double Tincr, Matrix3d Wij_m, Matrix3d Dij_m,\
     /* logger.debug("initial Xv:"); logger.debug(Xv); */
     Vector5d dijpgv;
     Matrix6d Fgrad, Mtemp = (Metilde_g + Mij6_J_g)/Tincr;
-    double Errm = 1e-3, F_err = 1e-4, err_iter = Errm*10, coeff = 1;
+    double Errm = 1e-3, F_err = 1e-3, err_iter = Errm*10, coeff = 1;
     int NR_max_iter = 7, DH_max_iter = 25;
     for(int it = 0; it < NR_max_iter; it ++ )
     {
@@ -716,7 +758,7 @@ void grain::grain_stress(double Tincr, Matrix3d Wij_m, Matrix3d Dij_m,\
     }
     if (isnan(err_iter)){
         logger.warn("Grain stress iteration failed (nan)! Grain " + to_string(grain_i));
-        Xv = Chg_basis6(X) + Chg_basis6(Sig_m) - Chg_basis6(Sig_m_old);
+        Xv = Chg_basis6(sig_g); F = Vector6d::Ones();
         if_stress = 0;
     }
     /* logger.debug("Xv after NR iteration: "); logger.debug(Xv); */
@@ -748,7 +790,8 @@ void grain::grain_stress(double Tincr, Matrix3d Wij_m, Matrix3d Dij_m,\
             /* if(grain_i == 0) logger.debug("Grain stress iteration: " + to_string(it) + ", F_norm: " + to_string(F_norm) + ", coeff: " + to_string(coeff)); */
             if ((it == DH_max_iter) || (coeff < 1e-4)) {
                 logger.warn("Grain stress iteration failed ! Grain " + to_string(grain_i) + ", F_norm: " + to_string(F_norm));
-                Xv = Chg_basis6(X) + Chg_basis6(Sig_m) - Chg_basis6(Sig_m_old);
+                /* Xv = Chg_basis6(X) + Chg_basis6(Sig_m) - Chg_basis6(Sig_m_old); */
+                Xv = Chg_basis6(Sig_m);
                 if_stress = 0;
                 break;
             }
@@ -756,26 +799,12 @@ void grain::grain_stress(double Tincr, Matrix3d Wij_m, Matrix3d Dij_m,\
     }
     /**/
     sig_g = Chg_basis(Xv);
-    /* logger.debug("Grain number = " + to_string(grain_i) + ", F_norm = " + to_string(F.norm())); */
-    /* logger.debug("Grain number = " + to_string(grain_i) + ", sig_g = "); logger.debug(sig_g); */
     Vector6d dijegv =  Mij6_J_g *(Xv/Tincr + Chg_basis6(stress_g_jau_diff)); 
     dijpgv = Chg_basis5(cal_Dijp(sig_g));
     Dije_g = Chg_basis(dijegv); Dijp_g = Chg_basis(dijpgv);
     therm_strain_g = therm_expansion_g_sys * temperature_diff;
     Dij_g = Dije_g + Dijp_g + thermal_strain_rate;
-    Update_Mpij6_g();
-}
-
-void grain::Update_shear_strain(double Tincr)
-{
-    double temp = 0;
-    gamma_delta = 0;
-    for(int i = 0; i < modes_num; i++)
-    {         
-        temp = Tincr * gmode[i]->update_shear_strain_m();
-        gamma_delta_gmode[i] = temp;
-        gamma_delta += temp;
-    }    
+    Update_Mpij6_g(3);
 }
 
 void grain::update_strain(double Tincr)
@@ -803,6 +832,7 @@ void grain::update_orientation(double Tincr, Matrix3d Wij_m, Matrix3d Dije_AV, M
 void grain::update_modes(double Tincr)
 {
     for(int i = 0; i < modes_num; i++)	gmode[i]->update_ssd(Dij_g, Tincr);
+    for(int i = 0; i < modes_num; i++)	gmode[i]->update_ssd_coplanar_reaction(modes_num, gmode, Tincr);
     child_frac = 0.;
     for (int i = 0; i < modes_num; i++) {
         if (gmode[i]->type != mode_type::twin) continue;
@@ -817,7 +847,6 @@ void grain::update_modes(double Tincr)
         }
     }
     else twin_term_flag = false;
-    /* for(int i = 0; i < modes_num; i++)	gmode[i].update_lhparams(Dij_g); */
     for(int i = 0; i < modes_num; i++)	gmode[i]->update_status(*this, Tincr);
     gamma_total += gamma_delta;
 }
@@ -847,28 +876,6 @@ void grain::set_lat_hard_mat(){
     lat_hard_mat = latent_matrix;
 }
 
-int grain::get_interaction_mode(Vector3d burgers_i, Vector3d plane_i, Vector3d burgers_j, Vector3d plane_j){
-    /*
-     * Return the dislocation interaction mode code between two slip system.
-     * 0: No Junction, 1: Hirth Lock, 2: Coplanar Junction, 3: Glissile Junction, 4: Sessile Junction
-     */
-    double perp = 0.02, prll = 0.98;
-    double cos_b_angle = cal_cosine(burgers_i, burgers_j);
-    if(abs(cos_b_angle) < perp) return 1;
-    else {
-        if(abs(cos_b_angle) > prll) return 0;
-        else{
-            if (abs(cal_cosine(plane_i, plane_j)) > prll) return 2;
-            else{
-                bool if_glide_i = (abs(cal_cosine(plane_i, burgers_i+burgers_j)) < perp);
-                bool if_glide_j = (abs(cal_cosine(plane_j, burgers_i+burgers_j)) < perp);
-                if (if_glide_i || if_glide_j) return 3;
-                else return 4;
-            }
-        }
-    }
-}
-
 void grain::print_latent_matrix(){
     string mat_row = "";
     for (int i = 0; i < modes_num; i++){
@@ -890,11 +897,22 @@ Matrix3d grain::get_therm_expansion(){
 }
 
 // A default template of the temperature evolution
-void grain::update_temperature(double Tincr)
+void grain::update_temperature(double time_incre)
 {
+<<<<<<< HEAD
     //temperature = temperature + (Tincr/(rho_material*Cp_material))*(Dijp_g.cwiseProduct(sig_g).sum()+pow(J_intensity_pulse(Tincr,duty_ratio_J,Amplitude_J,Frequency),2)/sigma_e_mat);
     //不用赋予初值，在processes里面有// temperature of the atmosphere is a global variable, which can be directly used here
     temperature = 293.0; //test mode
     /* temperature += slope_profile_incr(Tincr, -10); //test mode
     /* logger.debug("Temperature of grain " + to_string(grain_i) + " is " + to_string(temperature) + " K."); */
+=======
+    double electric_intensity = J_intensity_pulse(time_incre,duty_ratio_J,Amplitude_J,Frequency);
+
+    double scale = time_incre / (rho_material * Cp_material);
+    double plas_dissipation_term = Dijp_g.cwiseProduct(sig_g).sum();
+    double electricity_induced_term = pow(electric_intensity,2) / sigma_e_mat;
+    double temperature_incre = scale * (plas_dissipation_term + electricity_induced_term);
+    temperature = temperature + temperature_incre;
+    // temperature of the atmosphere is a global variable, which can be directly used here
+>>>>>>> 6f8c8fa27d07fdc544418580ee2acaef7ff1449d
 }

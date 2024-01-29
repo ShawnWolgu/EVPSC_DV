@@ -371,8 +371,15 @@ void polycrystal::ini_from_json(json &sx_json){
     ini_GZ(sx_json["GZ"]);
     //ini_heateffect//自己写
     ini_gmode(sx_json);
+    family_count = sx_json["family_num"];
+    VectorXd temp_vec = to_vector(sx_json, "modes_count_by_family", family_count);
+    for (int i = 0; i < family_count; i++) {
+        modes_count_by_family.push_back(temp_vec(i));
+        density_by_family.push_back(0.0);
+        acc_strain_by_family.push_back(0.0);
+        crss_by_family.push_back(0.0);
+    }
     for(int i = 0; i < grains_num; ++i) g[i].set_lat_hard_mat();
-    logger.debug("Latent hardening matrix:");
     g[0].print_latent_matrix();
 	for(int i = 0; i < grains_num; ++i){
 	   for(int j = 0; j < g[i].modes_num; ++j){
@@ -533,7 +540,7 @@ int polycrystal::Selfconsistent_E(int Istep, double ERRM, int ITMAX)
         RER=Errorcal(SSC,SSC_new);
         SSC = 0.5*(SSC_new+SSC_new.transpose());
         CSC = SSC.inverse();
-        logger.notice("**Error in  ESC iteration "+to_string(IT)+":\t"+to_string(RER));
+        logger.notice("**Error in ESC iteration "+to_string(IT)+": \t"+to_string(RER));
         if(isnan(RER)) return 1;
     } //while loop
     // Thermal Expansion Part
@@ -557,7 +564,8 @@ int polycrystal::Selfconsistent_P(int Istep, double ERRM, int ITMAX)
     Matrix5d MNEW; //VP compliance updated in every do-while
     Vector5d D0_new; //the back-extrapolated term updated in every do-while
     Matrix5d B_g_ave; // <B_g> in Equ[5-41a] average of B_g
-    Vector5d b_g_ave; // <b_g> in Equ[5-41b] average of b_g
+    Matrix5d B_g_switch_ave;
+    Vector5d B_switch_d0_ave;
     int IT = 0; //loop flag
     double RER = 2*ERRM;
     while((RER >= ERRM) && (IT < ITMAX))
@@ -565,8 +573,9 @@ int polycrystal::Selfconsistent_P(int Istep, double ERRM, int ITMAX)
         IT++;
         MNEW = Matrix5d::Zero();
         B_g_ave = Matrix5d::Zero();
+        B_g_switch_ave = Matrix5d::Zero();
+        B_switch_d0_ave = Vector5d::Zero();
         D0_new = Vector5d::Zero();
-        b_g_ave = Vector5d::Zero();
         Matrix5d Mtilde;
         Matrix5d S55;//the Sijkl Equ[5-33] in sample axes in Manual 7d
         double R4_SA[3][3][3][3]; //PIijkl
@@ -639,39 +648,29 @@ int polycrystal::Selfconsistent_P(int Istep, double ERRM, int ITMAX)
 
             Matrix5d M_g = g[G_n].get_Mpij6_g();
             Vector5d d0_g = g[G_n].get_d0_g(); 
-            double wei = g[G_n].get_weight_g();
+            double weight_g = g[G_n].get_weight_g();
 
             //Calculate the localization tensor B_g, _g means the value depends on the grain
-            //refer to Equ[5-35] in Manual 7d
-            // B_g = (M_g + M~)^-1 * (M_ + M~)
-            Matrix5d Part1 = M_g + Mtilde;
-            Matrix5d Part1_inv = Part1.inverse();
-            Matrix5d Part2 = M_VP_SC + Mtilde; 
-            Matrix5d B_g = Part1_inv * Part2;
-            //refer to Equ[5-35] in Manual 7d
+            // B_g = (M_g + M~)^-1 * (M_ + M~) 
+            Matrix5d term_M = (M_g + Mtilde).inverse();
+            Matrix5d B_g = term_M * (M_VP_SC + Mtilde);
+            Matrix5d B_g_switch = (M_VP_SC + Mtilde) * term_M;
             // b_g = (M_g + M~)^-1 * (d- - d-_g)
-            Vector5d b_gv =  Part1_inv * (Chg_basis5(voigt(D0))-d0_g);
-
+            Vector5d b_gv =  term_M * (Chg_basis5(voigt(D0))-d0_g);
             // MNEW = <M_g * B_g> Equ[5-40a]
-            MNEW += M_g * B_g * wei;
+            MNEW += M_g * B_g * weight_g;
             //<B_g> Equ[5-40b]
-            B_g_ave += B_g * wei;
-
-            Vector5d Mr_br =  M_g * b_gv; 
-            D0_new += ( d0_g +  Mr_br ) * wei; // < M_g * b_g + d0_g>
-            // <b_g>
-            b_g_ave += b_gv * wei;
-            DVP_AV +=  Chg_basis5(g[G_n].get_Dijp_g()) * wei;
+            B_g_ave += B_g * weight_g;
+            B_g_switch_ave += B_g_switch * weight_g;
+            B_switch_d0_ave += B_g_switch * d0_g * weight_g;
+            DVP_AV +=  Chg_basis5(g[G_n].get_Dijp_g()) * weight_g;
         } //loop over grains
 
         // <M_g * B_g> * <B_g>^-1
         MNEW = MNEW * B_g_ave.inverse();
         Matrix5d MNEW2 = 0.5*(MNEW+MNEW.transpose());
         MNEW = MNEW2;
-        // < M_g * b_g + d0_g> - <M_g * B_g> * <B_g>^-1 * <b_g>
-        //<M_g * B_g> * <B_g>^-1 * <b_g>
-        Vector5d M_bg =  MNEW * b_g_ave;
-        D0_new = D0_new - M_bg;
+        D0_new = B_g_switch_ave.inverse() * B_switch_d0_ave;
         /* calculate the error between the input M_VP_SC of do-while loop and the output MNEW of the loop  */
         RER = Errorcal(M_VP_SC, MNEW);
         M_VP_SC = MNEW;
@@ -701,39 +700,21 @@ int polycrystal::Update_Fij(double Tincr)
 
 int polycrystal::Update_shape()
 {
-    //-1 F.transpose()*F
-    //BX = Matrix3d::Zero();
-    //for(int i = 0; i < 3; i++)
-    //    for(int j = 0; j < 3; j++)
-    //        BX(i,j) = Fij_g.row(i)*Fij_g.col(j);
-    Matrix3d BX;
     Matrix3d FT = Fij_m.transpose();
-    BX =  Fij_m*FT;
-    //-1 F.transpose()*F
+    Matrix3d BX = Fij_m * FT;
 
-    //-2 solve the eigen vector of BX
-    //and sort the value from largest to smallest
-    //EigenSolver<Matrix3d> es(BX);
+    //Solve the eigen vector of BX and sort the value from largest to smallest
     Matrix3d BX_vectors;
     Vector3d BX_value;
     Jacobi(BX,BX_value,BX_vectors);
-    //BX_value = (es.eigenvalues()).real();
-    //BX_vectors = (es.eigenvectors()).real();
-
     Eigsrt(BX_vectors, BX_value);
-
-    //-2 solve the eigen vector of BX
-    //and sort the value from largest to smallest
     
     Matrix3d B = BX_vectors;
     Vector3d W = BX_value;
-    //-3 
-    //redefine Axis(1) (the second) to be the largest  
-    //to improve the accuracy in calculation of Eshelby tensor
-    //IF DET(B)<0 MEANS THAT THE SYSTEM IS LEFT HANDED. IT IS MADE RIGHT
-    //HANDED BY EXCHANGING 1 AND 2.
-    double Sign = -1;
-    double temp;
+
+    /* Redefine Axis(1) (the second) to be the largest to improve the accuracy in calculation of Eshelby tensor */
+    /* IF DET(B)<0 MEANS THAT THE SYSTEM IS LEFT HANDED. IT IS MADE RIGHT HANDED BY EXCHANGING 1 AND 2. */
+    double Sign = -1, temp = 0.0;
     if(B.determinant() <= 0) Sign = 1;
     for(int i = 0; i < 3; i++)
     {
@@ -742,64 +723,38 @@ int polycrystal::Update_shape()
         B(i,1) = temp * Sign;
     }
     temp = W(0); W(0) = W(1); W(1) = temp;
-    //-3 
 
-    //-4 update the stretching of ellipsoid
+    // Update the stretching of ellipsoid
     double Ratmax=sqrt(W(1)/W(2));
     double Ratmin=sqrt(W(0)/W(2));
-
     ell_axisb = B;
-    if(!Iflat) //if Iflat = 0
+    if(!Iflat)
         for(int i = 0; i < 3; i++)
             ell_axis(i) = sqrt(W(i));
-    //if Iflat = 1, the axis of ellipsoid keeps unchange
-    //-4 update the stretching of ellipsoid
+    // if Iflat = 1, the axis of ellipsoid keeps unchange
     
-    //-5 update the ellipsoid orientation
+    // Update the ellipsoid orientation
     Matrix3d BT = B.transpose();
     ellip_ang = Euler_trans(BT);
     
-    //-5
+    // Update the Iflat_g according to the Max axes ratio of ellipsoid
+    if((!Iflat)&&(Ratmax >= ell_crit_shape)) Iflat = 1;
 
-    //-6 Update the Iflat_g according to the Max axes ratio of ellipsoid
-    if((!Iflat)&&(Ratmax >= ell_crit_shape))
-    {
-        Iflat = 1;
-    }
-    //-6
-
-    //-7 Iflat_g = 1; recaculates the Fij_g in grain
+    // Iflat_g = 1; recaculates the Fij_g in grain
     else if((Iflat)&&(Ratmax >= ell_crit_shape))
     {
         W(1) = W(1)/4;
-        if(Ratmin >= 0.5 * ell_crit_shape)
-            W(0) = W(0)/4;
-        for(int i = 0; i < 3; i++)
-            ell_axis(i) = sqrt(W(i));
-        
-        Matrix3d Fijx;
-        for(int i = 0; i < 3; i++)
-            for(int j = 0; j < 3; j++)
-                Fijx(i,j) = Iij(i,j) * ell_axis(i);
-        
-        for(int i = 0; i < 3; i++)
-            for(int j = 0; j < 3; j++)
-        {
-            Fij_m(i,j) = 0;
-            for(int k = 0; k < 3; k++)
-                for(int l = 0; l < 3; l++)
-                    Fij_m(i,j) = Fij_m(i,j) + B(i,k)*B(j,l)*Fijx(k,l);
-        }
+        if(Ratmin >= 0.5 * ell_crit_shape) W(0) = W(0)/4;
+        for(int i = 0; i < 3; i++) ell_axis(i) = sqrt(W(i));
+        Matrix3d Fijx(ell_axis.asDiagonal());
+        Fij_m = B * Fijx * BT;
     }
     return 0;
 }
 
-
-int polycrystal::EVPSC(int istep, double Tincr,\
- bool Iupdate_ori,bool Iupdate_shp,bool Iupdate_CRSS)
-{   
+int polycrystal::EVPSC(int istep, double Tincr){
     double errd, errs, err_g, err_av;
-    int max_iter = 30, break_th = 10, break_counter = 0;
+    int max_iter = 30, break_th = 5, break_counter = 0;
     save_status();
 
     for(int i = 0; i <= max_iter; ++i)
@@ -839,13 +794,15 @@ int polycrystal::EVPSC(int istep, double Tincr,\
         logger.notice("Error in average grain stress:\t" + std::to_string(err_g));
         logger.notice("Error between stress tensors:\t" + std::to_string(err_stress));
         logger.notice("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
-        if((errs<errS_m)&&(errd<errD_m)&&(err_g<err_g_AV)&&(err_stress<=err_g_AV*1.)) break;
+        bool err_stress_flag = (err_stress <= err_g_AV*1.)||(err_stress*calc_equivalent_value(Sig_m)<0.5);
+        if((errs<errS_m)&&(errd<errD_m)&&(err_g<err_g_AV)&&err_stress_flag) break;
         if((errs<0.01* errS_m)&&(errd<0.01*errD_m)&&(err_g<0.01* err_g_AV)) break;
         if ((i == max_iter) || (break_counter == break_th) )return 1;
     }
 
     Eps_m += Dij_m * Tincr; //update the macro strain tensor
 
+<<<<<<< HEAD
     //update the shape of ellipsoid
     if(Ishape == 0)
     {
@@ -887,6 +844,11 @@ int polycrystal::EVPSC(int istep, double Tincr,\
         }
         if(Iupdate_CRSS) update_twin_control();
     }
+=======
+    if(update_temperature_required) update_temperature(Tincr);
+    update_status(Tincr);
+    update_info_by_family();
+>>>>>>> 6f8c8fa27d07fdc544418580ee2acaef7ff1449d
     return 0;
 }
 
@@ -920,6 +882,27 @@ void polycrystal::restore_status(bool flag){
     SSC = CSC.inverse();  M_VP_SC = C_VP_SC.inverse();
     for(int G_n = 0; G_n < grains_num; ++G_n)
         g[G_n].restore_status_g();
+}
+
+// update the state in deformation systems and crystalline orientation and shapes
+void polycrystal::update_status(double time_incre){
+    if(Ishape == 0)
+    {
+        Update_Fij(time_incre);
+        if(update_shape_required) Update_shape();
+    }
+    #pragma omp parallel for num_threads(Mtr)
+    for(int G_n = 0; G_n < grains_num; ++G_n){
+        g[G_n].update_strain(time_incre);
+        if(update_orientation_required) g[G_n].update_orientation(time_incre, Wij_m, Dije_AV, Dijp_AV);
+        if(update_CRSS_required) g[G_n].update_modes(time_incre);
+        if(update_CRSS_required) update_twin_control();
+        if(Ishape == 0) continue;
+        g[G_n].Update_Fij_g(time_incre);
+        if(update_shape_required) g[G_n].Update_shape_g();
+    }
+    #pragma omp barrier
+    update_info_by_family();
 }
 
 void polycrystal::Cal_Sig_m(double Tincr)
@@ -994,7 +977,6 @@ double polycrystal::Cal_Sig_g(double Tincr)
 {
     #pragma omp parallel for num_threads(Mtr)
     for(int G_n = 0; G_n < grains_num; G_n++){
-	//logger.debug("Cal_sig: Thread " + std::to_string(omp_get_thread_num()) + " is processing grain " + std::to_string(G_n));
         g[G_n].grain_stress(Tincr, Wij_m, Dij_m, Dije_AV, Dijp_AV, Sig_m, Sig_m_old, therm_expansion_ave);
     }
     #pragma omp barrier
@@ -1064,3 +1046,47 @@ void polycrystal::update_twin_control(){
     twin_threshold = min(1.0, A_1 + A_2 * (V_eff / V_acc));
 }
 
+void polycrystal::update_info_by_family(){
+    PMode* modePtr = nullptr;
+    int modes_from = 0, modes_to = 0;
+    for (int family_id = 0; family_id < family_count; family_id++){
+        if (family_id != 0) modes_from += modes_count_by_family[family_id - 1];
+        modes_to += modes_count_by_family[family_id];
+        double density_in_family = 0., acc_strain_in_family = 0., crss_in_family = 0.;
+        for (int grain_i = 0; grain_i < grains_num; grain_i++){
+            double weight_g = g[grain_i].get_weight_g();
+            for (int mode_i = modes_from; mode_i < modes_to; mode_i++){
+                modePtr = g[grain_i].gmode[mode_i];
+                density_in_family += modePtr->disloc_density * weight_g;
+                acc_strain_in_family += modePtr->acc_strain * weight_g;
+                crss_in_family += (modePtr->crss/((double)(modes_to-modes_from))) * weight_g;
+            }
+        }
+        density_by_family[family_id] = density_in_family;
+        acc_strain_by_family[family_id] = acc_strain_in_family;
+        crss_by_family[family_id] = crss_in_family;
+    }
+}
+
+void polycrystal::set_temperature(double temperature_in){
+    temperature_poly = temperature_in;
+    for (int i = 0; i < grains_num; ++i) {
+        g[i].temperature = temperature_in;
+    }
+}
+
+// Calculate the temperature after the thermal conduction.
+void polycrystal::update_temperature(double time_incre){
+    temperature_poly = 0.0;
+    for(int G_n = 0; G_n < grains_num; ++G_n){
+        g[G_n].update_temperature(time_incre);
+        temperature_poly += g[G_n].temperature * g[G_n].get_weight_g();
+    }
+    double scale = time_incre * Surface / (V_sample * rho_material * Cp_material);
+    double convection_term = h_ext * (temp_atmosphere - temperature_poly);
+    double radiation_term = sigma_k * (pow(temp_atmosphere, 4) - pow(temperature_poly, 4));
+    double Delta_T = (convection_term + radiation_term) * scale;
+    temperature_poly += Delta_T; 
+    // we have to redistribute the temperature?
+    set_temperature(temperature_poly);
+}

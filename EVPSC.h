@@ -50,6 +50,7 @@ class grain
         Matrix3d Dij_g_old; //strain rate in last step
         Matrix3d Dije_g_old; //elastic strain rate in last step
         Matrix3d Dijp_g_old; //vp strain rate in last step
+        Vector5d d0_g_old; //d0 in last step
         Matrix3d therm_strain_g_old; //the thermal strain tensor in grain in last step
         double RSinv_C_old[3][3][3][3];
         double RSinv_VP_old[3][3][3][3];
@@ -72,7 +73,6 @@ class grain
 
         double gamma_total = 0;
         double gamma_delta = 0; //the increment of gamma
-        int get_interaction_mode(Vector3d burgers_i, Vector3d plane_i, Vector3d burgers_j, Vector3d plane_j);
 
     public:
         int grain_i; // The Number
@@ -155,6 +155,7 @@ class grain
         Matrix3d cal_rotslip();
 
         Matrix5d cal_Fgrad(Matrix3d);
+        Matrix5d cal_M_secant(Matrix3d);
 
         double cal_RSSxmax(Matrix3d); //Calculate the maxinum RSS/CRSS
         double cal_RSSxlim(Matrix3d); //Calculate the limit of RSS/CRSS
@@ -173,8 +174,11 @@ class grain
         Matrix3d get_therm_expansion();
         void Update_RSinv_C_g(double A[3][3][3][3]);
 
-        //Visco-plastic consistent
-        void Update_Mpij6_g();
+        // [Visco-plastic consistent Function]
+        //
+        // Calculate the Viscoplastic Modulus using different linearization method.
+        // 1 = Affine; 2 = Tangent; 3 = Secant
+        void Update_Mpij6_g(int);
         void Update_Mptilde_g(Matrix5d);
         Matrix5d get_Mpij6_g(); 
         Vector5d get_d0_g();
@@ -194,9 +198,6 @@ class grain
         //parameter:
         //double Tincr: the time increment
         void Update_Fij_g(double);
-
-        //update the accumulate shear strain in all deformation modes
-        void Update_shear_strain(double);
 
         //update the grain orientation
         //parameters:
@@ -227,6 +228,7 @@ class PMode
         double ref_strain_rate = 0.001;
         Matrix3d Pij;
         Matrix3d Rij;
+        double shear_rate_old, drate_dtau_old, disloc_density_old, crss_old, acc_strain_old, rss_old, velocity_old, rho_init_old, rho_H_old;
 
     public:
         PMode();
@@ -248,7 +250,8 @@ class PMode
          * 0. tau_0, 1. tau_1, 2. h_0, 3. h_1, 4. twin_strain, 5. A1 6. A2, 7. ref_rate
          */
         vector<double> harden_params, update_params, latent_params;
-        double rate_sen, shear_rate, drate_dtau, shear_modulus, disloc_density, crss, acc_strain, rss = 0.0;
+        double rate_sen, shear_rate, drate_dtau, shear_modulus, disloc_density, crss, acc_strain, rss = 0.0, velocity = 0.0;
+        double rho_init = 0.0, rho_H=0.0;
         // Original Contents
         double get_gamma0();
         double get_nrsx();
@@ -259,11 +262,15 @@ class PMode
         Matrix3d cal_dijpmode(Matrix3d);
         Matrix3d cal_rot_mode();
         Matrix6d get_Fgradm(Matrix3d);
+        Matrix6d get_M_secant(Matrix3d);
+        void save_status();
+        void restore_status();
         // Virtual funcs
         virtual void check_hardening_mode(){};
         virtual void check_sn_mode() {};
         virtual void update_status(grain &grain, double dtime) {}; //update the status of slip/twinning system
         virtual void update_ssd(Matrix3d strain_rate, double dtime) {};
+        virtual void update_ssd_coplanar_reaction(int modes_num, PMode** sys, double time_incr) {};
         virtual void print();
         virtual void cal_strain_rate(Matrix3d stress_tensor) {};
         virtual void cal_drate_dtau(Matrix3d stress_tensor) {};
@@ -297,6 +304,7 @@ class Slip : public PMode
         void check_sn_mode() override;
         void update_status(grain &grain, double dtime) override; //update the status of slip/twinning system
         void update_ssd(Matrix3d strain_rate, double dtime) override;
+        void update_ssd_coplanar_reaction(int modes_num, PMode** sys, double time_incr) override;
         void cal_strain_rate(Matrix3d stress_tensor) override;
         void cal_drate_dtau(Matrix3d stress_tensor) override;
         void print() override;

@@ -101,6 +101,9 @@ class polycrystal
         
         grain* g = NULL;
         int grains_num = 0;
+        int family_count = 0;
+        vector<int> modes_count_by_family;
+        vector<double> density_by_family, acc_strain_by_family, crss_by_family;
         double error_SC = 0., twin_threshold = 1., temperature_poly = 0., temp_poly_old = 0.;
         Matrix3d Dij_m; //the macro strain rate tensor
         Matrix3d thermal_strain_m;//the macro thermal strain tensor
@@ -168,15 +171,19 @@ class polycrystal
         Vector3d get_ellip_ang(); 
 
         //the singular step according to a certain process
-        int EVPSC(int, double, bool, bool, bool);
+        int EVPSC(int, double);
 
         //calculate the macro&grain elastic compliance
         int Selfconsistent_E(int, double, int); 
-	void save_status();
-	void restore_status(bool reset);
 
         //calculate the macro&grain VP compliance
         int Selfconsistent_P(int, double, int); 
+
+        // status management
+        void save_status();
+        void restore_status(bool reset);
+        void update_status(double time_incre);
+        void update_twin_control();
 
         // calculate the Sig_m and Dij_m
         void Cal_Sig_m(double);  
@@ -184,17 +191,19 @@ class polycrystal
         // calculate the Sig_g and Dij_g including the elastic and vp part
         double Cal_Sig_g(double);
 
-	void restore_stress();
-	void Update_AV(); //update the volume average value
+        void Update_AV(); //update the volume average value
 
         //output
         Vector6d get_Sig_m();
         Vector6d get_Sig_ave();
         Vector6d get_Eps_m();
         void get_euler(fstream &);
+        void update_info_by_family();
 
-        void update_twin_control();
-        
+        // Set the temperature in polyX and all grains to the given value
+        void set_temperature(double);
+        // Update the temperature in polyX and all grains by the given increment
+        void update_temperature(double time_incre);
 };
 
 

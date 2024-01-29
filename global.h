@@ -11,17 +11,44 @@
 #include <ctime>
 #include <Eigen/Dense>
 
+// [Simulation Settings]
+extern int texctrl;
+extern bool update_orientation_required, update_shape_required, update_CRSS_required, update_temperature_required;
+
 extern double temp_atmosphere, temperature_ref;
+<<<<<<< HEAD
 extern double rho_material, Cp_material, sigma_e_mat, h_ext, Surface, V_sample, sigma_k;
 extern double duty_ratio_J, Amplitude_J, Frequency;
 extern std::ofstream outfile;
+=======
+
+// [Some Material Properties]
+extern double rho_material, Cp_material, sigma_e_mat, h_ext, Surface, V_sample, sigma_k;
+extern double duty_ratio_J, Amplitude_J, Frequency;
+
+// [Output fstreams]
+extern vector<double> custom_vars;
+extern fstream tex_out; //output of the texture
+extern fstream density_out; //output of the grain information
+extern fstream acc_strain_out;
+extern fstream crss_out;
+extern fstream ss_out_csv; //output of the macro stress-strain curves
+extern fstream ave_ss_out; //output of the average stress-strain curves
+extern fstream grain_out; //output of the grain information
+extern fstream custom_out; //output of the custom variables
+
+void initial_output_files();
+void output_info();
+void output_grain_info(int i);
+
+// [Some global objects]
+>>>>>>> 6f8c8fa27d07fdc544418580ee2acaef7ff1449d
 extern Polycs::polycrystal global_polycrys;
 extern Procs::Process global_proc;
 class Logger;
 extern Logger logger;
 
-void update_progress(double progress_f);
-
+// Define the Logger class
 class Logger {
 public:
     Logger() : outfile("EVPSC_log.txt") {}

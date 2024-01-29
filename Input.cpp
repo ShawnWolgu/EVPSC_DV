@@ -23,11 +23,10 @@ int EVPSCinput(string &ftex,string &fsx,string &fload, Procs::Process &Proc)
             getline(ininp, tp); //skip
             getline(ininp, tp); //skip
             getline(ininp, tp); 
-            VectorXd temp1 = getnum(tp, 3);
-            Vector3i temp2;
-            for(int i=0; i<3; i++)
-                temp2(i) = int(temp1(i));
-            Proc.Update_ctrl(temp2);
+            VectorXd temp1 = getnum(tp, 4);
+            Vector4i temp2;
+            for(int i=0; i<4; i++) temp2(i) = int(temp1(i));
+            set_control_flags(temp2);
 
             //read output control
             getline(ininp, tp); //skip
@@ -113,10 +112,25 @@ int loadinput(string fname, Procs::Process &Proc)
             Sig_m(2)=temp(0);
 
             getline(loadinp ,tp);//skip one line
+<<<<<<< HEAD
             getline(loadinp, tp); VectorXd electric_coeff = getnum(tp, 3);
             duty_ratio_J = electric_coeff(0);
             Amplitude_J = electric_coeff(1);
             Frequency = electric_coeff(2);
+=======
+            if (!loadinp.eof()) //if the file ends, return
+            {
+                if (tp.find("duty") != tp.npos){
+                    getline(loadinp, tp); VectorXd electric_coeff = getnum(tp, 3);
+                    duty_ratio_J = electric_coeff(0);
+                    Amplitude_J = electric_coeff(1);
+                    Frequency = electric_coeff(2);
+                }
+            }
+            logger.debug("duty_ratio_J = " + to_string(duty_ratio_J));
+            logger.debug("Amplitude_J = " + to_string(Amplitude_J));
+            logger.debug("Frequency = " + to_string(Frequency));
+>>>>>>> 6f8c8fa27d07fdc544418580ee2acaef7ff1449d
             //I-intensity input
             Proc.get_Sdot(voigt(Sig_m));
 
@@ -152,6 +166,7 @@ int sxinput(string fname, Polycs::polycrystal &pcrys)
         getline(sxinp, tp);  //skip a line;
         getline(sxinp, tp);  VectorXd therm = getnum(tp, 6); //Thermal coefficients
         add_thermal_coefficient(therm, sx_json);
+<<<<<<< HEAD
         getline(sxinp ,tp);
         getline(sxinp, tp); VectorXd thermal_coeff = getnum(tp, 7);
         rho_material = thermal_coeff(0);
@@ -163,6 +178,37 @@ int sxinput(string fname, Polycs::polycrystal &pcrys)
         sigma_k = thermal_coeff(6);
         //关于传热的直接在这边赋值
         getline(sxinp, tp);  //skip a line;        //Start reading slip and twinning modes
+=======
+        getline(sxinp ,tp); // this line is for thermal coeffs check or read plasitcity modes
+        if (tp.find("rho_material") != tp.npos){
+            getline(sxinp, tp); VectorXd thermal_coeff = getnum(tp, 7);
+            rho_material = thermal_coeff(0);
+            Cp_material = thermal_coeff(1);
+            sigma_e_mat = thermal_coeff(2);
+            h_ext = thermal_coeff(3);
+            Surface = thermal_coeff(4);
+            V_sample = thermal_coeff(5);
+            sigma_k = thermal_coeff(6);
+            getline(sxinp, tp);  //skip a line;        //Start reading slip and twinning modes
+        }
+        else{
+            rho_material = 0;
+            Cp_material = 0;
+            sigma_e_mat = 0;
+            h_ext = 0;
+            Surface = 0;
+            V_sample = 0;
+            sigma_k = 0;
+        }
+        logger.debug("rho_material = " + to_string(rho_material));
+        logger.debug("Cp_material = " + to_string(Cp_material));
+        logger.debug("sigma_e_mat = " + to_string(sigma_e_mat));
+        logger.debug("h_ext = " + to_string(h_ext));
+        logger.debug("Surface = " + to_string(Surface));
+        logger.debug("V_sample = " + to_string(V_sample));
+        logger.debug("sigma_k = " + to_string(sigma_k));
+        //关于传热的直接在这边赋值
+>>>>>>> 6f8c8fa27d07fdc544418580ee2acaef7ff1449d
         getline(sxinp, tp);  int nmodesx = int(getnum(tp, 1)(0)); //total mode number in file
         getline(sxinp, tp);  int nmodes = int(getnum(tp, 1)(0));  //considered in current run
         getline(sxinp, tp);  VectorXd mode_i = getnum(tp, nmodes);  //the index of modes(mode_i)
@@ -174,7 +220,7 @@ int sxinput(string fname, Polycs::polycrystal &pcrys)
             getline(sxinp, tp);  //skip a line;
             getline(sxinp, tp);  VectorXd mode_info = getnum(tp, 4);
             /* mode_info 0: the serial number 
-             * 1: number of mechnical systems
+             * 1: number of deformation systems
              * 2: flag of slip (0 for twin; 1 for slip) 
              * 3: flag of twin (1 for twin; 0 for slip)
             */ 
@@ -197,6 +243,8 @@ int sxinput(string fname, Polycs::polycrystal &pcrys)
                 sx_modes.push_back(this_mode);
             }                
         }
+        sx_json["family_num"] = nmodes;
+        sx_json["modes_count_by_family"] = mode_count;
         sx_json["modes_num"] = modes_num;
 
         getline(sxinp, tp);  //skip a line;
@@ -204,7 +252,7 @@ int sxinput(string fname, Polycs::polycrystal &pcrys)
         getline(sxinp, tp);  bool irate = bool(getnum(tp, 1)(0)); //"rate sensitive" flag(1: Y; 0: N)
         getline(sxinp, tp);  sx_json["GZ"] = getnum(tp, 1)(0); //grain size: um
         int harden_size;
-        if(iharden == 0) harden_size = 4; else harden_size = 13;
+        if(iharden == 0) harden_size = 4; else harden_size = 16;
 
         //Read hardening parameters of modes
         double nrsx; vector<double> CRSS_p, hst;
@@ -213,10 +261,11 @@ int sxinput(string fname, Polycs::polycrystal &pcrys)
             getline(sxinp, tp);  //skip a line;
             getline(sxinp, tp);  nrsx = getnum(tp, 1)(0); //rate sensitivity
             getline(sxinp, tp);  //CRSS parameters
-            if (iharden == 1) CRSS_p = getnum_vec(tp, 15);
-            else CRSS_p = getnum_vec(tp, 4);
-            //hst
-            getline(sxinp, tp);  hst = getnum_vec(tp, 6); //6 types of hardening
+            if (sx_modes[imode]["type"] == 0) CRSS_p = getnum_vec(tp, harden_size);
+            else CRSS_p = getnum_vec(tp, 8);
+            getline(sxinp, tp);  //latent hardening parameters
+            if (sx_modes[imode]["type"] == 0) hst = getnum_vec(tp, 6); //6 types of hardening
+            else hst = getnum_vec(tp, 2);
             sx_modes[imode]["nrsx"] = nrsx;
             sx_modes[imode]["CRSS_p"] = CRSS_p;
             sx_modes[imode]["hst"] = hst;
@@ -279,7 +328,10 @@ VectorXd getnum(string strin, int num)
 {
     int i = 0;
     VectorXd Vtemp(num);
+<<<<<<< HEAD
     //string pattern("\\d+(\\.\\d+)?");
+=======
+>>>>>>> 6f8c8fa27d07fdc544418580ee2acaef7ff1449d
     string pattern("[+-]?[\\d]+([\\.][\\d]*)?([Ee][+-]?[\\d]+)?");
     regex r(pattern);
     smatch results;
@@ -289,9 +341,14 @@ VectorXd getnum(string strin, int num)
     while (regex_search(iter_begin, iter_end,  results,  r))
     {
         if (i >= num) break;
-        Vtemp(i)=stof(results[0].str());
+        Vtemp(i)=stod(results[0].str());
         iter_begin = results[0].second;	
         i++;
+    }
+    if (i < num) {
+        logger.error("Error code 1: getnum() cannot find enough numbers, expected " + to_string(num) + " numbers, but only found " + to_string(i) + " numbers.");
+        logger.error("The involved line is " + strin);
+        exit(1);
     }
     return Vtemp;
 }
@@ -310,6 +367,11 @@ vector<double> getnum_vec(string strin, int num){
         Vtemp.push_back(stof(results[0].str()));
         iter_begin = results[0].second;	
         i++;
+    }
+    if (i < num) {
+        logger.error("Error code 1: getnum() cannot find enough numbers, expected " + to_string(num) + " numbers, but only found " + to_string(i) + " numbers.");
+        logger.error("The involved line is " + strin);
+        exit(1);
     }
     return Vtemp;
 }
@@ -394,7 +456,6 @@ void add_thermal_coefficient(VectorXd ther, json &sx_json){
     vector<double> ther_consts;
     for(int i = 0; i < ther.size(); i++) ther_consts.push_back(ther(i));
     sx_json["therm"] = ther_consts;
-    temperature_ref = 293.15; //default reference temperature
 }
 
 MatrixXd cal_sn_info(MatrixXd &Min, vector<double> m_abc, vector<double> transMl, int Miller_n, int system_n){

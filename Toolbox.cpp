@@ -1,4 +1,8 @@
 #include "Toolbox.h"
+<<<<<<< HEAD
+=======
+#include "global.h"
+>>>>>>> 6f8c8fa27d07fdc544418580ee2acaef7ff1449d
 #include <cmath>
 using namespace std;
 using namespace Eigen;
@@ -1007,6 +1011,13 @@ double calc_equivalent_value(Matrix3d mat){
     return sqrt(2./3. * sum);
 }
 
+double calc_equivalent_value(Vector6d mat6){
+    Matrix3d mat = voigt(mat6);
+    Matrix3d dev_mat = mat - Matrix3d::Identity() * mat.trace();
+    double sum = (dev_mat.cwiseProduct(dev_mat)).sum();
+    return sqrt(2./3. * sum);
+}
+
 double cal_cosine(Vector3d vec_i, Vector3d vec_j){
    return vec_i.dot(vec_j)/(vec_i.norm() * vec_j.norm());
 }
@@ -1035,4 +1046,61 @@ double J_intensity_pulse(double time_acc, double duty_ratio, double amplitude_J,
     }else{
         return 0;
     }
+<<<<<<< HEAD
 }// This part is to define a pulsing function.
+=======
+}// This part is to define a pulsing function.
+
+int get_interaction_mode(Vector3d burgers_i, Vector3d plane_i, Vector3d burgers_j, Vector3d plane_j){
+    /*
+     * Return the dislocation interaction mode code between two slip system.
+     * 0: No Junction, 1: Hirth Lock, 2: Coplanar Junction, 3: Glissile Junction, 4: Sessile Junction
+     */
+    double perp = 0.02, prll = 0.98;
+    double cos_b_angle = cal_cosine(burgers_i, burgers_j);
+    if(abs(cos_b_angle) < perp) return 1;
+    else {
+        if(abs(cos_b_angle) > prll) return 0;
+        else{
+            if (abs(cal_cosine(plane_i, plane_j)) > prll) return 2;
+            else{
+                bool if_glide_i = (abs(cal_cosine(plane_i, burgers_i+burgers_j)) < perp);
+                bool if_glide_j = (abs(cal_cosine(plane_j, burgers_i+burgers_j)) < perp);
+                if (if_glide_i || if_glide_j) return 3;
+                else return 4;
+            }
+        }
+    }
+}
+
+
+void update_progress(double progress_f)
+{
+    const int bar_width = 70;
+    int bar_position = (int)(bar_width * progress_f);
+
+    std::cout << "[";
+    for (int i = 0; i < bar_width; ++i) {
+        if (i < bar_position) {
+            std::cout << "=";
+        } else if (i == bar_position) {
+            std::cout << ">";
+        } else {
+            std::cout << " ";
+        }
+    }
+    std::cout << "] " << (int)(progress_f * 100) << "%\r";
+    std::cout.flush();
+}
+
+void set_control_flags(Vector4i input){
+    update_orientation_required = input(0);
+    update_shape_required = input(1);
+    update_CRSS_required = input(2);
+    update_temperature_required = input(3);
+    logger.info("Orientation update control:" + std::to_string(update_orientation_required));
+    logger.info("Shape update control:" + std::to_string(update_shape_required));
+    logger.info("CRSS update control:" + std::to_string(update_CRSS_required));
+    logger.info("Temperature update control:" + std::to_string(update_temperature_required));
+}
+>>>>>>> 6f8c8fa27d07fdc544418580ee2acaef7ff1449d
