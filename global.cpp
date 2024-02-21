@@ -25,6 +25,8 @@ double V_sample; // the volume of the sample
 double duty_ratio_J = 0.0;//
 double Amplitude_J = 0.0;//
 double Frequency = 0.0; 
+double ref_current_intensity = 0.0; //reference current intensity
+double Current_intensity;
 
 // [Some global objects]
 Logger logger;

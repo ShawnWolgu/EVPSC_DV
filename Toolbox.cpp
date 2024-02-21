@@ -1045,6 +1045,7 @@ double J_intensity_pulse(double time_acc, double duty_ratio, double amplitude_J,
     }
 }// This part is to define a pulsing function.
 
+
 int get_interaction_mode(Vector3d burgers_i, Vector3d plane_i, Vector3d burgers_j, Vector3d plane_j){
     /*
      * Return the dislocation interaction mode code between two slip system.

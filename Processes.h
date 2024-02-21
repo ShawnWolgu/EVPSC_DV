@@ -67,6 +67,7 @@ class Process
 	//output of grain information
         void init_grain_info(Polycs::polycrystal &, int);
         void Out_grain_info(Polycs::polycrystal &, int);
+        double time_acc;
 
 };
 

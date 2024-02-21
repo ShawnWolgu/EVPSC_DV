@@ -115,10 +115,11 @@ int loadinput(string fname, Procs::Process &Proc)
             if (!loadinp.eof()) //if the file ends, return
             {
                 if (tp.find("duty") != tp.npos){
-                    getline(loadinp, tp); VectorXd electric_coeff = getnum(tp, 3);
+                    getline(loadinp, tp); VectorXd electric_coeff = getnum(tp, 4);
                     duty_ratio_J = electric_coeff(0);
                     Amplitude_J = electric_coeff(1);
                     Frequency = electric_coeff(2);
+                    ref_current_intensity = electric_coeff(3);
                 }
             }
             logger.debug("duty_ratio_J = " + to_string(duty_ratio_J));
