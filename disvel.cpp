@@ -21,10 +21,10 @@ double Slip::disl_velocity(double rss){
     //  * update parameters:
     //  * 0: burgers, 1: mean_free_path, 2: disl_density_resist, 3: forest_stress
     //  */
-    double freq_r = harden_params[2], act_energy_r = harden_params[3], resistance_slip = harden_params[4],\
+    double freq_r = harden_params[2], act_energy_r = harden_params[3]/factor(Amplitude_J), resistance_slip = harden_params[4],\
            energy_expo = harden_params[5], speed_sat = harden_params[6], c_drag = harden_params[7];
     // resistance_slip = resistance_slip/(1+pow((Current_intensity/ref_current_intensity),2)); //the renewed resistence by the current pulsing
-    freq_r = freq_r*(1+pow((Current_intensity/ref_current_intensity),2)); //the renewed freq by the current pulsing
+    freq_r = freq_r*factor(Amplitude_J); //the renewed freq by the current pulsing
     double burgers = update_params[0], mean_free_path = update_params[1], forest_stress = update_params[3];
     t_wait = waiting_time(rss, freq_r, act_energy_r, forest_stress, resistance_slip, energy_expo, temperature); 
     t_run = running_time(rss, c_drag, speed_sat, mean_free_path, burgers, forest_stress, temperature);
@@ -67,7 +67,7 @@ vector<double> Slip::disl_velocity_grad(double rss){
      * update parameters:
      * 0: burgers, 1: mean_free_path, 2: disl_density_resist, 3: forest_stress,
      */
-    double freq_r = harden_params[2], act_energy_r = harden_params[3], resistance_slip = harden_params[4], \
+    double freq_r = harden_params[2], act_energy_r = harden_params[3]/factor(Amplitude_J), resistance_slip = harden_params[4], \
            energy_expo = harden_params[5], speed_sat = harden_params[6], c_drag = harden_params[7];
     double burgers = update_params[0], mean_free_path = update_params[1], forest_stress = update_params[3];
     // resistance_slip = resistance_slip/(1+pow((Current_intensity/ref_current_intensity),2));//the renewed resistence by the current pulsing

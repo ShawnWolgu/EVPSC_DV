@@ -250,11 +250,13 @@ void Slip::update_ssd(Matrix3d strain_rate, double dtime){
     if (flag_harden == 0){ return; }
     if (flag_harden == 1){ 
         double c_forest = harden_params[8], c_nuc = harden_params[9], tau_nuc = harden_params[10],\
-               c_multi = harden_params[11], c_annih = 0.,\
+               c_multi = harden_params[11]/factor(Amplitude_J), c_annih = 0.,\
                D = harden_params[12] * 1e6, ref_srate = harden_params[13], gg = c_forest/harden_params[14],\
                burgers = update_params[0], mfp = update_params[1], forest_stress = update_params[3]; 
+               //reduced multiplication rate
         disloc_density = rho_H;
         double equi_strain_rate = calc_equivalent_value(strain_rate);
+        gg = gg/factor(Amplitude_J); //reduced normalized energy 
         rho_sat = c_forest * burgers / gg * (1-k_boltzmann * temperature/D/pow(burgers,3) * log(abs(equi_strain_rate)/ref_srate));
         rho_sat = max(pow(1/rho_sat,2), 0.5*disloc_density);
 

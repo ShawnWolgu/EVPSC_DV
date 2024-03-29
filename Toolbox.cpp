@@ -1046,6 +1046,11 @@ double J_intensity_pulse(double time_acc, double duty_ratio, double amplitude_J,
     }
 }// This part is to define a pulsing function.
 
+double factor(double amplitude_J){
+    double fact;
+    fact = (1+ pow((amplitude_J/ref_current_intensity),2));
+    return fact;
+}
 
 int get_interaction_mode(Vector3d burgers_i, Vector3d plane_i, Vector3d burgers_j, Vector3d plane_j){
     /*
