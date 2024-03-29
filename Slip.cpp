@@ -211,7 +211,7 @@ void Slip::update_disvel(PMode** slip_sys, vector<vector<double>> lat_hard_mat, 
      * 0: burgers, 1: mean_free_path, 2: disl_density_resist, 3: forest_stress
      */
     double c_mfp = harden_params[1], resistance_slip = harden_params[4], c_forest = harden_params[8], HP_stress = 0;
-    // resistance_slip = resistance_slip/(1+pow((Current_intensity/ref_current_intensity),2));//the renewed resistence by the current pulsing
+    resistance_slip = resistance_slip/factor(Amplitude_J);//the renewed resistence by the current pulsing
     double burgers, disl_density_for, disl_density_resist, joint_density, forest_stress, mfp;
     disl_density_for = disl_density_resist = joint_density = 0;
     for(int i = 0; i < nmode; i++){
