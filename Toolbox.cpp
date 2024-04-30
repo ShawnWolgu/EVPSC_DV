@@ -1046,6 +1046,16 @@ double J_intensity_pulse(double time_acc, double duty_ratio, double amplitude_J,
     }
 }// This part is to define a pulsing function.
 
+double J_shock_sim(double time_acc, double deformation_max,double deformation_rate,  double amplitude_J ,double percent_init, double percent_final){
+    double time_tot = deformation_max/deformation_rate;
+    custom_vars[2] = time_acc;
+    if (time_tot*percent_init <= time_acc <= time_tot*percent_final){
+        return amplitude_J;
+    }else{
+        return 0;
+    }
+}//This is to define a electric_shock experiment simulation.
+
 double factor(double amplitude_J){
     double fact;
     fact = (1+ pow((amplitude_J/ref_current_intensity),2));
