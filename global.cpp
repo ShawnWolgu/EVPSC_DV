@@ -27,6 +27,8 @@ double Amplitude_J = 0.0;//
 double Frequency = 0.0; 
 double ref_current_intensity = 0.0; //reference current intensity
 double Current_intensity;
+double deformation_rate;
+double deformation_max;
 
 // [Some global objects]
 Logger logger;

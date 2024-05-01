@@ -59,6 +59,7 @@ int loadinput(string fname, Procs::Process &Proc)
             //1st line is the loading control option
             getline(loadinp, tp);
             Vector4d Victrl = getnum(tp, 4);
+            deformation_max = Victrl(0)*Victrl(2);
             Proc.load_ctrl(Victrl);
 
             getline(loadinp, tp);//skip one line  
@@ -81,6 +82,7 @@ int loadinput(string fname, Procs::Process &Proc)
                 getline(loadinp, tp);
                 Udot.row(i) = getnum(tp, 3);
             }
+            deformation_rate = Udot(2,2);
             Proc.get_Udot(Udot);
 
             getline(loadinp, tp);//skip one line  

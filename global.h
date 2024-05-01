@@ -21,6 +21,9 @@ extern double temp_atmosphere, temperature_ref;
 extern double rho_material, Cp_material, sigma_e_mat, h_ext, Surface, V_sample, sigma_k;
 extern double duty_ratio_J, Amplitude_J, Frequency, ref_current_intensity;
 extern double Current_intensity;
+extern double deformation_rate;
+extern double deformation_max;
+
 // [Output fstreams]
 extern vector<double> custom_vars;
 extern fstream tex_out; //output of the texture
