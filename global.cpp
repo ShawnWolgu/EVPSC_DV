@@ -29,6 +29,9 @@ double ref_current_intensity = 0.0; //reference current intensity
 double Current_intensity;
 double deformation_rate;
 double deformation_max;
+double angle_factor;
+double shock_int;
+double shock_fin;
 
 // [Some global objects]
 Logger logger;

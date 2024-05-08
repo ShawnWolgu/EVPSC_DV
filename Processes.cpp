@@ -80,7 +80,8 @@ void Process::loading(Polycs::polycrystal &pcrys){
                 continue;
             }
             time_acc += current_step * max_timestep;
-            Current_intensity = J_intensity_pulse(time_acc, duty_ratio_J, Amplitude_J, Frequency);
+            //Current_intensity = J_intensity_pulse(time_acc, duty_ratio_J, Amplitude_J, Frequency);
+            Current_intensity = J_shock_sim(time_acc, deformation_max, deformation_rate, Amplitude_J, shock_int, shock_fin);
             custom_vars[5] = Current_intensity; //输出电流to csv
             pct_step += current_step;
             update_progress(pct_step);

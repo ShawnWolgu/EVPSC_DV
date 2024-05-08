@@ -1063,6 +1063,12 @@ double factor(double amplitude_J){
     return fact;
 }
 
+double factor_angle(double amplitude_J){
+    double fact;
+    fact = (1+ angle_factor*((amplitude_J/ref_current_intensity),2));
+    return fact;
+}
+
 int get_interaction_mode(Vector3d burgers_i, Vector3d plane_i, Vector3d burgers_j, Vector3d plane_j){
     /*
      * Return the dislocation interaction mode code between two slip system.

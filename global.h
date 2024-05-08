@@ -23,6 +23,10 @@ extern double duty_ratio_J, Amplitude_J, Frequency, ref_current_intensity;
 extern double Current_intensity;
 extern double deformation_rate;
 extern double deformation_max;
+extern double angle_factor;
+extern double shock_int;
+extern double shock_fin;
+
 
 // [Output fstreams]
 extern vector<double> custom_vars;
