@@ -32,7 +32,7 @@ Polycs::polycrystal global_polycrys;
 Procs::Process global_proc;
 
 // [Output fstreams]
-vector<double> custom_vars(10,0.0); //custom variables
+vector<double> custom_vars(12,0.0); //custom variables
 fstream tex_out("Tex.out", ios::out); //output of the texture
 fstream density_out("Density.csv",ios::out); 
 fstream acc_strain_out("Acc_Strain.csv",ios::out);

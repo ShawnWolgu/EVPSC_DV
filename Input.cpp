@@ -231,7 +231,7 @@ int sxinput(string fname, Polycs::polycrystal &pcrys)
         getline(sxinp, tp);  bool irate = bool(getnum(tp, 1)(0)); //"rate sensitive" flag(1: Y; 0: N)
         getline(sxinp, tp);  sx_json["GZ"] = getnum(tp, 1)(0); //grain size: um
         int harden_size;
-        if(iharden == 0) harden_size = 4; else harden_size = 16;
+        if(iharden == 0) harden_size = 4; else harden_size = 18;
 
         //Read hardening parameters of modes
         double nrsx; vector<double> CRSS_p, hst;
@@ -241,7 +241,7 @@ int sxinput(string fname, Polycs::polycrystal &pcrys)
             getline(sxinp, tp);  nrsx = getnum(tp, 1)(0); //rate sensitivity
             getline(sxinp, tp);  //CRSS parameters
             if (sx_modes[imode]["type"] == 0) CRSS_p = getnum_vec(tp, harden_size);
-            else CRSS_p = getnum_vec(tp, 8);
+            else CRSS_p = getnum_vec(tp, 10);
             getline(sxinp, tp);  //latent hardening parameters
             if (sx_modes[imode]["type"] == 0) hst = getnum_vec(tp, 6); //6 types of hardening
             else hst = getnum_vec(tp, 2);
@@ -442,7 +442,7 @@ MatrixXd cal_sn_info(MatrixXd &Min, vector<double> m_abc, vector<double> transMl
     Min_s = Min(all,seq(Miller_n,2*Miller_n-1)) * Trans_Miller.transpose(); 
     //calculate the coordinate in Cartesian system
     /* logger.debug("Initial Min_n = "); logger.debug(Min_n); */
-    MatrixXd Mtemp = Min_n.cwiseAbs().array().max(1e-10).matrix();
+    MatrixXd Mtemp = Min_n.cwiseAbs().array().max(0.001).matrix();
     Min_n = (Min_n.array().sign() * Mtemp.array()).matrix();
     Min_n = Min_n.cwiseInverse();
     MatrixX3d Min_nv1(Min_n.rows(),3), Min_nv2(Min_n.rows(),3);

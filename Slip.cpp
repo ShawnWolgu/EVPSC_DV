@@ -205,23 +205,25 @@ void Slip::update_disvel(PMode** slip_sys, vector<vector<double>> lat_hard_mat, 
      *  8. forest hardening coefficient
      * [DD evolution parameters] 
      *  0. SSD_density, 9. nucleation coefficient, 10. nucleation threshold stress, 11. multiplication coefficient
-     *  12. drag stress D, 13. reference strain rate, 14. c/g, 15. coplanar reaction coefficient
+     *  12. drag stress D, 13. reference strain rate, 14. c/g, 15. coplanar reaction coefficient, 16. HP stress
      *
      * update parameters:
      * 0: burgers, 1: mean_free_path, 2: disl_density_resist, 3: forest_stress
      */
-    double c_mfp = harden_params[1], resistance_slip = harden_params[4], c_forest = harden_params[8], HP_stress = 0;
-    double burgers, disl_density_for, disl_density_resist, joint_density, forest_stress, mfp;
-    disl_density_for = disl_density_resist = joint_density = 0;
+    double c_mfp = harden_params[1], resistance_slip = harden_params[4], c_forest = harden_params[8], HP_stress = harden_params[16];
+    double burgers, disl_density_for, disl_density_resist, joint_density, debris_density, forest_stress, boundary_resistance, mfp;
+    disl_density_for = disl_density_resist = joint_density = debris_density = 0;
     for(int i = 0; i < nmode; i++){
         disl_density_for += slip_sys[i]->disloc_density;
         disl_density_resist += slip_sys[i]->rho_H * (lat_hard_mat[num][i]);
         if (slip_sys[i]->num != num) {
             joint_density += lat_hard_mat[num][i] * sqrt(slip_sys[i]->rho_H - slip_sys[i]->rho_init) * sqrt(rho_H-rho_init);
         }
+        debris_density += slip_sys[i]->rho_debri;
     }
     burgers = bv * 1e-10;
-    forest_stress = c_forest * shear_modulus * burgers * sqrt(disl_density_resist + 0.707*joint_density);// + HP_stress
+    boundary_resistance = HP_stress + c_forest * shear_modulus * burgers * sqrt(debris_density);
+    forest_stress = c_forest * shear_modulus * burgers * sqrt(disl_density_resist + 0*joint_density) + boundary_resistance;
     crss = forest_stress + resistance_slip;
     mfp = c_mfp / sqrt(disl_density_for);
     update_params[0] = burgers, update_params[1] = mfp, update_params[2] = disl_density_resist, update_params[3] = forest_stress;
@@ -239,7 +241,7 @@ void Slip::update_ssd(Matrix3d strain_rate, double dtime){
      *  8. forest hardening coefficient
      * [DD evolution parameters] 
      *  0. SSD_density, 9. nucleation coefficient, 10. nucleation threshold stress, 11. multiplication coefficient
-     *  12. drag stress D, 13. reference strain rate, 14. c/g, 15. coplanar reaction coefficient
+     *  12. drag stress D, 13. reference strain rate, 14. c/g, 15. coplanar reaction coefficient, 16. HP stress, 17. debris_control_param
      *
      * update parameters:
      * 0: burgers, 1: mean_free_path, 2: disl_density_resist, 3: forest_stress
@@ -248,19 +250,34 @@ void Slip::update_ssd(Matrix3d strain_rate, double dtime){
     if (flag_harden == 0){ return; }
     if (flag_harden == 1){ 
         double c_forest = harden_params[8], c_nuc = harden_params[9], tau_nuc = harden_params[10],\
-               c_multi = harden_params[11], c_annih = 0.,\
+               c_multi = harden_params[11], c_annih = 0., c_debri = harden_params[17], \
                D = harden_params[12] * 1e6, ref_srate = harden_params[13], gg = c_forest/harden_params[14],\
                burgers = update_params[0], mfp = update_params[1], forest_stress = update_params[3]; 
         disloc_density = rho_H;
         double equi_strain_rate = calc_equivalent_value(strain_rate);
-        rho_sat = c_forest * burgers / gg * (1-k_boltzmann * temperature/D/pow(burgers,3) * log(abs(equi_strain_rate)/ref_srate));
-        rho_sat = max(pow(1/rho_sat,2), 0.5*disloc_density);
+        /* double equi_strain_rate = abs(shear_rate); */
+        double rho_sat_new = c_forest * burgers / gg * (1-k_boltzmann * temperature/D/pow(burgers,3) * log(abs(equi_strain_rate)/ref_srate));
+        rho_sat_new = max(pow(1/rho_sat_new,2), 0.5*disloc_density);
+        if (rho_sat_new < 2 * rho_sat) rho_sat = rho_sat_new;
+        if (rho_sat == 0.0) rho_sat = rho_sat_new;
+        custom_vars[1] = max(custom_vars[1], rho_sat);
 
+        double tau_eff = max(abs(rss) - forest_stress, 0.);
+        custom_vars[2] = max(custom_vars[2], tau_eff);
+        custom_vars[3] = max(custom_vars[3], abs(rss));
+        custom_vars[4] = max(custom_vars[4], forest_stress);
         double term_nuc = c_nuc * max(abs(rss)-tau_nuc,0.) / (shear_modulus * burgers * burgers);
+        custom_vars[5] = max(custom_vars[5], term_nuc * abs(shear_rate) * dtime);
         double term_multi = c_multi / mfp; 
         c_annih = (term_multi + term_nuc) / rho_sat;
         double disloc_incre = (term_multi + term_nuc - c_annih * disloc_density) * abs(shear_rate) * dtime;
-        if (disloc_incre > rho_sat) disloc_incre = 0.1 * disloc_density; 
+        double debris_incre = c_annih * disloc_density * abs(shear_rate) * dtime * c_debri;
+        debris_incre = debris_incre > rho_sat ? rho_debri * 0.1 : debris_incre;
+        rho_debri += debris_incre;
+        if (disloc_incre > 2 * rho_sat) {
+            disloc_incre = 2 * rho_sat - disloc_density; 
+            rho_debri -= debris_incre;
+        }
         else if (disloc_incre + disloc_density < 0) disloc_incre = -0.1 * disloc_density; 
         disloc_density += disloc_incre;
         rho_mov = disloc_density;

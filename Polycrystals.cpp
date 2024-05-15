@@ -859,6 +859,8 @@ void polycrystal::update_status(double time_incre){
     }
     #pragma omp barrier
     update_info_by_family();
+    elastic_strain_m += Dije_AV * time_incre;
+    plastic_strain_m += Dijp_AV * time_incre;
 }
 
 void polycrystal::Cal_Sig_m(double Tincr)
@@ -1009,6 +1011,7 @@ void polycrystal::update_info_by_family(){
         if (family_id != 0) modes_from += modes_count_by_family[family_id - 1];
         modes_to += modes_count_by_family[family_id];
         double density_in_family = 0., acc_strain_in_family = 0., crss_in_family = 0.;
+        double velocity_in_family = 0., debri_in_family = 0., rate_in_family = 0.;
         for (int grain_i = 0; grain_i < grains_num; grain_i++){
             double weight_g = g[grain_i].get_weight_g();
             for (int mode_i = modes_from; mode_i < modes_to; mode_i++){
@@ -1016,11 +1019,19 @@ void polycrystal::update_info_by_family(){
                 density_in_family += modePtr->disloc_density * weight_g;
                 acc_strain_in_family += modePtr->acc_strain * weight_g;
                 crss_in_family += (modePtr->crss/((double)(modes_to-modes_from))) * weight_g;
+                velocity_in_family += modePtr->velocity * weight_g;
+                debri_in_family += modePtr->rho_debri * weight_g;
+                rate_in_family += modePtr->shear_rate * weight_g;
             }
         }
         density_by_family[family_id] = density_in_family;
         acc_strain_by_family[family_id] = acc_strain_in_family;
         crss_by_family[family_id] = crss_in_family;
+
+        int custom_id = (family_id * 3 + 6) > 11 ? 11 : (family_id * 3 + 6);
+        custom_vars[custom_id] = velocity_in_family;
+        custom_vars[custom_id + 1] = debri_in_family;
+        custom_vars[custom_id + 2] = rate_in_family;
     }
 }
 

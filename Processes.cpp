@@ -32,6 +32,10 @@ void Process::get_Udot(Matrix3d Min)
     
     //calculate Time increment Tincr
     Vector6d Vtemp = voigt(Ddot_input);
+    if(Ictrl > 2) {
+        max_timestep = Eincr;
+        return;
+    }
     if(Vtemp(Ictrl) == 0 || Eincr == 0){
         max_timestep = 1;
     }

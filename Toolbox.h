@@ -150,6 +150,8 @@ int sign(double x);
 double cal_cosine(Vector3d vec_i, Vector3d vec_j);
 double calc_equivalent_value(Matrix3d mat);
 double calc_equivalent_value(Vector6d mat);
+double calc_von_mises(Matrix3d mat);
+double calc_von_mises(Vector6d mat);
 Matrix6d rotate_6d_stiff_modu(Matrix6d modulus, Matrix3d rotate_matrix);
 Matrix6d rotate_6d_compl_modu(Matrix6d modulus, Matrix3d rotate_matrix);
 Vector4d get_twin_euler_vec(Matrix3d euler, double weight, Vector3d n_twin);
