@@ -1065,7 +1065,7 @@ double factor(double amplitude_J){
 
 double factor_beta(double amplitude_J){
     double fact;
-    fact = pow((1+ pow((amplitude_J/ref_current_intensity),2)), beta);
+    fact = pow((1+ pow((amplitude_J/ref_current_intensity),2)), bvalue);
     return fact;
 }
 

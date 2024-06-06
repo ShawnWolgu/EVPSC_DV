@@ -122,10 +122,11 @@ int loadinput(string fname, Procs::Process &Proc)
                     Amplitude_J = electric_coeff(1);
                     Frequency = electric_coeff(2);
                     ref_current_intensity = electric_coeff(3);
-                    beta = electric_coeff(4);
+                    bvalue = electric_coeff(4);
                     shock_int = electric_coeff(5);
                     shock_fin = electric_coeff(6);
                     flag_emode = electric_coeff(7);
+
                 }
             }
             logger.debug("duty_ratio_J = " + to_string(duty_ratio_J));

@@ -23,7 +23,7 @@ extern double duty_ratio_J, Amplitude_J, Frequency, ref_current_intensity;
 extern double Current_intensity;
 extern double deformation_rate;
 extern double deformation_max;
-extern double beta;
+extern double bvalue;
 extern double shock_int;
 extern double shock_fin;
 extern int flag_emode;

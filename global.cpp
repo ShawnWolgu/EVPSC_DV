@@ -29,7 +29,7 @@ double ref_current_intensity; //reference current intensity
 double Current_intensity;
 double deformation_rate;
 double deformation_max;
-double beta;
+double bvalue;
 double shock_int;
 double shock_fin;
 int flag_emode;
