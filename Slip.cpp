@@ -222,8 +222,8 @@ void Slip::update_disvel(PMode** slip_sys, vector<vector<double>> lat_hard_mat, 
         }
     }
     burgers = bv * 1e-10;
-        // forest_stress = c_forest * shear_modulus * burgers * sqrt(disl_density_resist + 0.707*joint_density);// + HP_stress
-    forest_stress = c_forest * shear_modulus * burgers * sqrt(disl_density_resist);// + HP_stress
+    forest_stress = c_forest * shear_modulus * burgers * sqrt(disl_density_resist + 0.707*joint_density);// + HP_stress
+    // forest_stress = c_forest * shear_modulus * burgers * sqrt(disl_density_resist);// + HP_stress
     crss = forest_stress + resistance_slip;
     mfp = c_mfp / sqrt(disl_density_for);
     update_params[0] = burgers, update_params[1] = mfp, update_params[2] = disl_density_resist, update_params[3] = forest_stress;
@@ -251,16 +251,18 @@ void Slip::update_ssd(Matrix3d strain_rate, double dtime){
     if (flag_harden == 1){ 
         double c_forest = harden_params[8], c_nuc = harden_params[9], tau_nuc = harden_params[10],\
                c_multi = harden_params[11]/factor(Current_intensity), c_annih = 0.,\
+               \\Mean free range decreases
                D = harden_params[12] * 1e6, ref_srate = harden_params[13], gg = c_forest/harden_params[14],\
                burgers = update_params[0], mfp = update_params[1], forest_stress = update_params[3]; 
                //reduced multiplication rate
         disloc_density = rho_H;
         double equi_strain_rate = calc_equivalent_value(strain_rate);
         gg = gg/factor(Current_intensity); //reduced normalized energy 
-        D = D * factor(Current_intensity)/factor_beta(Current_intensity); // give energy to drag stress
+        // D = D * factor(Current_intensity)/factor_beta(Current_intensity); // give energy to drag stress
         rho_sat = c_forest * burgers / gg * (1-k_boltzmann * temperature/D/pow(burgers,3) * log(abs(equi_strain_rate)/ref_srate));
-        rho_sat = max(pow(1/rho_sat,2)/pow(factor_beta(Current_intensity),2), 0.5*disloc_density);
-
+        // rho_sat = max(pow(1/rho_sat,2)/pow(factor_beta(Current_intensity),2), 0.5*disloc_density);
+        rho_sat = max(pow(1/rho_sat,2), 0.5*disloc_density);
+        
         double term_nuc = c_nuc * max(abs(rss)-tau_nuc,0.) / (shear_modulus * burgers * burgers);
         double term_multi = c_multi / mfp; 
         c_annih = (term_multi + term_nuc) / rho_sat;
