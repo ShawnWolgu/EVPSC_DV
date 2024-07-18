@@ -1057,15 +1057,15 @@ double J_shock_sim(double time_acc, double deformation_max, double deformation_r
 }//This is to define a electric_shock experiment simulation. Whether use is or not must be decided by the users.
 
 
-double factor(double amplitude_J){
+double factor(double amplitude_J, double ref){
     double fact;
-    fact = (1+ pow((amplitude_J/ref_current_intensity),2));
+    fact = (1+ pow((amplitude_J/ref),2));
     return fact;
 }
 
-double factor_beta(double amplitude_J){
+double factor_beta(double amplitude_J, double ref){
     double fact;
-    fact = pow((1+ pow((amplitude_J/ref_current_intensity),2)), bvalue);
+    fact = pow((1+ pow((amplitude_J/ref),2)), bvalue);
     return fact;
 }
 

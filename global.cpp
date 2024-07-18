@@ -25,7 +25,7 @@ double V_sample; // the volume of the sample
 double duty_ratio_J = 0.0;//
 double Amplitude_J = 0.0;//
 double Frequency = 0.0; 
-double ref_current_intensity; //reference current intensity
+double ref_current_intensity_0, ref_current_intensity_1; //reference current intensity
 double Current_intensity;
 double deformation_rate;
 double deformation_max;

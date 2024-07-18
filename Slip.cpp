@@ -211,7 +211,7 @@ void Slip::update_disvel(PMode** slip_sys, vector<vector<double>> lat_hard_mat, 
      * 0: burgers, 1: mean_free_path, 2: disl_density_resist, 3: forest_stress
      */
     double c_mfp = harden_params[1], resistance_slip = harden_params[4], c_forest = harden_params[8], HP_stress = 0;
-    resistance_slip = resistance_slip/factor(Current_intensity);//the renewed resistence by the current pulsing
+    resistance_slip = resistance_slip/factor(Current_intensity, ref_current_intensity_0);//the renewed resistence by the current pulsing
     double burgers, disl_density_for, disl_density_resist, joint_density, forest_stress, mfp;
     disl_density_for = disl_density_resist = joint_density = 0;
     for(int i = 0; i < nmode; i++){
@@ -250,21 +250,21 @@ void Slip::update_ssd(Matrix3d strain_rate, double dtime){
     if (flag_harden == 0){ return; }
     if (flag_harden == 1){ 
         double c_forest = harden_params[8], c_nuc = harden_params[9], tau_nuc = harden_params[10],\
-               c_multi = harden_params[11]/factor(Current_intensity), c_annih = 0.,\
+               k_multi = harden_params[11]/factor(Current_intensity, ref_current_intensity_0), c_annih = 0.,\
                //Mean free range decreases;
                D = harden_params[12] * 1e6, ref_srate = harden_params[13], gg = c_forest/harden_params[14],\
                burgers = update_params[0], mfp = update_params[1], forest_stress = update_params[3]; 
                //reduced multiplication rate
         disloc_density = rho_H;
         double equi_strain_rate = calc_equivalent_value(strain_rate);
-        gg = gg/factor(Current_intensity); //reduced normalized energy 
-        D = D * factor(Current_intensity)/factor_beta(Current_intensity); // give energy to drag stress
+        gg = gg/factor(Current_intensity, ref_current_intensity_0); //reduced normalized energy 
+        D = D ;//* factor(Current_intensity, ref_current_intensity_0); // give energy to drag stress;
         rho_sat = c_forest * burgers / gg * (1-k_boltzmann * temperature/D/pow(burgers,3) * log(abs(equi_strain_rate)/ref_srate));
         // rho_sat = max(pow(1/rho_sat,2)/pow(factor_beta(Current_intensity),2), 0.5*disloc_density);
         rho_sat = max(pow(1/rho_sat,2), 0.5*disloc_density);
         
         double term_nuc = c_nuc * max(abs(rss)-tau_nuc,0.) / (shear_modulus * burgers * burgers);
-        double term_multi = c_multi / mfp; 
+        double term_multi = k_multi / mfp; 
         c_annih = (term_multi + term_nuc) / rho_sat;
         double disloc_incre = (term_multi + term_nuc - c_annih * disloc_density) * abs(shear_rate) * dtime;
         if (disloc_incre > rho_sat) disloc_incre = 0.1 * disloc_density; 
