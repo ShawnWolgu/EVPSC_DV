@@ -109,9 +109,29 @@ void Slip::cal_strain_rate_pow(Matrix3d stress_tensor){
     rss = rss_slip;
 }
 
+// void Slip::cal_strain_rate_disvel(Matrix3d stress_tensor){
+//     double burgers = update_params[0];
+//     double rss_slip = cal_rss(stress_tensor);
+//     //double rss_j = 0.0; //the stress influenced by the 
+//     //custom_vars[1] = rss_slip; //original slip system
+//     if (J_slipsystem >= 0 and sign(J_slipsystem*rss_slip)>=0){
+//         rss_slip = rss_slip+J_slipsystem*K_ew;
+//     }else{
+//         rss_slip = 0.0;
+//     }
+//     //rss_slip = rss_slip+J_slipsystem*K_ew;
+//     custom_vars[1] = rss_slip; //new rss
+//     custom_vars[2] = J_slipsystem*K_ew;//to record the J_slip force
+//     velocity = disl_velocity(rss_slip);
+//     shear_rate = abs(rho_mov * burgers * velocity) * sign(rss_slip);
+//     rss = rss_slip; //用来算形核率的。
+// } 1.26
+
 void Slip::cal_strain_rate_disvel(Matrix3d stress_tensor){
     double burgers = update_params[0];
     double rss_slip = cal_rss(stress_tensor);
+    double rss_j = 0.0; //the stress influenced by the 
+    custom_vars[1] = rss_slip;
     velocity = disl_velocity(rss_slip);
     shear_rate = abs(rho_mov * burgers * velocity) * sign(rss_slip);
     rss = rss_slip;
@@ -149,10 +169,16 @@ void Slip::cal_drate_dtau_pow(Matrix3d stress_tensor){
 void Slip::cal_drate_dtau_disvel(Matrix3d stress_tensor){
     double burgers = update_params[0];
     double rss_slip = cal_rss(stress_tensor);
+    // rss_slip = rss_slip+J_slipsystem*K_ew;
+    // if (J_slipsystem >= 0 and sign(J_slipsystem*rss_slip)>=0){
+    //     rss_slip = rss_slip+J_slipsystem*K_ew;
+    // }else{
+    //     rss_slip = 0.0;
+    // }
     vector<double> dvel_and_vel = disl_velocity_grad(rss_slip);
     drate_dtau = rho_mov * burgers * sign(rss_slip) * dvel_and_vel[0];
     shear_rate = rho_mov * burgers * dvel_and_vel[1] * sign(rss_slip);
-    rss = rss_slip;
+    rss = rss_slip;//
     velocity = dvel_and_vel[1];
 }
 
@@ -222,7 +248,7 @@ void Slip::update_disvel(PMode** slip_sys, vector<vector<double>> lat_hard_mat, 
         }
     }
     burgers = bv * 1e-10;
-    forest_stress = c_forest * shear_modulus * burgers * sqrt(disl_density_resist + 0.707*joint_density);// + HP_stress
+    forest_stress = c_forest * shear_modulus * burgers * sqrt(disl_density_resist + 0.0*joint_density);// + HP_stress
     // forest_stress = c_forest * shear_modulus * burgers * sqrt(disl_density_resist);// + HP_stress
     crss = forest_stress + resistance_slip;
     mfp = c_mfp / sqrt(disl_density_for);
@@ -257,7 +283,7 @@ void Slip::update_ssd(Matrix3d strain_rate, double dtime){
                //reduced multiplication rate
         disloc_density = rho_H;
         double equi_strain_rate = calc_equivalent_value(strain_rate);
-        gg = gg/factor(Current_intensity, ref_current_intensity_0); //reduced normalized energy 
+        gg = gg/factor(Current_intensity, ref_current_intensity_2); //reduced normalized energy 
         D = D ;//* factor(Current_intensity, ref_current_intensity_0); // give energy to drag stress;
         rho_sat = c_forest * burgers / gg * (1-k_boltzmann * temperature/D/pow(burgers,3) * log(abs(equi_strain_rate)/ref_srate));
         // rho_sat = max(pow(1/rho_sat,2)/pow(factor_beta(Current_intensity),2), 0.5*disloc_density);

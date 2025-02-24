@@ -13,8 +13,10 @@ PMode::PMode(json &j_mode)
     VectorXd info_vec = to_vector(j_mode, "sn", 6);
     plane_norm = info_vec(seq(0,2)); //normal 
     burgers_vec = info_vec(seq(3,5)); //Burgers
+    Vector3d sense_vector = plane_norm.cross(burgers_vec/burgers_vec.norm());
     Pij = 0.5 * (burgers_vec / burgers_vec.norm() * plane_norm.transpose() + plane_norm * burgers_vec.transpose() / burgers_vec.norm());
     Rij = 0.5 * (burgers_vec * plane_norm.transpose() / burgers_vec.norm() - plane_norm * burgers_vec.transpose() / burgers_vec.norm());
+    JPij = 0.5 * (sense_vector * plane_norm.transpose() + plane_norm * sense_vector.transpose());
 
     rate_sen = j_mode["nrsx"];
     int len = j_mode["CRSS_p"].size();
@@ -30,8 +32,10 @@ PMode::PMode(PMode* t_mode, bool a){
 
     plane_norm = t_mode->plane_norm; //normal
     burgers_vec = t_mode->burgers_vec; //Burgers
+    Vector3d sense_vector = plane_norm.cross(burgers_vec/burgers_vec.norm());
     Pij = 0.5 * (burgers_vec / burgers_vec.norm() * plane_norm.transpose() + plane_norm * burgers_vec.transpose() / burgers_vec.norm());
     Rij = 0.5 * (burgers_vec * plane_norm.transpose() / burgers_vec.norm() - plane_norm * burgers_vec.transpose() / burgers_vec.norm());
+    JPij = 0.5 * (sense_vector * plane_norm.transpose() + plane_norm * sense_vector.transpose());
 
     rate_sen = t_mode->rate_sen;
     harden_params = t_mode->harden_params;

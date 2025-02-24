@@ -1046,9 +1046,19 @@ double J_intensity_pulse(double time_acc, double duty_ratio, double amplitude_J,
     }
 }// This part is to define a pulsing function.
 
+// double J_real_pulse(double time_acc,double duty_ratio,  double frequency){
+//     double time_delay = 0.0;
+//     double int_real_duty;
+//     double frac_real_duty = std::modf(time_acc*frequency, &int_real_duty);
+//     custom_vars[3] = frac_real_duty;
+//     if ()
+
+
+// }
+
 double J_shock_sim(double time_acc, double deformation_max, double deformation_rate,  double amplitude_J ,double percent_init, double percent_final){
     double time_tot = deformation_max/deformation_rate;
-    custom_vars[2] = time_acc;
+    custom_vars[4] = time_acc;
     if (time_tot*percent_init <= time_acc <= time_tot*percent_final){
         return amplitude_J;
     }else{

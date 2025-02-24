@@ -99,7 +99,7 @@ class polycrystal
     public:
         polycrystal();
         
-        grain* g = NULL;
+        grain* g = NULL;  
         int grains_num = 0;
         int family_count = 0;
         vector<int> modes_count_by_family;

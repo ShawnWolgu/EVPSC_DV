@@ -756,7 +756,8 @@ int polycrystal::EVPSC(int istep, double Tincr){
     double errd, errs, err_g, err_av;
     int max_iter = 30, break_th = 5, break_counter = 0;
     save_status();
-
+    for(int G_n=0;G_n< grains_num; ++G_n)
+        g[G_n].update_jslip();
     for(int i = 0; i <= max_iter; ++i)
     {
         //save the input for error calculation
