@@ -5,11 +5,11 @@ void initial_output_files(){
     IOFormat Outformat(StreamPrecision);
     Polycs::polycrystal* pcrys = &global_polycrys;
 
-    ss_out_csv << "EVM,SVM,E11,E22,E33,E23,E13,E12,S11,S22,S33,S23,S13,S12,TempK\n";
-    ss_out_csv << 0.0 << "," << 0.0 << ",";
+    ss_out_csv << "EVM,EQEE,EQPE,ETM,SVM,E11,E22,E33,E23,E13,E12,S11,S22,S33,S23,S13,S12,TempK,EQSR\n";
+    ss_out_csv << 0.0 << "," << 0.0 << "," << 0.0 << "," << 0.0 << "," << 0.0 << ",";
     for(int i = 0; i < 6; ++i) ss_out_csv << 0.0 << ",";
     for(int i = 0; i < 6; ++i) ss_out_csv << 0.0 << ",";
-    ss_out_csv << pcrys->temperature_poly << endl;
+    ss_out_csv << pcrys->temperature_poly << "," << 0.0 << endl;
 
     ave_ss_out << "EVM,SVM,E11,E22,E33,E23,E13,E12,S11,S22,S33,S23,S13,S12\n";
     ave_ss_out << 0.0 << "," << 0.0;
@@ -63,12 +63,16 @@ void output_info(){
     IOFormat Outformat(StreamPrecision);
     Polycs::polycrystal* pcrys = &global_polycrys;
     double equi_strain = calc_equivalent_value(pcrys->get_Eps_m());
+    double equi_elastic_strain = calc_equivalent_value(pcrys->elastic_strain_m);
+    double equi_plastic_strain = calc_equivalent_value(pcrys->plastic_strain_m);
+    double thermal_strain = calc_equivalent_value(pcrys->thermal_strain_m);
+    double von_mises_stress = calc_von_mises(pcrys->get_Sig_m());
+    double eq_strain_rate = calc_equivalent_value(pcrys->Dij_m);
 
-    ss_out_csv << equi_strain << ",";
-    ss_out_csv << calc_equivalent_value(pcrys->get_Sig_m()) << ",";
+    ss_out_csv << equi_strain << "," << equi_elastic_strain << "," << equi_plastic_strain << "," << thermal_strain << "," << von_mises_stress << ",";
     for(int i = 0; i < 6; ++i) ss_out_csv << pcrys->get_Eps_m()(i) << ",";
     for(int i = 0; i < 6; ++i) ss_out_csv << pcrys->get_Sig_m()(i) << ",";
-    ss_out_csv << pcrys->temperature_poly << endl;
+    ss_out_csv << pcrys->temperature_poly << "," << eq_strain_rate << endl;
 
     ave_ss_out << equi_strain << "," ;
     ave_ss_out << calc_equivalent_value(pcrys->get_Sig_ave());
@@ -94,6 +98,7 @@ void output_info(){
     custom_out << equi_strain;
     for(int i = 0; i < custom_length; ++i) custom_out << "," << custom_vars[i];
     custom_out << endl;
+    for(int i = 0; i < custom_length; ++i) custom_vars[i] = 0.0;
 }
 
 void output_grain_info(int i){
@@ -104,7 +109,9 @@ void output_grain_info(int i){
     int modes_count = grain->modes_num;
     grain_out << grain->grain_i << "," << calc_equivalent_value(grain->get_strain_g()) << ",";
     grain_out << calc_equivalent_value(grain->get_stress_g()) << "," << pcrys->temperature_poly;
+
     //for(int j = 0; j < modes_count; ++j) grain_out << "," << grain->gmode[j]->disloc_density;
+
     for(int j = 0; j < modes_count; ++j) grain_out << "," << grain->gmode[j]->crss;
     grain_out << endl;
 }

@@ -228,7 +228,7 @@ class PMode
         double temperature = 0.; // need to be synchronized with the grain;
         double ref_strain_rate = 0.001;
         Matrix3d Rij;
-        double shear_rate_old, drate_dtau_old, disloc_density_old, crss_old, acc_strain_old, rss_old, velocity_old, rho_init_old, rho_H_old;
+        double shear_rate_old, drate_dtau_old, disloc_density_old, crss_old, acc_strain_old, rss_old, velocity_old, rho_init_old, rho_H_old, rho_debri_old;
 
     public:
         PMode();
@@ -242,19 +242,27 @@ class PMode
         void cal_shear_modulus(Matrix6d elastic_modulus);
         /* 
          * [Slip parameters : disvel model]
-         * 0. SSD_density, 1. MFP control coeffient, 2. reference frequency, 3. activation energy, 4. slip resistance, 5. energy exponent 
-         * 6. saturated speed, 7. drag coefficient, 8. forest hardening coefficient, 9. nucleation coefficient 
-         * 10. multiplication coefficient, 11. drag stress D, 12. reference strain rate, 13. c/g 
+         *  1. MFP control coeffient, 2. reference frequency, 3. activation energy, 4. slip resistance, 5. energy exponent 
+         *  6. saturated speed, 7. drag coefficient
+         *
+         * [hardening parameters] 
+         *  8. forest hardening coefficient
+         *
+         * [DD evolution parameters] 
+         *  0. SSD_density, 9. nucleation coefficient, 10. nucleation threshold stress, 11. multiplication coefficient
+         *  12. drag stress D, 13. reference strain rate, 14. c/g, 15. coplanar reaction coefficient, 16. HP stress
          * update_params: 0: burgers, 1: mean_free_path, 2: disl_density_resist, 3: forest_stress
+         *
          * [Slip parameters : Voce model]
-         * * 0. tau_0, 1. tau_1, 2. h_0, 3. h_1
+         *  0. tau_0, 1. tau_1, 2. h_0, 3. h_1
+         *
          * [Twin parameters]
-         * 0. tau_0, 1. tau_1, 2. h_0, 3. h_1, 4. twin_strain, 5. A1 6. A2, 7. ref_rate
+         * 0. tau_0, 1. tau_1, 2. h_0, 3. h_1, 4. twin_strain, 5. A1 6. A2, 7. ref_rate, 8. tau_nuc, 9. tau_HP
          */
         vector<double> harden_params, update_params, latent_params;
         double rate_sen, shear_rate, drate_dtau, shear_modulus, disloc_density, crss, acc_strain, rss = 0.0, velocity = 0.0;
         double J_slipsystem = 0.0;
-        double rho_init = 0.0, rho_H=0.0;
+        double rho_init = 0.0, rho_H=0.0, rho_debri=0.0;
         // Original Contents
         double get_gamma0();
         double get_nrsx();

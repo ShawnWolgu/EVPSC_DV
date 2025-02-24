@@ -103,6 +103,7 @@ void PMode::save_status(){
     velocity_old = velocity;
     rho_init_old = rho_init;
     rho_H_old = rho_H;
+    rho_debri_old = rho_debri;
 }
 
 void PMode::restore_status(){
@@ -115,4 +116,5 @@ void PMode::restore_status(){
     velocity = velocity_old;
     rho_init = rho_init_old;
     rho_H = rho_H_old;
+    rho_debri = rho_debri_old;
 }

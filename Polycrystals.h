@@ -108,6 +108,8 @@ class polycrystal
         Matrix3d Dij_m; //the macro strain rate tensor
         Matrix3d thermal_strain_m;//the macro thermal strain tensor
         Matrix3d ther_strain_m_old;//the macro thermal strain tensor in last increment
+        Matrix3d elastic_strain_m = Matrix3d::Zero();//the macro elastic strain tensor
+        Matrix3d plastic_strain_m = Matrix3d::Zero();//the macro plastic strain tensor
         Vector5d DVP_AV;
         Matrix5d M_VP_SC; //The visco-plastic compliance C_VP_SC^-1
 
