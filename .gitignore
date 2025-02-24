@@ -12,3 +12,4 @@ debug/*
 debug_cases/01_SingleCrystals/*.py
 .nvim.lua
 .idea/*
+.idea
