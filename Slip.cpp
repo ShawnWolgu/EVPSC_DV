@@ -223,7 +223,7 @@ void Slip::update_disvel(PMode** slip_sys, vector<vector<double>> lat_hard_mat, 
     }
     burgers = bv * 1e-10;
     boundary_resistance = HP_stress + c_forest * shear_modulus * burgers * sqrt(debris_density);
-    forest_stress = c_forest * shear_modulus * burgers * sqrt(disl_density_resist + 0*joint_density) + boundary_resistance;
+    forest_stress = c_forest * shear_modulus * burgers * sqrt(disl_density_resist + 0.707*joint_density) + boundary_resistance;
     crss = forest_stress + resistance_slip;
     mfp = c_mfp / sqrt(disl_density_for);
     update_params[0] = burgers, update_params[1] = mfp, update_params[2] = disl_density_resist, update_params[3] = forest_stress;

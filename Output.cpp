@@ -110,6 +110,7 @@ void output_grain_info(int i){
     grain_out << grain->grain_i << "," << calc_equivalent_value(grain->get_strain_g()) << ",";
     grain_out << calc_equivalent_value(grain->get_stress_g()) << "," << pcrys->temperature_poly;
     /* Change the following to output the picked property of each mode */
-    for(int j = 0; j < modes_count; ++j) grain_out << "," << grain->gmode[j]->shear_rate;
+    /* for(int j = 0; j < modes_count; ++j) grain_out << "," << grain->gmode[j]->shear_rate; */
+    for(int j = 0; j < modes_count; ++j) grain_out << "," << grain->gmode[j]->crss;
     grain_out << endl;
 }
