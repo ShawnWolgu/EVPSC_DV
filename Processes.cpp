@@ -84,9 +84,9 @@ void Process::loading(Polycs::polycrystal &pcrys){
                 continue;
             }
             time_acc += current_step * max_timestep;
-            if (flag_emode = 1){
+            if (flag_emode == 1){
                 Current_intensity = J_intensity_pulse(time_acc, duty_ratio_J, Amplitude_J, Frequency);
-            }else if(flag_emode = 2){
+            }else if(flag_emode == 2){
                 Current_intensity = J_shock_sim(time_acc, deformation_max, deformation_rate, Amplitude_J, shock_int, shock_fin); 
             }else{
                 success_count = 0;

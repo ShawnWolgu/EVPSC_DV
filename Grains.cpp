@@ -904,7 +904,7 @@ void grain::update_temperature(double time_incre)
     //不用赋予初值，在processes里面有// temperature of the atmosphere is a global variable, which can be directly used here
     temperature = 293.0; //test mode
     /* temperature += slope_profile_incr(Tincr, -10); //test mode
-    /* logger.debug("Temperature of grain " + to_string(grain_i) + " is " + to_string(temperature) + " K."); */
+    logger.debug("Temperature of grain " + to_string(grain_i) + " is " + to_string(temperature) + " K."); */
 
 //1.29 test mode
     // double electric_intensity = J_intensity_pulse(time_incre,duty_ratio_J,Amplitude_J,Frequency);
