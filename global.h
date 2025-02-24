@@ -19,7 +19,19 @@ extern double temp_atmosphere, temperature_ref;
 
 // [Some Material Properties]
 extern double rho_material, Cp_material, sigma_e_mat, h_ext, Surface, V_sample, sigma_k;
-extern double duty_ratio_J, Amplitude_J, Frequency;
+extern double duty_ratio_J, Amplitude_J, Frequency, ref_current_intensity_0, ref_current_intensity_1, ref_current_intensity_2;
+extern double Current_intensity;
+extern double deformation_rate;
+extern double deformation_max;
+extern double bvalue;
+extern double shock_int;
+extern double shock_fin;
+extern double rss_j;
+extern int flag_emode;
+extern Matrix3d J_tensor;
+extern double K_ew;
+extern double time_acc;
+
 
 // [Output fstreams]
 extern vector<double> custom_vars;

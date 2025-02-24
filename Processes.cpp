@@ -48,6 +48,7 @@ void Process::get_IUdot(Matrix3i Min){IUDWdot = Min;}
 void Process::get_ISdot(Vector6i Vin){ISdot = Vin;}
 
 void Process::loading(Polycs::polycrystal &pcrys){
+    time_acc = 0;
     temp_atmosphere = temperature_input; //loading temp_init from the txt.in 
     // Temperature is not set, this is the first loading step, free of thermal stress
     if (temperature_ref < 1e-3)  temperature_ref = temperature_input;
@@ -82,6 +83,19 @@ void Process::loading(Polycs::polycrystal &pcrys){
                 }
                 continue;
             }
+            time_acc += current_step * max_timestep;
+            if (flag_emode = 1){
+                Current_intensity = J_intensity_pulse(time_acc, duty_ratio_J, Amplitude_J, Frequency);
+            }else if(flag_emode = 2){
+                Current_intensity = J_shock_sim(time_acc, deformation_max, deformation_rate, Amplitude_J, shock_int, shock_fin); 
+            }else{
+                success_count = 0;
+                pcrys.restore_status(false);
+                logger.warn("Error. Please check the emode.");
+                logger.notice("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
+            } // 辨别电流模式
+            // Current_intensity = J_shock_sim(time_acc, deformation_max, deformation_rate, Amplitude_J, shock_int, shock_fin);
+            custom_vars[5] = Current_intensity; //输出电流to csv
             pct_step += current_step;
             update_progress(pct_step);
             success_count++;

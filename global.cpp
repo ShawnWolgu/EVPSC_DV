@@ -25,6 +25,18 @@ double V_sample; // the volume of the sample
 double duty_ratio_J = 0.0;//
 double Amplitude_J = 0.0;//
 double Frequency = 0.0; 
+double ref_current_intensity_0, ref_current_intensity_1, ref_current_intensity_2; //reference current intensity
+double rss_j;
+double Current_intensity;
+double deformation_rate;
+double deformation_max;
+double bvalue;
+double shock_int;
+double shock_fin;
+double time_acc;
+double K_ew;
+int flag_emode;
+Matrix3d J_tensor;
 
 // [Some global objects]
 Logger logger;

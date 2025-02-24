@@ -59,6 +59,7 @@ int loadinput(string fname, Procs::Process &Proc)
             //1st line is the loading control option
             getline(loadinp, tp);
             Vector4d Victrl = getnum(tp, 4);
+            deformation_max = Victrl(0)*Victrl(2);
             Proc.load_ctrl(Victrl);
 
             getline(loadinp, tp);//skip one line  
@@ -81,6 +82,7 @@ int loadinput(string fname, Procs::Process &Proc)
                 getline(loadinp, tp);
                 Udot.row(i) = getnum(tp, 3);
             }
+            deformation_rate = Udot(2,2);
             Proc.get_Udot(Udot);
 
             getline(loadinp, tp);//skip one line  
@@ -115,10 +117,19 @@ int loadinput(string fname, Procs::Process &Proc)
             if (!loadinp.eof()) //if the file ends, return
             {
                 if (tp.find("duty") != tp.npos){
-                    getline(loadinp, tp); VectorXd electric_coeff = getnum(tp, 3);
+                    getline(loadinp, tp); VectorXd electric_coeff = getnum(tp, 11);
                     duty_ratio_J = electric_coeff(0);
                     Amplitude_J = electric_coeff(1);
                     Frequency = electric_coeff(2);
+                    ref_current_intensity_0 = electric_coeff(3);
+                    ref_current_intensity_1 = electric_coeff(4);
+                    ref_current_intensity_2 = electric_coeff(5);
+                    bvalue = electric_coeff(6);
+                    shock_int = electric_coeff(7);
+                    shock_fin = electric_coeff(8);
+                    flag_emode = electric_coeff(9);
+                    K_ew = electric_coeff(10);
+
                 }
             }
             logger.debug("duty_ratio_J = " + to_string(duty_ratio_J));
@@ -126,6 +137,14 @@ int loadinput(string fname, Procs::Process &Proc)
             logger.debug("Frequency = " + to_string(Frequency));
             //I-intensity input
             Proc.get_Sdot(voigt(Sig_m));
+
+            
+            getline(loadinp, tp); //skip one line
+            for(int i = 0; i < 3; i++)
+            {
+                getline(loadinp, tp);//获得电流张量
+                J_tensor.row(i) = getnum(tp, 3);
+            }
 
             loadinp.close(); //close the file object.
             return 0;        

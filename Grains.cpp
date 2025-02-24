@@ -4,6 +4,7 @@
 #include "Toolbox.h"
 #include <locale>
 #include <string>
+#include "Processes.h"
 
 using Eigen::MatrixXf;
 
@@ -632,14 +633,14 @@ void grain::Update_Fij_g(double Tincr)
     Fij_g = Fnew;
 }
 
-Matrix3d grain::cal_Dijp(Matrix3d Min)
+Matrix3d grain::cal_Dijp(Matrix3d Min) //更改，使得可以输出电流张量的转换结果
 {
     //transform into the deviatoric tensor
     Matrix3d X = devia(Min);
     Matrix3d E = Euler_M;
     Matrix3d ET = Euler_M.transpose();
     X = E * X * ET;
-
+    
     Matrix3d Dijp = Matrix3d::Zero();
     for(int i = 0; i < modes_num; i++)
     {
@@ -660,6 +661,7 @@ Matrix3d grain::cal_rotslip()
     }
     return ET*Wij*E;
 }
+//test here
 
 Matrix5d grain::cal_Fgrad(Matrix3d Min)
 {
@@ -898,12 +900,55 @@ Matrix3d grain::get_therm_expansion(){
 // A default template of the temperature evolution
 void grain::update_temperature(double time_incre)
 {
-    double electric_intensity = J_intensity_pulse(time_incre,duty_ratio_J,Amplitude_J,Frequency);
+    //temperature = temperature + (Tincr/(rho_material*Cp_material))*(Dijp_g.cwiseProduct(sig_g).sum()+pow(J_intensity_pulse(Tincr,duty_ratio_J,Amplitude_J,Frequency),2)/sigma_e_mat);
+    //不用赋予初值，在processes里面有// temperature of the atmosphere is a global variable, which can be directly used here
+    temperature = 293.0; //test mode
+    /* temperature += slope_profile_incr(Tincr, -10); //test mode
+    /* logger.debug("Temperature of grain " + to_string(grain_i) + " is " + to_string(temperature) + " K."); */
 
-    double scale = time_incre / (rho_material * Cp_material);
-    double plas_dissipation_term = Dijp_g.cwiseProduct(sig_g).sum();
-    double electricity_induced_term = pow(electric_intensity,2) / sigma_e_mat;
-    double temperature_incre = scale * (plas_dissipation_term + electricity_induced_term);
-    temperature = temperature + temperature_incre;
+//1.29 test mode
+    // double electric_intensity = J_intensity_pulse(time_incre,duty_ratio_J,Amplitude_J,Frequency);
+
+    // double scale = time_incre / (rho_material * Cp_material);
+    // double plas_dissipation_term = Dijp_g.cwiseProduct(sig_g).sum();
+    // double electricity_induced_term = pow(electric_intensity,2) / sigma_e_mat;
+    // double temperature_incre = scale * (plas_dissipation_term + electricity_induced_term);
+    // temperature = temperature + temperature_incre;
+
+//1.29 test mode
+
     // temperature of the atmosphere is a global variable, which can be directly used here
+
+}
+
+// void grain::update_jslip(){
+//     // J_tensor(2,2) = J_intensity_pulse(time_acc, duty_ratio_J, Amplitude_J, Frequency);
+//     // Matrix3d J_grain = Euler_M * J_tensor * Euler_M.transpose(); tensorial convention
+
+//     Vector3d J_real;
+//     J_real(0) = 0, J_real(1) = 0,J_real(2) = J_intensity_pulse(time_acc, duty_ratio_J, Amplitude_J, Frequency);
+//     J_real = Euler_M*J_real;
+//     for(int i=0;i< modes_num; i++){
+//         if (gmode[i]->type != mode_type::slip)continue;
+//         double J_eq = J_real.transpose()* gmode[i]-> plane_norm;
+//         gmode[i]-> J_slipsystem = J_eq;
+//     }
+// }
+
+
+//张量convention的电流密度
+void grain::update_jslip(){
+    J_tensor(2,2) = J_intensity_pulse(time_acc, duty_ratio_J, Amplitude_J, Frequency);
+    Matrix3d J_grain = Euler_M * J_tensor * Euler_M.transpose(); //tensorial convention
+
+    // Vector3d J_real;
+    // J_real(0) = 0, J_real(1) = 0,J_real(2) = J_intensity_pulse(time_acc, duty_ratio_J, Amplitude_J, Frequency);
+    // J_real = Euler_M*J_real;
+
+
+    for(int i=0;i< modes_num; i++){
+        if (gmode[i]->type != mode_type::slip)continue;
+        double J_eq = J_tensor.cwiseProduct(gmode[i]->Pij).sum();
+        gmode[i]-> J_slipsystem = J_eq;
+    }
 }

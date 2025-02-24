@@ -219,6 +219,7 @@ class grain
         void print_latent_matrix();
         // add temperature
         void update_temperature(double Tincr);
+        void update_jslip();
     };
 
 class PMode
@@ -226,7 +227,6 @@ class PMode
     protected:
         double temperature = 0.; // need to be synchronized with the grain;
         double ref_strain_rate = 0.001;
-        Matrix3d Pij;
         Matrix3d Rij;
         double shear_rate_old, drate_dtau_old, disloc_density_old, crss_old, acc_strain_old, rss_old, velocity_old, rho_init_old, rho_H_old, rho_debri_old;
 
@@ -234,6 +234,8 @@ class PMode
         PMode();
         PMode(json & j_mode);
         PMode(PMode* t_mode, bool a);
+        Matrix3d Pij;
+        Matrix3d JPij;//J schmid 
         mode_type type = mode_type::undefined;
         int num = -1;
         Vector3d burgers_vec,plane_norm;
@@ -259,6 +261,7 @@ class PMode
          */
         vector<double> harden_params, update_params, latent_params;
         double rate_sen, shear_rate, drate_dtau, shear_modulus, disloc_density, crss, acc_strain, rss = 0.0, velocity = 0.0;
+        double J_slipsystem = 0.0;
         double rho_init = 0.0, rho_H=0.0, rho_debri=0.0;
         // Original Contents
         double get_gamma0();
