@@ -1,20 +1,14 @@
-#ifndef GLOBALS_H
-#define GLOBALS_H
-#include "Polycrystals.h"
-#include "Processes.h"
-#include <iostream>
-#include <vector>
-#include <fstream>
-#include <string>
+#pragma once
+
+#include "common/base.h"
 #include <chrono>
 #include <thread>
 #include <ctime>
-#include <Eigen/Dense>
 
+namespace Procs{ class Process; }
 // [Simulation Settings]
 extern int texctrl;
 extern bool update_orientation_required, update_shape_required, update_CRSS_required, update_temperature_required;
-
 extern double temp_atmosphere, temperature_ref;
 
 // [Some Material Properties]
@@ -32,7 +26,6 @@ extern Matrix3d J_tensor;
 extern double K_ew;
 extern double time_acc;
 
-
 // [Output fstreams]
 extern vector<double> custom_vars;
 extern fstream tex_out; //output of the texture
@@ -43,10 +36,6 @@ extern fstream ss_out_csv; //output of the macro stress-strain curves
 extern fstream ave_ss_out; //output of the average stress-strain curves
 extern fstream grain_out; //output of the grain information
 extern fstream custom_out; //output of the custom variables
-
-void initial_output_files();
-void output_info();
-void output_grain_info(int i);
 
 // [Some global objects]
 extern Polycs::polycrystal global_polycrys;
@@ -198,7 +187,4 @@ private:
         }
     }
 };
-
-
-#endif
 

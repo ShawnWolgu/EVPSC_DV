@@ -1,19 +1,10 @@
-#ifndef INPUT_H
-#define INPUT_H
+#pragma once
 
-#include <iostream>
-#include <fstream>
+#include "common/base.h"
 #include <regex>
-#include <string>
-#include <Eigen/Dense>
-#include <nlohmann/json.hpp>
+#include "Eigen/src/Core/Matrix.h"
 
-using namespace std;
-using namespace Eigen;
-using json = nlohmann::json;
-
-#include "Polycrystals.h"
-#include "Processes.h"
+namespace Procs{ class Process; }
 
 int EVPSCinput(string &,string &,string &, Procs::Process &); //read .in file
 int sxinput(string, Polycs::polycrystal &); //read .sx file
@@ -32,4 +23,3 @@ vector<double> get_vector(VectorXd &matrix);
 MatrixXd cal_sn_info(MatrixXd &Min, vector<double> Mabc, vector<double> Trans_Miller, int Miller_n, int system_n);
 json sx_info_postprocess(json &sx_json);
 double cal_shear_modulus(vector<double> Cij6, vector<double> sn);
-#endif

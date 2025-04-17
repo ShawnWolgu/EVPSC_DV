@@ -1,15 +1,8 @@
+#include "common/base.h"
+#include "common/common.h"
 #include <time.h>
-#include <iostream>
-#include <fstream>
 #include <regex>
-#include <string>
-#include <Eigen/Dense>
-
-#include "Input.h"
-#include "Toolbox.h"
-#include "global.h"
-#include "Processes.h"
-#include "Polycrystals.h"
+#include "io/Input.h"
 
 int main()
 {

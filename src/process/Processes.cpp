@@ -1,6 +1,8 @@
-#include "Processes.h"
-#include "global.h"
-#include <csignal>
+#include "common/common.h"
+#include "solver/Grains.h"
+#include "mechanism/PMode.h"
+#include "io/Output.h"
+
 using namespace Procs;
 
 Process::Process(){};
@@ -40,8 +42,8 @@ void Process::timestep_control(){
     //Ictrl <= 6: strain rate control
     const int IJV[6][2]= {0,0,1,1,2,2,1,2,0,2,0,1};
     if(Ictrl <= 6){
-        int I1 = IJV[Ictrl][0];
-        int I2 = IJV[Ictrl][1];
+        int I1 = IJV[Ictrl-1][0];
+        int I2 = IJV[Ictrl-1][1];
         if(IUDWdot(I1,I2) == 0 || IUDWdot(I2,I1) == 0){
             logger.error("Error. The velocity gradient is not set.");
             logger.error("Please check the process file.");
@@ -57,6 +59,7 @@ void Process::timestep_control(){
             return;
         }
         max_timestep = abs(Eincr) / abs(d_control);
+        logger.info("max_timestep = " + to_string(max_timestep));
         return;
     }
     //Ictrl == 7: stress rate control
@@ -111,15 +114,14 @@ void Process::loading(Polycs::polycrystal &pcrys){
                 continue;
             }
             time_acc += current_step * max_timestep;
-            if (flag_emode == 1){
+            if (flag_emode == 0){
+                Current_intensity = 0.0;
+            }else if (flag_emode == 1){
                 Current_intensity = J_intensity_pulse(time_acc, duty_ratio_J, Amplitude_J, Frequency);
             }else if(flag_emode == 2){
                 Current_intensity = J_shock_sim(time_acc, deformation_max, deformation_rate, Amplitude_J, shock_int, shock_fin); 
             }else{
-                success_count = 0;
-                pcrys.restore_status(false);
                 logger.warn("Error. Please check the emode.");
-                logger.notice("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
             } // 辨别电流模式
             // Current_intensity = J_shock_sim(time_acc, deformation_max, deformation_rate, Amplitude_J, shock_int, shock_fin);
             custom_vars[5] = Current_intensity; //输出电流to csv

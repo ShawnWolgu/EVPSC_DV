@@ -1,5 +1,7 @@
-#include "Processes.h"
-#include "global.h"
+#include "common/common.h"
+#include "io/Output.h"
+#include "solver/Grains.h"
+#include "mechanism/PMode.h"
 
 void initial_output_files(){
     IOFormat Outformat(StreamPrecision);

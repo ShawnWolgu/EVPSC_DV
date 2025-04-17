@@ -1,6 +1,4 @@
-#include "EVPSC.h"
-#include "global.h"
-#include <string>
+#include "mechanism/PMode_common.h"
 
 PMode::PMode() {};
 

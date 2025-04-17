@@ -1,6 +1,5 @@
-#include "Input.h"
-#include "Eigen/src/Core/Matrix.h"
-#include "global.h"
+#include "common/common.h"
+#include "io/Input.h"
 
 int EVPSCinput(string &ftex,string &fsx,string &fload, Procs::Process &Proc)
 {
@@ -102,16 +101,17 @@ int loadinput(string fname, Procs::Process &Proc)
 
             getline(loadinp, tp);//skip one line  
             //boundary condition
-            Vector6d Sig_m;
+            Vector6d Sig_rate;
             getline(loadinp, tp);
             temp = getnum(tp, 3);
-            Sig_m(0)=temp(0);Sig_m(5)=temp(1);Sig_m(4)=temp(2);
+            Sig_rate(0)=temp(0);Sig_rate(5)=temp(1);Sig_rate(4)=temp(2);
             getline(loadinp, tp);
             temp = getnum(tp, 2);
-            Sig_m(1)=temp(0);Sig_m(3)=temp(1);
+            Sig_rate(1)=temp(0);Sig_rate(3)=temp(1);
             getline(loadinp, tp);
             temp = getnum(tp, 1);
-            Sig_m(2)=temp(0);
+            Sig_rate(2)=temp(0);
+            Proc.get_Sdot(voigt(Sig_rate));
 
             getline(loadinp ,tp);//skip one line
             if (!loadinp.eof()) //if the file ends, return
@@ -129,23 +129,21 @@ int loadinput(string fname, Procs::Process &Proc)
                     shock_fin = electric_coeff(8);
                     flag_emode = electric_coeff(9);
                     K_ew = electric_coeff(10);
-
+                    logger.debug("duty_ratio_J = " + to_string(duty_ratio_J));
+                    logger.debug("Amplitude_J = " + to_string(Amplitude_J));
+                    logger.debug("Frequency = " + to_string(Frequency));
+                }
+                getline(loadinp, tp); //skip one line
+                for(int i = 0; i < 3; i++){
+                    getline(loadinp, tp);//获得电流张量
+                    J_tensor.row(i) = getnum(tp, 3);
                 }
             }
-            logger.debug("duty_ratio_J = " + to_string(duty_ratio_J));
-            logger.debug("Amplitude_J = " + to_string(Amplitude_J));
-            logger.debug("Frequency = " + to_string(Frequency));
-            //I-intensity input
-            Proc.get_Sdot(voigt(Sig_m));
-
-            
-            getline(loadinp, tp); //skip one line
-            for(int i = 0; i < 3; i++)
-            {
-                getline(loadinp, tp);//获得电流张量
-                J_tensor.row(i) = getnum(tp, 3);
+            else{
+                logger.info("No current setting.");
             }
-
+            //I-intensity input
+            
             loadinp.close(); //close the file object.
             return 0;        
         }

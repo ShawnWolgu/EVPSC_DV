@@ -1,8 +1,4 @@
-#include "Toolbox.h"
-#include "global.h"
-#include <cmath>
-using namespace std;
-using namespace Eigen;
+#include "common/common.h"
 
 Matrix6d cal_rotation_trans_6d_for_stiff(Matrix3d M);
 Matrix6d cal_rotation_trans_6d_for_compl(Matrix3d M);

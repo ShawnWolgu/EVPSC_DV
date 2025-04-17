@@ -1,6 +1,4 @@
-#include "EVPSC.h"
-#include "global.h"
-#include <string>
+#include "mechanism/PMode_common.h"
 
 Slip::Slip() {};
 
@@ -290,13 +288,13 @@ void Slip::update_ssd(Matrix3d strain_rate, double dtime){
         rho_sat_new = max(pow(1/rho_sat_new,2), 0.5*disloc_density);
         if (rho_sat_new < 10 * rho_sat) rho_sat = rho_sat_new;
         if (rho_sat == 0.0) rho_sat = rho_sat_new;
-        custom_vars[1] = max(custom_vars[1], rho_sat);
+        /* custom_vars[1] = max(custom_vars[1], rho_sat); */
         double tau_eff = max(abs(rss) - forest_stress, 0.);
-        custom_vars[2] = max(custom_vars[2], tau_eff);
-        custom_vars[3] = max(custom_vars[3], abs(rss));
-        custom_vars[4] = max(custom_vars[4], forest_stress);
+        /* custom_vars[2] = max(custom_vars[2], tau_eff); */
+        /* custom_vars[3] = max(custom_vars[3], abs(rss)); */
+        /* custom_vars[4] = max(custom_vars[4], forest_stress); */
         double term_nuc = c_nuc * max(abs(rss)-tau_nuc,0.) / (shear_modulus * burgers * burgers);
-        custom_vars[5] = max(custom_vars[5], term_nuc * abs(shear_rate) * dtime);
+        /* custom_vars[5] = max(custom_vars[5], term_nuc * abs(shear_rate) * dtime); */
         double term_multi = c_multi / mfp; 
         c_annih = (term_multi + term_nuc) / rho_sat;
         double disloc_incre = (term_multi + term_nuc - c_annih * disloc_density) * abs(shear_rate) * dtime;

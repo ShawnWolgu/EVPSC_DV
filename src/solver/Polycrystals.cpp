@@ -1,7 +1,6 @@
-#include "Polycrystals.h"
-#include "Toolbox.h"
-#include "global.h"
-#include <memory>
+#include "common/common.h"
+#include "solver/Grains.h"
+#include "mechanism/PMode.h"
 
 using namespace Polycs;
 using namespace std;
@@ -869,11 +868,8 @@ void polycrystal::update_status(double time_incre){
 void polycrystal::Cal_Sig_m(double Tincr)
 {
     double temperature_diff = temperature_poly - temperature_ref;
-    Wij_m = Matrix3d::Zero();
-    //why not Wij = Udot - Dij ?
-    //because the Udot need be update
-    //some components are not imposed
     //IUdot: 0: not imposed; 1: imposed; 2: control Dij; 3: control Wij
+    Wij_m = Matrix3d::Zero();
     for(int i = 0; i < 3; i++) for(int j = 0; j < 3; j++){
         if(IUdot(i,j) > 1 && IUdot(j,i) != 0){
             logger.error("IUdot configuration not support!");
@@ -898,7 +894,7 @@ void polycrystal::Cal_Sig_m(double Tincr)
     Matrix3d therm_strain_rate = (therm_expansion_ave * temperature_diff - ther_strain_m_old)/Tincr;
     Vector6d De = Bbasisadd(Chg_basis6(Dij_m), -DVP_AV) - Chg_basis6(therm_strain_rate); //De = D - Dp - D0 - Dt
     //Calculate AX = B, X is the macro stress
-    Matrix6d A = SSC/Tincr;
+    Matrix6d A = SSC;
     /* Matrix3d Mtemp = Sig_m_old / Tincr; */
     Vector6d B = De + SSC * Chg_basis6(Sig_J);
     /* According to the IUdot and ISDOT to solve AX = B, transform to solve At Xt = Bt */
@@ -909,7 +905,7 @@ void polycrystal::Cal_Sig_m(double Tincr)
     profac << 1,1,1,2,2,2;
 
     Vector6d BC_D = voigt(Chg_basis(B));
-    Vector6d BC_S = voigt(Sig_rate) * Tincr;
+    Vector6d BC_S = voigt(Sig_rate);
     Matrix6d AUX2 = Btovoigt(A);
 
     Vector6d AUX11;
@@ -926,7 +922,7 @@ void polycrystal::Cal_Sig_m(double Tincr)
 
     Vector6d Sig_x, B_x;
     B_x = mult_dot(BC_D,Id) + mult_dot(AUX6,Is);
-    Sig_x = mult_dot(BC_S,Is) + mult_dot(AUX6,Id);//delta Sigma
+    Sig_x = (mult_dot(BC_S,Is) + mult_dot(AUX6,Id))*Tincr;//dotSigma
     De = Chg_basis6(voigt(B_x)) - SSC * Chg_basis6(Sig_J);
     Vector6d Dij_m_v = Bbasisadd(De, DVP_AV) + Chg_basis6(therm_strain_rate); //D = De + Dp + D0 + Dt
     thermal_strain_m = therm_expansion_ave * temperature_diff;

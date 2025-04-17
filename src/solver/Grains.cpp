@@ -1,10 +1,6 @@
-#include "EVPSC.h"
-#include "Eigen/src/Core/Matrix.h"
-#include "global.h"
-#include "Toolbox.h"
-#include <locale>
-#include <string>
-#include "Processes.h"
+#include "common/common.h"
+#include "solver/Grains.h"
+#include "mechanism/PMode.h"
 
 using Eigen::MatrixXf;
 

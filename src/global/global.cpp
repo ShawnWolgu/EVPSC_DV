@@ -1,7 +1,4 @@
-#include "global.h"
-#include "Polycrystals.h"
-#include "Processes.h"
-using namespace std;
+#include "common/common.h"
 
 // [Simulation Settings]
 int texctrl = 0; //print the texture every n steps(0 means only print at the end)
@@ -25,18 +22,20 @@ double V_sample; // the volume of the sample
 double duty_ratio_J = 0.0;//
 double Amplitude_J = 0.0;//
 double Frequency = 0.0; 
-double ref_current_intensity_0, ref_current_intensity_1, ref_current_intensity_2; //reference current intensity
-double rss_j;
-double Current_intensity;
+double ref_current_intensity_0 = 0.0; 
+double ref_current_intensity_1 = 0.0;
+double ref_current_intensity_2 = 0.0; //reference current intensity
+double rss_j = 0.0;
+double Current_intensity = 0.0;
 double deformation_rate;
 double deformation_max;
-double bvalue;
-double shock_int;
-double shock_fin;
+double bvalue = 0.0;
+double shock_int = 0.0;
+double shock_fin = 0.0;
 double time_acc;
-double K_ew;
-int flag_emode;
-Matrix3d J_tensor;
+double K_ew = 0.0;
+int flag_emode = 0;
+Matrix3d J_tensor = Matrix3d::Zero();
 
 // [Some global objects]
 Logger logger;

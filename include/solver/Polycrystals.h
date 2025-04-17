@@ -1,23 +1,14 @@
-#ifndef POLYCRYSTALS_H
-#define POLYCRYSTALS_H
+#pragma once
 
+#include "common/base.h"
 #include <omp.h>
-#include <iostream>
-#include <fstream>
 #include <iomanip>
-#include <string>
-#include <nlohmann/json.hpp>
-#include <vector>
-using namespace std;
-using json = nlohmann::json;
+#include <memory>
 
-#include "EVPSC.h"
-#include "Toolbox.h"
+class Gausspoint;
+class grain;
 
 namespace Polycs{
-
-//const int  max_grain_n = 3000; 
-
 class polycrystal
 {
     private:
@@ -209,6 +200,4 @@ class polycrystal
         void update_temperature(double time_incre);
 };
 
-
 }
-#endif

@@ -1,10 +1,8 @@
-#include "EVPSC.h"
-#include "global.h"
-#include <string>
+#include "mechanism/PMode_common.h"
 
-Twin::Twin() {};
+TwinG::TwinG() {};
 
-Twin::Twin(json &j_twin)
+TwinG::TwinG(json &j_twin)
 {
     /* logger.info("Initializing twin system..."); */
     num = j_twin["id"];  shear_modulus = j_twin["G"];
@@ -24,11 +22,14 @@ Twin::Twin(json &j_twin)
     for (int i = 0; i != len; ++i) harden_params.push_back(j_twin["CRSS_p"][i]); 
     for (int i = 0; i != j_twin["hst"].size(); ++i) latent_params.push_back(j_twin["hst"][i]);
     for (int i = 0; i != 5; ++i) update_params.push_back(0);
-    crss = harden_params[0];
+    crss = harden_params[8];
+    if (harden_params[7] != 0 || ~isnan(harden_params[7])) {
+        ref_strain_rate = harden_params[7];
+    }
     status = twin_status::inactive;
 }
 
-Twin::Twin(Twin* t_twin, bool a)
+TwinG::TwinG(TwinG* t_twin, bool a)
 {
     /* logger.info("Initializing twin system..."); */
     num = t_twin->num;  shear_modulus = t_twin->shear_modulus;
@@ -44,18 +45,15 @@ Twin::Twin(Twin* t_twin, bool a)
     harden_params = t_twin->harden_params;
     latent_params = t_twin->latent_params;
     for (int i = 0; i != 5; ++i) update_params.push_back(0);
-    crss = harden_params[0];
+    crss = harden_params[8];
+    if (harden_params[7] != 0 || ~isnan(harden_params[7])) {
+        ref_strain_rate = harden_params[7];
+    }
     status = twin_status::inactive;
+    
 }
 
-void Twin::set_parent(int parent_id){
-    grain_link = parent_id;
-    status = twin_status::governed;
-    link_variant = (Twin*) global_polycrys.g[parent_id].gmode[num];
-    child_frac = 1;
-}
-
-void Twin::check_sn_mode()
+void TwinG::check_sn_mode()
 {
     logger.info("Twin system: " + to_string(num));
     logger.info("Normal: ");
@@ -66,7 +64,7 @@ void Twin::check_sn_mode()
     logger.info(Pij);
 }
 
-void Twin::check_hardening_mode()
+void TwinG::check_hardening_mode()
 {
     logger.info("Twin system: " + to_string(num));
     string str = "";
@@ -74,9 +72,10 @@ void Twin::check_hardening_mode()
     logger.info("Hardening parameters: " + str);
 }
 
-void Twin::cal_strain_rate(Matrix3d stress_tensor){
+void TwinG::cal_strain_rate(Matrix3d stress_tensor){
     double rss_matrix = cal_rss(stress_tensor);
-    double rate_ = ref_strain_rate * pow(abs(rss_matrix / crss), 1/rate_sen)* sign(rss_matrix); 
+    rss_matrix = max(abs(rss_matrix) - harden_params[9], 0.0) * sign(rss_matrix);
+    double rate_ = ref_strain_rate * pow(abs(rss_matrix / crss), 1/rate_sen)* sign(rss_matrix) * equivalent_frac; 
     switch (status) {
     inactive:
         shear_rate = (rss_matrix > 0) ? rate_ : 0.0; // rate_TN;
@@ -87,12 +86,6 @@ void Twin::cal_strain_rate(Matrix3d stress_tensor){
     saturated:
         shear_rate = (rss_matrix < 0) ? rate_ : 0.0; // rate_MP;
         break;
-    governed:
-        if (link_variant->status == twin_status::growth) shear_rate = rate_;
-        else if (link_variant->status == twin_status::saturated) shear_rate = (rss_matrix > 0) ? rate_ : 0.0;
-        else if (link_variant->status == twin_status::inactive) shear_rate = (rss_matrix < 0) ? rate_ : 0.0;
-        else shear_rate = 0.0;
-        break;
     default:
         shear_rate = (rss_matrix > 0) ? rate_ : 0.0;
         break;
@@ -100,10 +93,11 @@ void Twin::cal_strain_rate(Matrix3d stress_tensor){
     rss = rss_matrix;
 }
 
-void Twin::cal_drate_dtau(Matrix3d stress_tensor){
+void TwinG::cal_drate_dtau(Matrix3d stress_tensor){
     double rss_matrix = cal_rss(stress_tensor);       
-    double gradient_ = ref_strain_rate * pow(abs(rss_matrix / crss), 1/rate_sen-1) * sign(rss_matrix) / rate_sen / crss * sign(rss_matrix); 
-    double rate_ = ref_strain_rate * pow(abs(rss_matrix / crss), 1/rate_sen) * sign(rss_matrix); 
+    rss_matrix = max(abs(rss_matrix) - harden_params[9], 1e-5) * sign(rss_matrix);
+    double gradient_ = ref_strain_rate * pow(abs(rss_matrix / crss), 1/rate_sen-1) * sign(rss_matrix) / rate_sen / crss * sign(rss_matrix) * equivalent_frac; 
+    double rate_ = ref_strain_rate * pow(abs(rss_matrix / crss), 1/rate_sen) * sign(rss_matrix) * equivalent_frac; 
     switch (status){
     inactive:
         shear_rate = (rss_matrix > 0) ? rate_ : 0.0; // rate_TN;
@@ -117,23 +111,6 @@ void Twin::cal_drate_dtau(Matrix3d stress_tensor){
         shear_rate = (rss_matrix < 0) ? rate_ : 0.0; // rate_MP;
         drate_dtau = (rss_matrix < 0) ? gradient_ : 0.0; // rate_MP;
         break;
-    governed:
-        if (link_variant->status == twin_status::growth) {
-            shear_rate = rate_; drate_dtau = gradient_;
-        }
-        else if (link_variant->status == twin_status::saturated) {
-            shear_rate = (rss_matrix > 0) ? rate_ : 0.0;
-            drate_dtau = (rss_matrix > 0) ? gradient_ : 0.0;
-        }
-        else if (link_variant->status == twin_status::inactive) {
-            shear_rate = (rss_matrix < 0) ? rate_ : 0.0;
-            drate_dtau = (rss_matrix < 0) ? gradient_ : 0.0;
-        }
-        else {
-            shear_rate = 0.0;
-            drate_dtau = 0.0;
-        }
-        break;
     default:
         shear_rate = (rss_matrix > 0) ? rate_ : 0.0;
         drate_dtau = (rss_matrix > 0) ? gradient_ : 0.0;
@@ -141,66 +118,43 @@ void Twin::cal_drate_dtau(Matrix3d stress_tensor){
     }
 }
 
-void Twin::update_status(grain &gr, double dtime){
+void TwinG::update_status(grain &gr, double dtime){
     temperature = gr.temperature;
     double Gamma = 0;
     double tau_0 = harden_params[0], tau_1 = harden_params[1], h_0 = harden_params[2], h_1 = harden_params[3], \
-           twin_shear = harden_params[4], lower_bound = 1e-3, upper_bound = global_polycrys.twin_threshold;
-    for(int i = 0; i < gr.modes_num; i++){
-        Gamma += abs(gr.gmode[i]->acc_strain);
-    }
+           twin_shear = harden_params[4], upper_bound = global_polycrys.twin_threshold;
 
-    double eff_fraction = gr.get_weight_g();
-    switch(status){
-        case twin_status::growth:{
-            if (grain_link != -1) break;
-            Vector4d euler_vec = get_twin_euler_vec(gr.get_Euler_M_g(), gr.weight_ref, plane_norm);
-            grain_link = global_polycrys.add_grain(euler_vec, gr.grain_i, num);
-            (global_polycrys.g[grain_link]).set_weight_g(0.0);
-        }
-        case twin_status::inactive:
-        case twin_status::saturated:{
-            if (grain_link == -1) break;
-            grain* g_link = &(global_polycrys.g[grain_link]);
-            eff_fraction += g_link->get_weight_g();
-            eff_fraction = eff_fraction / gr.weight_ref;
-            break;
-        }
-        case twin_status::governed:{
-            grain* g_link = &(global_polycrys.g[grain_link]);
-            shear_rate = -1 * g_link->gmode[num]->shear_rate;
-            eff_fraction += g_link->get_weight_g();
-            eff_fraction = eff_fraction / gr.weight_ref;
-            break;
-        }
-        default:
-            break;
-    }
-
+    for(int i = 0; i < gr.modes_num; i++) Gamma += abs(gr.gmode[i]->acc_strain);
+    if (gr.child_frac > upper_bound) status = twin_status::saturated;
     double dtau_by_dGamma = h_1 + (abs(h_0/tau_1)*tau_1 - h_1) * exp(-Gamma*abs(h_0/tau_1)) + abs(h_0/tau_1)*h_1*Gamma*exp(-Gamma*abs(h_0/tau_1));
-    for(int i = 0; i < gr.modes_num; i++){
-        double irate = gr.gmode[i]->shear_rate;
-        double lt_hard = gr.lat_hard_mat[num][i];
-        crss += abs(irate) * dtime * lt_hard * dtau_by_dGamma;
+    for(int i = 0; i < gr.modes_num; i++)
+        crss += abs(gr.gmode[i]->shear_rate) * dtime * gr.lat_hard_mat[num][i] * dtau_by_dGamma;
+    equivalent_frac = (1-gr.child_frac) + child_frac;
+    euler_twin = get_twin_euler_vec(gr.get_Euler_M_g(), gr.weight_ref*child_frac, plane_norm);
+}
+
+void TwinG::update_ssd(Matrix3d strain_rate, double dtime){
+    acc_strain += abs(shear_rate) * dtime;
+    double lower_bound = 1e-3, upper_bound = global_polycrys.twin_threshold;
+    double fraction_incre = shear_rate / harden_params[4] * dtime; 
+    if (child_frac + fraction_incre > 1){
+        fraction_incre = min(1 - child_frac, 0.5 * child_frac);
+    } 
+    else if (child_frac + fraction_incre < 0) {
+        fraction_incre = sign(fraction_incre) * min(abs(child_frac), 0.5 * child_frac);
     }
-
-    if (status == twin_status::governed) crss = link_variant->crss;
-
-    child_frac += eff_fraction * shear_rate / twin_shear * dtime;
+    child_frac += fraction_incre;
     disloc_density = child_frac;
-    logger.debug("Twin " + to_string(num) + " child fraction: " + to_string(child_frac));
-    
-    if (status == twin_status::governed) return;
+    if (status == twin_status::inactive && child_frac >= lower_bound) {
+        status = twin_status::growth;
+        crss = harden_params[0];
+    } 
     if (child_frac < lower_bound) status = twin_status::inactive;
     else if (child_frac > upper_bound) status = twin_status::saturated;
     else status = twin_status::growth;
 }
 
-void Twin::update_ssd(Matrix3d strain_rate, double dtime){
-    acc_strain += shear_rate * dtime;
-}
-
-void Twin::print(){
+void TwinG::print(){
     logger.info("Twin system: " + to_string(num));
     string status_str = "";
     switch (status){
@@ -241,6 +195,6 @@ void Twin::print(){
     logger.info(str2);
 }
 
-void Twin::set_status(twin_status s){
+void TwinG::set_status(twin_status s){
     status = s;
 }

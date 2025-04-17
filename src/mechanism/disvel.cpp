@@ -1,6 +1,4 @@
-#include "EVPSC.h"
-#include "global.h"
-#include <string>
+#include "mechanism/PMode_common.h"
 
 double waiting_time(double rss, double freq_r, double act_energy_r, double forest_stress, double resistance_slip, double energy_expo, double temperature);
 double running_time(double rss, double c_drag, double speed_sat, double mean_free_path, double burgers, double forest_stress, double temperature);
@@ -9,18 +7,20 @@ vector<double> running_time_grad(double rss, double c_drag, double speed_sat, do
 const double vel_threshold = 1e-40;
 
 double Slip::disl_velocity(double rss){
-    // * [velocity parameters] 
-    //  *  1. MFP control coeffient, 2. reference frequency, 3. activation energy, 4. slip resistance, 5. energy exponent
-    //  *  6. saturated speed, 7. drag coefficient
-    //  * [hardening parameters] 
-    //  *  8. forest hardening coefficient
-    //  * [DD evolution parameters] 
-    //  *  0. SSD_density, 9. nucleation coefficient, 10. nucleation threshold stress, 11. multiplication coefficient
-    //  *  12. drag stress D, 13. reference strain rate, 14. c/g, 15. coplanar reaction coefficient
-    //  *
-    //  * update parameters:
-    //  * 0: burgers, 1: mean_free_path, 2: disl_density_resist, 3: forest_stress
-    //  */
+    /* [velocity parameters] 
+    *  1. MFP control coeffient, 2. reference frequency, 3. activation energy, 4. slip resistance, 5. energy exponent 
+    *  6. saturated speed, 7. drag coefficient
+    *
+    * [hardening parameters] 
+    *  8. forest hardening coefficient
+    *
+    * [DD evolution parameters] 
+    *  0. SSD_density, 9. nucleation coefficient, 10. nucleation threshold stress, 11. multiplication coefficient
+    *  12. drag stress D, 13. reference strain rate, 14. c/g, 15. coplanar reaction coefficient, 16. HP stress, 17. debris_control_param
+    *
+    * update parameters:
+    * 0: burgers, 1: mean_free_path, 2: disl_density_resist, 3: forest_stress
+    */
     double freq_r = harden_params[2], act_energy_r = harden_params[3]/factor(Current_intensity, ref_current_intensity_1), resistance_slip = harden_params[4],\
            energy_expo = harden_params[5], speed_sat = harden_params[6], c_drag = harden_params[7];
     resistance_slip = resistance_slip/factor(Current_intensity, ref_current_intensity_0); //the renewed resistence by the current pulsing
