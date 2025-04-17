@@ -21,7 +21,7 @@ namespace Polycs{
 class polycrystal
 {
     private:
-        double GZ = 30; //grain size (um)
+        double grain_size = 30; //grain size (um)
 
         Gausspoint* Gpsets  = NULL; 
 
@@ -78,6 +78,7 @@ class polycrystal
 
         Matrix3d Eps_m; //macro strain
         Matrix3d Sig_m; //macro stress 
+        Matrix3d Sig_rate; // stress increment
         Matrix3d Sig_AV; //the average stress tensor of all garins
         Matrix3d Sig_m_old; //macro stress in last increment
 
@@ -118,7 +119,7 @@ class polycrystal
         void ini_Sig_m(Matrix3d);
         void set_IUdot(Matrix3i);
         void set_ISdot(Vector6i);
-	void set_BC_const(Matrix3d, Matrix3d, Matrix3i, Vector6i);
+	void set_boundary_conditions(Matrix3d, Matrix3d, Matrix3i, Vector6i);
 
         //input the number of grains
         int grains_n(int);  

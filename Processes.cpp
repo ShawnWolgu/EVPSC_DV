@@ -1,5 +1,6 @@
 #include "Processes.h"
 #include "global.h"
+#include <csignal>
 using namespace Procs;
 
 Process::Process(){};
@@ -18,7 +19,7 @@ Process::~Process()
 void Process::load_ctrl(Vector4d Vin)
 {
     Nsteps = int(Vin(0));
-    Ictrl = int(Vin(1)) - 1;
+    Ictrl = int(Vin(1));
     Eincr = Vin(2);
     temperature_input = Vin(3);
 
@@ -30,30 +31,56 @@ void Process::get_Udot(Matrix3d Min)
     UDWdot_input = Min;
     Ddot_input = 0.5*(Min + Min.transpose());
     
-    //calculate Time increment Tincr
-    Vector6d Vtemp = voigt(Ddot_input);
-    if(Ictrl > 2) {
-        max_timestep = abs(Eincr);
-        return;
-    }
-    if(Vtemp(Ictrl) == 0 || Eincr == 0){
-        max_timestep = 1;
-    }
-    else{
-        max_timestep = abs(Eincr) / Vtemp(Ictrl);
-    }
 }
 void Process::get_Sdot(Matrix3d Min){Sdot_input = Min;}
 void Process::get_IUdot(Matrix3i Min){IUDWdot = Min;}
 void Process::get_ISdot(Vector6i Vin){ISdot = Vin;}
+void Process::timestep_control(){
+    //calculate Time increment Tincr
+    //Ictrl <= 6: strain rate control
+    const int IJV[6][2]= {0,0,1,1,2,2,1,2,0,2,0,1};
+    if(Ictrl <= 6){
+        int I1 = IJV[Ictrl][0];
+        int I2 = IJV[Ictrl][1];
+        if(IUDWdot(I1,I2) == 0 || IUDWdot(I2,I1) == 0){
+            logger.error("Error. The velocity gradient is not set.");
+            logger.error("Please check the process file.");
+            throw std::runtime_error("Error. The velocity gradient is not set.");
+            return;
+        }
+        Vector6d Vtemp = voigt(Ddot_input);
+        double d_control = Vtemp(Ictrl-1);
+        if (d_control == 0){
+            logger.error("Error. The control strain rate is zero.");
+            logger.error("Please check the process file.");
+            throw std::runtime_error("Error. The control strain rate is zero.");
+            return;
+        }
+        max_timestep = abs(Eincr) / abs(d_control);
+        return;
+    }
+    //Ictrl == 7: stress rate control
+    else if(Ictrl == 7){
+        max_timestep = abs(Eincr);
+        return;
+    }
+    //Else: throw error
+    else{
+        logger.error("Error. The control type is not set.");
+        logger.error("Please check the process file.");
+        throw std::runtime_error("Error. The control type is not set.");
+        return;
+    }
+}
 
 void Process::loading(Polycs::polycrystal &pcrys){
+    timestep_control();
     time_acc = 0;
     temp_atmosphere = temperature_input; //loading temp_init from the txt.in 
     // Temperature is not set, this is the first loading step, free of thermal stress
     if (temperature_ref < 1e-3)  temperature_ref = temperature_input;
     if (pcrys.temperature_poly < 1e-3)  pcrys.set_temperature(temperature_input);
-    pcrys.set_BC_const(UDWdot_input, Sdot_input, IUDWdot, ISdot);
+    pcrys.set_boundary_conditions(UDWdot_input, Sdot_input, IUDWdot, ISdot);
     initial_output_files();
     double coeff_step = 1, current_step = 1.;
     int success_count = 0;

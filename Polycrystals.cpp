@@ -144,8 +144,9 @@ polycrystal::polycrystal()
     }
 }
 
-void polycrystal::set_BC_const(Matrix3d udot_input, Matrix3d sig_input, Matrix3i iudot_input, Vector6i isig_input){
-    Sig_m = sig_input;
+void polycrystal::set_boundary_conditions(Matrix3d udot_input, Matrix3d sig_rate_input, Matrix3i iudot_input, Vector6i isig_input){
+    Sig_m = Matrix3d::Zero(); // The Default initial stress is zero.
+    Sig_rate = sig_rate_input;
     ISdot = isig_input;
     set_IUdot(iudot_input);
     ini_Udot_m(udot_input);
@@ -166,6 +167,7 @@ void polycrystal::ini_Udot_m(Matrix3d Udot_input)
     Dijp_AV = Matrix3d::Zero();
 }
 
+//not used
 void polycrystal::ini_Sig_m(Matrix3d Min){Sig_m = Min;}
 
 void polycrystal::set_IUdot(Matrix3i Min)
@@ -391,7 +393,7 @@ void polycrystal::ini_from_json(json &sx_json){
 
 int polycrystal::ini_GZ(double x)
 {
-    GZ = x;
+    grain_size = x;
     return 0;
 }
 
@@ -897,8 +899,8 @@ void polycrystal::Cal_Sig_m(double Tincr)
     Vector6d De = Bbasisadd(Chg_basis6(Dij_m), -DVP_AV) - Chg_basis6(therm_strain_rate); //De = D - Dp - D0 - Dt
     //Calculate AX = B, X is the macro stress
     Matrix6d A = SSC/Tincr;
-    Matrix3d Mtemp = Sig_m_old / Tincr;
-    Vector6d B = De + SSC * ( Chg_basis6(Mtemp) + Chg_basis6(Sig_J));
+    /* Matrix3d Mtemp = Sig_m_old / Tincr; */
+    Vector6d B = De + SSC * Chg_basis6(Sig_J);
     /* According to the IUdot and ISDOT to solve AX = B, transform to solve At Xt = Bt */
     /* Xt in the unkown set of Udot and Sig */
     Vector6i Is = ISdot;
@@ -907,7 +909,7 @@ void polycrystal::Cal_Sig_m(double Tincr)
     profac << 1,1,1,2,2,2;
 
     Vector6d BC_D = voigt(Chg_basis(B));
-    Vector6d BC_S = voigt(Sig_m);
+    Vector6d BC_S = voigt(Sig_rate) * Tincr;
     Matrix6d AUX2 = Btovoigt(A);
 
     Vector6d AUX11;
@@ -924,12 +926,12 @@ void polycrystal::Cal_Sig_m(double Tincr)
 
     Vector6d Sig_x, B_x;
     B_x = mult_dot(BC_D,Id) + mult_dot(AUX6,Is);
-    Sig_x = mult_dot(BC_S,Is) + mult_dot(AUX6,Id);
-    De = Chg_basis6(voigt(B_x)) - SSC * ( Chg_basis6(Mtemp) + Chg_basis6(Sig_J));
+    Sig_x = mult_dot(BC_S,Is) + mult_dot(AUX6,Id);//delta Sigma
+    De = Chg_basis6(voigt(B_x)) - SSC * Chg_basis6(Sig_J);
     Vector6d Dij_m_v = Bbasisadd(De, DVP_AV) + Chg_basis6(therm_strain_rate); //D = De + Dp + D0 + Dt
     thermal_strain_m = therm_expansion_ave * temperature_diff;
     Dij_m = Chg_basis(Dij_m_v);
-    Sig_m = voigt(Sig_x);
+    Sig_m = voigt(Sig_x)+Sig_m_old;
 }
 
 double polycrystal::Cal_Sig_g(double Tincr)
