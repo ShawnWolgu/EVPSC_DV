@@ -11,23 +11,9 @@ CUBIC                                crysym
 *Thermal expansion coefficients of single crystal[K^(-1)]
   5.7e-6   5.7e-6  10.3e-6   0.0e0   0.0e0   0.0e0
 SLIP AND TWINNING MODES
-2                               nmodesx
+1                               nmodesx
 1                               nmodes
 1                               mode(i)
-# Slip System: FCC{111}<1-10>
- 1  12  1   0                           modex,nsmx,nrsx,iopsysx
- 1  1  1        0  0.5 -0.5    
- 1  1  1        0.5  0 -0.5    
- 1  1  1        0.5 -0.5  0    
--1  1  1        0  0.5 -0.5    
--1  1  1        0.5  0  0.5    
--1  1  1        0.5  0.5  0    
- 1 -1  1        0  0.5  0.5    
- 1 -1  1        0.5  0 -0.5    
- 1 -1  1        0.5  0.5  0  
- 1  1 -1        0  0.5  0.5    
- 1  1 -1        0.5  0  0.5    
- 1  1 -1        0.5 -0.5  0    
 # Slip System: FCC{111}<1-10>
  1  12  1   0                           modex,nsmx,nrsx,iopsysx
  1  1  1        0  0.5 -0.5    
@@ -48,5 +34,5 @@ CONSTITUTIVE LAW
    70.    GRAIN SIZE
   FCC{111}<1-10>
    0.1     NRSX
-  10  20  2000  10
-  1.0 1.0 1.0 1.0 1.0       hlatx
+  100  50  2000  10
+  1.0 1.0 1.0 1.0 1.0 1.0      hlatx

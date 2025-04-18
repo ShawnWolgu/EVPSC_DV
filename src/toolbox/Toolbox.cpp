@@ -1077,12 +1077,18 @@ double J_shock_sim(double time_acc, double deformation_max, double deformation_r
 
 
 double factor(double amplitude_J, double ref){
+    if(ref == 0){
+        return 1.0;
+    }
     double fact;
     fact = (1+ pow((amplitude_J/ref),2));
     return fact;
 }
 
 double factor_beta(double amplitude_J, double ref){
+    if(ref == 0){
+        return 1.0;
+    }
     double fact;
     fact = pow((1+ pow((amplitude_J/ref),2)), bvalue);
     return fact;

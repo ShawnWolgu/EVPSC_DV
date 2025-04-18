@@ -21,6 +21,8 @@ private:
     int Nsteps; // total steps
     int istep; // current step
     double temperature_input; // /(K) temperature 
+    double tempK_rate = 0.0; // /(K/s) temperature rate
+    double tempK_end = 0.0; // /(K) end temperature
     double max_timestep;
 
     int texctrl; //print the texture every n steps(0 means only print at the end)
@@ -43,6 +45,7 @@ public:
     void get_IUdot(Matrix3i);
     void get_ISdot(Vector6i);
 
+    void set_tempK_control(double rate, double end_temp);
     void timestep_control();
     void loading(Polycs::polycrystal &);
 

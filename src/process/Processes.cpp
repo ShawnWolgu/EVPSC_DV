@@ -41,7 +41,7 @@ void Process::timestep_control(){
     //calculate Time increment Tincr
     //Ictrl <= 6: strain rate control
     const int IJV[6][2]= {0,0,1,1,2,2,1,2,0,2,0,1};
-    if(Ictrl <= 6){
+    if(Ictrl <= 6 && Ictrl != 0){
         int I1 = IJV[Ictrl-1][0];
         int I2 = IJV[Ictrl-1][1];
         if(IUDWdot(I1,I2) == 0 || IUDWdot(I2,I1) == 0){
@@ -65,6 +65,12 @@ void Process::timestep_control(){
     //Ictrl == 7: stress rate control
     else if(Ictrl == 7){
         max_timestep = abs(Eincr);
+        return;
+    }
+    //Ictrl == 0: temperature control
+    else if(Ictrl == 0){
+        max_timestep = abs(Eincr);
+        logger.info("Temperature loading control");
         return;
     }
     //Else: throw error
@@ -125,6 +131,17 @@ void Process::loading(Polycs::polycrystal &pcrys){
             } // 辨别电流模式
             // Current_intensity = J_shock_sim(time_acc, deformation_max, deformation_rate, Amplitude_J, shock_int, shock_fin);
             custom_vars[5] = Current_intensity; //输出电流to csv
+            if (Ictrl == 0){
+                double dtempK = tempK_rate * current_step * max_timestep;
+                if (temp_atmosphere < tempK_end && tempK_rate > 0.0) {
+                    temp_atmosphere += dtempK;
+                    if (temp_atmosphere > tempK_end) temp_atmosphere = tempK_end;
+                } else if (temp_atmosphere > tempK_end && tempK_rate < 0.0) {
+                    temp_atmosphere += dtempK;
+                    if (temp_atmosphere < tempK_end) temp_atmosphere = tempK_end;
+                }
+                pcrys.set_temperature(temp_atmosphere);
+            }
             pct_step += current_step;
             update_progress(pct_step);
             success_count++;
@@ -157,3 +174,15 @@ void Process::Out_texture(Polycs::polycrystal &pcrys, int istep)
 
 void Process::Out_texset(int input){texctrl = input;}
 
+void Process::set_tempK_control(double rate, double end_temp)
+{
+    tempK_rate = rate;
+    tempK_end = end_temp;
+    if (tempK_rate > 0) {
+        logger.notice("Temperature is increasing at a rate of " + to_string(tempK_rate) + " K/s");
+    } else if (tempK_rate < 0) {
+        logger.notice("Temperature is decreasing at a rate of " + to_string(-tempK_rate) + " K/s");
+    } else {
+        logger.notice("Temperature is constant.");
+    }
+}

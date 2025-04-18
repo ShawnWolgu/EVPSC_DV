@@ -132,11 +132,18 @@ int loadinput(string fname, Procs::Process &Proc)
                     logger.debug("duty_ratio_J = " + to_string(duty_ratio_J));
                     logger.debug("Amplitude_J = " + to_string(Amplitude_J));
                     logger.debug("Frequency = " + to_string(Frequency));
+                    getline(loadinp, tp); //skip one line
+                    for(int i = 0; i < 3; i++){
+                        getline(loadinp, tp);//获得电流张量
+                        J_tensor.row(i) = getnum(tp, 3);
+                    }
                 }
-                getline(loadinp, tp); //skip one line
-                for(int i = 0; i < 3; i++){
-                    getline(loadinp, tp);//获得电流张量
-                    J_tensor.row(i) = getnum(tp, 3);
+                if (tp.find("temperature") != tp.npos){
+                    getline(loadinp, tp); 
+                    VectorXd tempK_coeff = getnum(tp, 2);
+                    double tempK_rate = tempK_coeff(0);
+                    double tempK_end = tempK_coeff(1);
+                    Proc.set_tempK_control(tempK_rate, tempK_end);
                 }
             }
             else{

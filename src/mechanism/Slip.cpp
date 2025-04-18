@@ -285,10 +285,10 @@ void Slip::update_ssd(Matrix3d strain_rate, double dtime){
         gg = gg/factor(Current_intensity, ref_current_intensity_2); //reduced normalized energy 
         D = D ;//* factor(Current_intensity, ref_current_intensity_0); // give energy to drag stress;
         double rho_sat_new = c_forest * burgers / gg * (1-k_boltzmann * temperature/D/pow(burgers,3) * log(abs(equi_strain_rate)/ref_srate));
-        rho_sat_new = max(pow(1/rho_sat_new,2), 0.5*disloc_density);
-        if (rho_sat_new < 10 * rho_sat) rho_sat = rho_sat_new;
-        if (rho_sat == 0.0) rho_sat = rho_sat_new;
-        /* custom_vars[1] = max(custom_vars[1], rho_sat); */
+        rho_sat_new = pow(1/rho_sat_new,2);
+        if (rho_sat == 0.0 || rho_sat < 6*rho_sat) {rho_sat = rho_sat_new;}
+        else {rho_sat = sqrt(rho_sat * rho_sat_new);}
+        custom_vars[1] = max(custom_vars[1], rho_sat);
         double tau_eff = max(abs(rss) - forest_stress, 0.);
         /* custom_vars[2] = max(custom_vars[2], tau_eff); */
         /* custom_vars[3] = max(custom_vars[3], abs(rss)); */
