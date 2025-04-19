@@ -1,164 +1,161 @@
 #include "common/common.h"
 #include "io/Input.h"
 
+void skipLine(fstream& file, int n) {
+    if(n <= 0) return;
+    string tp;
+    for(int i = 0; i < n && file.good(); ++i) {
+        getline(file, tp);
+    }
+}
+
 int EVPSCinput(string &ftex,string &fsx,string &fload, Procs::Process &Proc)
 {
     fstream ininp;
     logger.info("Loading input file EVPSC_CPP.in ...");
     ininp.open("EVPSC_CPP.in",ios::in); //open EVPSC.in
-    if (ininp.is_open())
-        {
-            //read the file path
-            string tp;
-            getline(ininp, tp); //skip
-            getline(ininp, ftex);
-            getline(ininp, tp); //skip
-            getline(ininp, fsx); 
-            getline(ininp, tp); //skip
-            getline(ininp, fload); 
-
-            //read the update control
-            getline(ininp, tp); //skip
-            getline(ininp, tp); //skip
-            getline(ininp, tp); //skip
-            getline(ininp, tp); 
-            VectorXd temp1 = getnum(tp, 4);
-            Vector4i temp2;
-            for(int i=0; i<4; i++) temp2(i) = int(temp1(i));
-            set_control_flags(temp2);
-
-            //read output control
-            getline(ininp, tp); //skip
-            getline(ininp, tp); //skip
-            getline(ininp, tp); //skip
-            getline(ininp, tp); 
-            VectorXd temp = getnum(tp, 1);
-            Proc.Out_texset(int(temp(0)));
-
-            ininp.close(); 
-            return 0;
-        }
-    else
-    {
+    if (!ininp) {
         logger.error("Error code 0: loading file cannot be opened.");
-        return 1;
+        return EXIT_FAILURE;
     }
+    //read the file path
+    string tp;
+    skipLine(ininp);
+    getline(ininp, ftex);
+    skipLine(ininp);
+    getline(ininp, fsx); 
+    skipLine(ininp);
+    getline(ininp, fload); 
+
+    //read the update control
+    skipLine(ininp, 3);
+    getline(ininp, tp); 
+    VectorXd temp1 = getnum(tp, 4);
+    Vector4i temp2;
+    for(int i=0; i<4; i++) temp2(i) = int(temp1(i));
+    set_control_flags(temp2);
+
+    //read output control
+    skipLine(ininp, 3);
+    getline(ininp, tp); 
+    VectorXd temp = getnum(tp, 1);
+    Proc.Out_texset(int(temp(0)));
+
+    ininp.close(); 
+    return 0;
 }
 
 int loadinput(string fname, Procs::Process &Proc)
 {
-    fstream loadinp;
-    loadinp.open(fname,ios::in); //open load
+    fstream loadinp(fname, ios::in);
     logger.info("Loading process file " + fname + " ...");
-
-    if (loadinp.is_open())
-        {   //checking whether the file is open
-            string tp;
-
-            //1st line is the loading control option
-            getline(loadinp, tp);
-            Vector4d Victrl = getnum(tp, 4);
-            deformation_max = Victrl(0)*Victrl(2);
-            Proc.load_ctrl(Victrl);
-
-            getline(loadinp, tp);//skip one line  
-            //boundary condition
-            Matrix3i IUdot;
-            for(int i = 0; i < 3; i++)
-            {
-                getline(loadinp, tp);
-                Vector3d temp = getnum(tp, 3);
-                for(int j = 0; j < 3; j++)
-                    IUdot(i,j) = int(temp(j));
-            }
-            Proc.get_IUdot(IUdot);
-
-            getline(loadinp, tp);//skip one line  
-            //boundary condition
-            Matrix3d Udot;
-            for(int i = 0; i < 3; i++)
-            {
-                getline(loadinp, tp);
-                Udot.row(i) = getnum(tp, 3);
-            }
-            deformation_rate = Udot(2,2);
-            Proc.get_Udot(Udot);
-
-            getline(loadinp, tp);//skip one line  
-            //boundary condition
-            Vector6i ISdot;
-            getline(loadinp, tp);
-            VectorXd temp = getnum(tp, 3);
-            ISdot(0)=int(temp(0));ISdot(5)=int(temp(1));ISdot(4)=int(temp(2));
-            getline(loadinp, tp);
-            temp = getnum(tp, 2);
-            ISdot(1)=int(temp(0));ISdot(3)=int(temp(1));
-            getline(loadinp, tp);
-            temp = getnum(tp, 1);
-            ISdot(2)=int(temp(0));
-
-            Proc.get_ISdot(ISdot);
-
-            getline(loadinp, tp);//skip one line  
-            //boundary condition
-            Vector6d Sig_rate;
-            getline(loadinp, tp);
-            temp = getnum(tp, 3);
-            Sig_rate(0)=temp(0);Sig_rate(5)=temp(1);Sig_rate(4)=temp(2);
-            getline(loadinp, tp);
-            temp = getnum(tp, 2);
-            Sig_rate(1)=temp(0);Sig_rate(3)=temp(1);
-            getline(loadinp, tp);
-            temp = getnum(tp, 1);
-            Sig_rate(2)=temp(0);
-            Proc.get_Sdot(voigt(Sig_rate));
-
-            getline(loadinp ,tp);//skip one line
-            if (!loadinp.eof()) //if the file ends, return
-            {
-                if (tp.find("duty") != tp.npos){
-                    getline(loadinp, tp); VectorXd electric_coeff = getnum(tp, 11);
-                    duty_ratio_J = electric_coeff(0);
-                    Amplitude_J = electric_coeff(1);
-                    Frequency = electric_coeff(2);
-                    ref_current_intensity_0 = electric_coeff(3);
-                    ref_current_intensity_1 = electric_coeff(4);
-                    ref_current_intensity_2 = electric_coeff(5);
-                    bvalue = electric_coeff(6);
-                    shock_int = electric_coeff(7);
-                    shock_fin = electric_coeff(8);
-                    flag_emode = electric_coeff(9);
-                    K_ew = electric_coeff(10);
-                    logger.debug("duty_ratio_J = " + to_string(duty_ratio_J));
-                    logger.debug("Amplitude_J = " + to_string(Amplitude_J));
-                    logger.debug("Frequency = " + to_string(Frequency));
-                    getline(loadinp, tp); //skip one line
-                    for(int i = 0; i < 3; i++){
-                        getline(loadinp, tp);//获得电流张量
-                        J_tensor.row(i) = getnum(tp, 3);
-                    }
-                }
-                if (tp.find("temperature") != tp.npos){
-                    getline(loadinp, tp); 
-                    VectorXd tempK_coeff = getnum(tp, 2);
-                    double tempK_rate = tempK_coeff(0);
-                    double tempK_end = tempK_coeff(1);
-                    Proc.set_tempK_control(tempK_rate, tempK_end);
-                }
-            }
-            else{
-                logger.info("No current setting.");
-            }
-            //I-intensity input
-            
-            loadinp.close(); //close the file object.
-            return 0;        
-        }
-    else
-    {
+    if (!loadinp) {
         logger.error("Error code 0: process file cannot be opened.");
-        return 1;
+        return EXIT_FAILURE;
     }
+
+    string tp;
+    getline(loadinp, tp); // 1st line: Loading control option
+    Proc.load_ctrl(getnum(tp, 4));
+
+    skipLine(loadinp); //Read Velocity Gradient Tensor control params
+    Matrix3i IUdot;
+    for (int i = 0; i < 3; ++i) {
+        getline(loadinp, tp);
+        Vector3d temp = getnum(tp, 3);
+        IUdot.row(i) = temp.cast<int>();
+    }
+    Proc.get_IUdot(IUdot);
+
+    skipLine(loadinp); //Read Velocity Gradient Tensor
+    Matrix3d Udot;
+    for (int i = 0; i < 3; ++i) {
+        getline(loadinp, tp);
+        Udot.row(i) = getnum(tp, 3);
+    }
+    Proc.get_Udot(Udot);
+
+    skipLine(loadinp); //Read Stress Tensor control params
+    Vector6i ISdot;
+    auto readISdotComponents = [&](const vector<int>& indices, int count) {
+        getline(loadinp, tp);
+        VectorXd temp = getnum(tp, count);
+        for (int i = 0; i < count; ++i) {
+            ISdot(indices[i]) = int(temp(i));
+        }
+    };
+    readISdotComponents({0,5,4}, 3);  // 第一行分量
+    readISdotComponents({1,3}, 2);    // 第二行分量
+    readISdotComponents({2}, 1);      // 第三行分量
+    Proc.get_ISdot(ISdot);
+
+    skipLine(loadinp); // Read Stress Tensor
+    Vector6d Sig_rate;
+    auto readSigComponents = [&](const vector<int>& indices, int count) {
+        getline(loadinp, tp);
+        VectorXd temp = getnum(tp, count);
+        for (int i = 0; i < count; ++i) {
+            Sig_rate(indices[i]) = temp[i];
+        }
+    };
+    readSigComponents({0,5,4}, 3);
+    readSigComponents({1,3}, 2);
+    readSigComponents({2}, 1);
+    Proc.get_Sdot(voigt(Sig_rate));
+    
+    skipLine(loadinp); //Read Electric Field Vector control params
+    getline(loadinp, tp);
+    Vector3i IEfdot = getnum(tp,3).cast<int>();
+    Proc.get_IEfdot(IEfdot);
+
+    skipLine(loadinp); //Read Electric Field Vector
+    getline(loadinp, tp);
+    Vector3d Efdot = getnum(tp, 3);
+    Proc.get_Efdot(Efdot);
+
+    skipLine(loadinp); //Read Electric Disp Vector control params
+    getline(loadinp, tp);
+    Vector3i IEddot = getnum(tp,3).cast<int>();
+    Proc.get_IEddot(IEddot);
+
+    skipLine(loadinp); //Read Electric Disp Vector
+    getline(loadinp, tp);
+    Vector3d Eddot = getnum(tp, 3);
+    Proc.get_Eddot(Eddot);
+
+    if (!loadinp.eof()) {
+        getline(loadinp, tp);
+        if (tp.find("duty") != tp.npos) {
+            // read current control params
+            VectorXd coeff = getnum(tp, 11);
+            tie(duty_ratio_J, Amplitude_J, Frequency, 
+                ref_current_intensity_0, ref_current_intensity_1,
+                ref_current_intensity_2, bvalue, shock_int,
+                shock_fin, flag_emode, K_ew) = 
+                tie(coeff[0], coeff[1], coeff[2], coeff[3], coeff[4],
+                   coeff[5], coeff[6], coeff[7], coeff[8], coeff[9], coeff[10]);
+            if (flag_emode != 0|| flag_emode != 1 || flag_emode != 2) {
+                logger.warn("Error code 1: emode is not supported.");
+            }
+            logger.debug("duty_ratio_J = " + to_string(duty_ratio_J));
+            logger.debug("Amplitude_J = " + to_string(Amplitude_J));
+            logger.debug("Frequency = " + to_string(Frequency));
+        }
+        getline(loadinp, tp);
+        if (tp.find("Current") != tp.npos) {
+            // read current tensor
+            Matrix3d J_tensor;
+            for (int i = 0; i < 3; ++i) {
+                getline(loadinp, tp);
+                J_tensor.row(i) = getnum(tp, 3);
+            }
+        }
+    }
+    else{
+        flag_emode = 0; //Depress current control.
+    }
+    loadinp.close();
+    return EXIT_SUCCESS;
 }
 
 int sxinput(string fname, Polycs::polycrystal &pcrys)

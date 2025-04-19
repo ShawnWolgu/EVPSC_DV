@@ -19,20 +19,19 @@ double h_ext; // the convection constant between the mat and the atmos
 double Surface; //surface of the sample
 double sigma_k = 5.67e-8; // the stefan-boltzmann const W/(K^4*m^2)
 double V_sample; // the volume of the sample
+// [Electricity current control]
 double duty_ratio_J = 0.0;//
 double Amplitude_J = 0.0;//
-double Frequency = 0.0; 
-double ref_current_intensity_0 = 0.0; 
-double ref_current_intensity_1 = 0.0;
+double Frequency = 1.0; 
+double ref_current_intensity_0 = 0.0;
+double ref_current_intensity_1 = 0.0; 
 double ref_current_intensity_2 = 0.0; //reference current intensity
 double rss_j = 0.0;
 double Current_intensity = 0.0;
-double deformation_rate;
-double deformation_max;
 double bvalue = 0.0;
 double shock_int = 0.0;
 double shock_fin = 0.0;
-double time_acc;
+double time_acc = 0.0;
 double K_ew = 0.0;
 int flag_emode = 0;
 Matrix3d J_tensor = Matrix3d::Zero();

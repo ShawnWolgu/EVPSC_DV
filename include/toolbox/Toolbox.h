@@ -126,6 +126,7 @@ double slope_profile(double time, double slope, double intercept);
 double slope_profile_incr(double time_incr, double slope);
 double J_intensity_pulse(double time_acc, double duty_ratio, double amplitude_J, double frequency);
 double J_real_pulse(double time_acc,double duty_ratio,  double frequency); //real current intensity
+double J_shock_sim(double time_acc, double time_total,  double amplitude_J ,double percent_init, double percent_final);
 double J_shock_sim(double time_acc, double deformation_max, double deformation_rate,  double amplitude_J ,double percent_init, double percent_final);
 double factor(double amplitude_J, double ref);
 double factor_beta(double amplitude_J, double ref);

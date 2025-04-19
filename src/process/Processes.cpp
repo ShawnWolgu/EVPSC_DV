@@ -32,11 +32,48 @@ void Process::get_Udot(Matrix3d Min)
 {   
     UDWdot_input = Min;
     Ddot_input = 0.5*(Min + Min.transpose());
-    
+    logger.info("Input velocity gradient tensor: ");
+    logger.info(UDWdot_input);
+    logger.info("Input strain rate tensor: ");
+    logger.info(Ddot_input);
 }
-void Process::get_Sdot(Matrix3d Min){Sdot_input = Min;}
-void Process::get_IUdot(Matrix3i Min){IUDWdot = Min;}
-void Process::get_ISdot(Vector6i Vin){ISdot = Vin;}
+void Process::get_Sdot(Matrix3d Min){
+    Sdot_input = Min;
+    logger.info("Input stress rate tensor: ");
+    logger.info(Sdot_input);
+}
+void Process::get_Efdot(Vector3d Min){
+    Efdot_input = Min;
+    logger.info("Input electric field vector: ");
+    logger.info(Efdot_input.transpose());
+}
+void Process::get_Eddot(Vector3d Min){
+    Eddot_input = Min;
+    logger.info("Input electric displacement vector: ");
+    logger.info(Eddot_input.transpose());
+}
+
+void Process::get_IUdot(Matrix3i Min){
+    IUDWdot = Min;
+    logger.info("Input velocity gradient flag: ");
+    logger.info(IUDWdot);
+}
+void Process::get_ISdot(Vector6i Vin){
+    ISdot = Vin;
+    logger.info("Input stress rate flag: ");
+    logger.info(ISdot.transpose());
+}
+void Process::get_IEfdot(Vector3i Vin){
+    IEfdot = Vin;
+    logger.info("Input electric field flag: ");
+    logger.info(IEfdot.transpose());
+}
+void Process::get_IEddot(Vector3i Vin){
+    IEddot = Vin;
+    logger.info("Input electric displacement flag: ");
+    logger.info(IEddot.transpose());
+}
+
 void Process::timestep_control(){
     //calculate Time increment Tincr
     //Ictrl <= 6: strain rate control
@@ -63,7 +100,8 @@ void Process::timestep_control(){
         return;
     }
     //Ictrl == 7: stress rate control
-    else if(Ictrl == 7){
+    //Ictrl == 8: electric field & displacement control
+    else if(Ictrl == 7 || Ictrl == 8){
         max_timestep = abs(Eincr);
         return;
     }
@@ -120,28 +158,9 @@ void Process::loading(Polycs::polycrystal &pcrys){
                 continue;
             }
             time_acc += current_step * max_timestep;
-            if (flag_emode == 0){
-                Current_intensity = 0.0;
-            }else if (flag_emode == 1){
-                Current_intensity = J_intensity_pulse(time_acc, duty_ratio_J, Amplitude_J, Frequency);
-            }else if(flag_emode == 2){
-                Current_intensity = J_shock_sim(time_acc, deformation_max, deformation_rate, Amplitude_J, shock_int, shock_fin); 
-            }else{
-                logger.warn("Error. Please check the emode.");
-            } // 辨别电流模式
-            // Current_intensity = J_shock_sim(time_acc, deformation_max, deformation_rate, Amplitude_J, shock_int, shock_fin);
-            custom_vars[5] = Current_intensity; //输出电流to csv
-            if (Ictrl == 0){
-                double dtempK = tempK_rate * current_step * max_timestep;
-                if (temp_atmosphere < tempK_end && tempK_rate > 0.0) {
-                    temp_atmosphere += dtempK;
-                    if (temp_atmosphere > tempK_end) temp_atmosphere = tempK_end;
-                } else if (temp_atmosphere > tempK_end && tempK_rate < 0.0) {
-                    temp_atmosphere += dtempK;
-                    if (temp_atmosphere < tempK_end) temp_atmosphere = tempK_end;
-                }
-                pcrys.set_temperature(temp_atmosphere);
-            }
+
+            Current_intensity = calculate_current_intensity(time_acc);
+            custom_vars[5] = Current_intensity; // 输出电流到csv
             pct_step += current_step;
             update_progress(pct_step);
             success_count++;
@@ -186,3 +205,20 @@ void Process::set_tempK_control(double rate, double end_temp)
         logger.notice("Temperature is constant.");
     }
 }
+
+double Process::calculate_current_intensity(double time) const {
+    switch (flag_emode) {
+        case 0:  // 无电流模式
+            return 0.0;
+        case 1:  // 脉冲电流模式
+            return J_intensity_pulse(time, duty_ratio_J, Amplitude_J, Frequency);
+        case 2: {  // 冲击电流模式
+            double total_time = max_timestep * static_cast<double>(Nsteps);
+            return J_shock_sim(time, total_time, Amplitude_J, shock_int, shock_fin);
+        }
+        default:
+            logger.warn("Invalid electric current mode. Defaulting to no current.");
+            return 0.0;
+    }
+}
+

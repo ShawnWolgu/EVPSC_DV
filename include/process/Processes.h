@@ -46,6 +46,7 @@ public:
     void get_ISdot(Vector6i);
 
     void set_tempK_control(double rate, double end_temp);
+    double calculate_current_intensity(double time) const;
     void timestep_control();
     void loading(Polycs::polycrystal &);
 

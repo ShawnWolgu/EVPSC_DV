@@ -78,18 +78,19 @@ public:
             outfile << message << std::endl;
         }
     }
-
-    void log(MessageLevel level, const Eigen::MatrixXd& message) {
-        // Get the current time
+    template<typename Derived>
+    void log(MessageLevel level, const Eigen::MatrixBase<Derived>& message) {
+        // 保持原有时间处理逻辑
         std::time_t t = std::time(nullptr);
         std::string timestamp = std::asctime(std::localtime(&t));
-        timestamp.pop_back();  // Remove the newline character from the end
-        Eigen::IOFormat LogFmt(4, 0, ", ", "\n", "["+timestamp+"] "+getPrefix(level)+ "[", "]");
-        // Output the message to the console
+        timestamp.pop_back();
+        // 统一格式化设置（适配所有矩阵类型）
+        Eigen::IOFormat LogFmt(4, 0, ", ", "\n", 
+                               "["+timestamp+"] "+getPrefix(level)+ "[", "]");
+        // 类型无关的输出处理
         if (console_level_ <= level) {
             std::cout << message.format(LogFmt) << std::endl;
         }
-        // Output the message to the log file
         if (file_level_ <= level) {
             outfile << message.format(LogFmt) << std::endl;
         }
@@ -127,11 +128,16 @@ public:
     void notice(const std::string& message) { log(MessageLevel::NOTICE, message); }
     void warn(const std::string& message) { log(MessageLevel::WARN, message); }
     void error(const std::string& message) { log(MessageLevel::ERROR, message); }
-    void debug(const Eigen::MatrixXd& message) { log(MessageLevel::DEBUG, message); }
-    void info(const Eigen::MatrixXd& message) { log(MessageLevel::INFO, message); }
-    void notice(const Eigen::MatrixXd& message) { log(MessageLevel::NOTICE, message); }
-    void warn(const Eigen::MatrixXd& message) { log(MessageLevel::WARN, message); }
-    void error(const Eigen::MatrixXd& message) { log(MessageLevel::ERROR, message); }
+    template<typename Derived>
+    void debug(const Eigen::MatrixBase<Derived>& message) { log(MessageLevel::DEBUG, message); }
+    template<typename Derived>
+    void info(const Eigen::MatrixBase<Derived>& message) { log(MessageLevel::INFO, message); }
+    template<typename Derived>
+    void notice(const Eigen::MatrixBase<Derived>& message) { log(MessageLevel::NOTICE, message); }
+    template<typename Derived>
+    void warn(const Eigen::MatrixBase<Derived>& message) { log(MessageLevel::WARN, message); }
+    template<typename Derived>
+    void error(const Eigen::MatrixBase<Derived>& message) { log(MessageLevel::ERROR, message); }
     void debug(const std::vector<double>& message) { log(MessageLevel::DEBUG, message); }
     void info(const std::vector<double>& message) { log(MessageLevel::INFO, message); }
     void notice(const std::vector<double>& message) { log(MessageLevel::NOTICE, message); }

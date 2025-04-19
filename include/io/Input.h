@@ -6,6 +6,7 @@
 
 namespace Procs{ class Process; }
 
+void skipLine(std::fstream& file, int n = 1);
 int EVPSCinput(string &,string &,string &, Procs::Process &); //read .in file
 int sxinput(string, Polycs::polycrystal &); //read .sx file
 int texinput(string, Polycs::polycrystal &); //read .tex file
