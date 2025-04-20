@@ -13,7 +13,7 @@ int EVPSCinput(string &ftex,string &fsx,string &fload, Procs::Process &Proc)
 {
     fstream ininp;
     logger.info("Loading input file EVPSC_CPP.in ...");
-    ininp.open("EVPSC_CPP.in",ios::in); //open EVPSC.in
+    ininp.open("p-SCOPE.in",ios::in);
     if (!ininp) {
         logger.error("Error code 0: loading file cannot be opened.");
         return EXIT_FAILURE;
