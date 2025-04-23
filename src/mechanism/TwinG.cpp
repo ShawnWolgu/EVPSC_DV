@@ -2,27 +2,25 @@
 
 TwinG::TwinG() {};
 
-TwinG::TwinG(json &j_twin)
+TwinG::TwinG(const ieMode &j_twin)
 {
     /* logger.info("Initializing twin system..."); */
-    num = j_twin["id"];  shear_modulus = j_twin["G"];
+    num = j_twin.id;  shear_modulus = j_twin.shearModulus;
     type = mode_type::twin; grain_link = -1;
     /* logger.info("Twin system: " + to_string(j_slip["id"])); */
     /* logger.info("Shear modulus: " + to_string(shear_modulus)); */
     shear_rate = 0; drate_dtau = 0; acc_strain = 0; disloc_velocity = 0, child_frac = 0.0; 
-
-    VectorXd info_vec = to_vector(j_twin, "sn", 6);
-    plane_norm = info_vec(seq(0,2)); //normal 
-    burgers_vec = info_vec(seq(3,5)); //Burgers
+    plane_norm = j_twin.plane_norm; //normal
+    burgers_vec = j_twin.character_vec; //Burgers
     Pij = 0.5 * (burgers_vec / burgers_vec.norm() * plane_norm.transpose() + plane_norm * burgers_vec.transpose() / burgers_vec.norm());
     Rij = 0.5 * (burgers_vec * plane_norm.transpose() / burgers_vec.norm() - plane_norm * burgers_vec.transpose() / burgers_vec.norm());
-
-    rate_sen = j_twin["nrsx"];
-    int len = j_twin["CRSS_p"].size();
-    for (int i = 0; i != len; ++i) harden_params.push_back(j_twin["CRSS_p"][i]); 
-    for (int i = 0; i != j_twin["hst"].size(); ++i) latent_params.push_back(j_twin["hst"][i]);
+    rate_sen = j_twin.strainRateSens;
+    int len = j_twin.control_params.size();
+    for (int i = 0; i != len; ++i) harden_params.push_back(j_twin.control_params[i]); 
+    int latent_len = j_twin.latent_params.size();
+    for (int i = 0; i != latent_len; ++i) latent_params.push_back(j_twin.latent_params[i]);
     for (int i = 0; i != 5; ++i) update_params.push_back(0);
-    crss = harden_params[8];
+    crss = harden_params[0];
     if (harden_params[7] != 0 || ~isnan(harden_params[7])) {
         ref_strain_rate = harden_params[7];
     }

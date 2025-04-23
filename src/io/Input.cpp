@@ -1,5 +1,6 @@
 #include "common/common.h"
 #include "io/Input.h"
+#include "io/material.h"
 
 void skipLine(fstream& file, int n) {
     if(n <= 0) return;
@@ -13,7 +14,7 @@ int EVPSCinput(string &ftex,string &fsx,string &fload, Procs::Process &Proc)
 {
     fstream ininp;
     logger.info("Loading input file EVPSC_CPP.in ...");
-    ininp.open("p-SCOPE.in",ios::in);
+    ininp.open("EVPSC_CPP.in",ios::in);
     if (!ininp) {
         logger.error("Error code 0: loading file cannot be opened.");
         return EXIT_FAILURE;
@@ -102,53 +103,37 @@ int loadinput(string fname, Procs::Process &Proc)
     readSigComponents({1,3}, 2);
     readSigComponents({2}, 1);
     Proc.get_Sdot(voigt(Sig_rate));
-    
-    skipLine(loadinp); //Read Electric Field Vector control params
-    getline(loadinp, tp);
-    Vector3i IEfdot = getnum(tp,3).cast<int>();
-    Proc.get_IEfdot(IEfdot);
-
-    skipLine(loadinp); //Read Electric Field Vector
-    getline(loadinp, tp);
-    Vector3d Efdot = getnum(tp, 3);
-    Proc.get_Efdot(Efdot);
-
-    skipLine(loadinp); //Read Electric Disp Vector control params
-    getline(loadinp, tp);
-    Vector3i IEddot = getnum(tp,3).cast<int>();
-    Proc.get_IEddot(IEddot);
-
-    skipLine(loadinp); //Read Electric Disp Vector
-    getline(loadinp, tp);
-    Vector3d Eddot = getnum(tp, 3);
-    Proc.get_Eddot(Eddot);
-
-    if (!loadinp.eof()) {
-        getline(loadinp, tp);
-        if (tp.find("duty") != tp.npos) {
-            // read current control params
-            VectorXd coeff = getnum(tp, 11);
-            tie(duty_ratio_J, Amplitude_J, Frequency, 
-                ref_current_intensity_0, ref_current_intensity_1,
-                ref_current_intensity_2, bvalue, shock_int,
-                shock_fin, flag_emode, K_ew) = 
-                tie(coeff[0], coeff[1], coeff[2], coeff[3], coeff[4],
-                   coeff[5], coeff[6], coeff[7], coeff[8], coeff[9], coeff[10]);
-            if (flag_emode != 0|| flag_emode != 1 || flag_emode != 2) {
-                logger.warn("Error code 1: emode is not supported.");
-            }
+    getline(loadinp ,tp);//skip one line
+    if (!loadinp.eof()) //if the file ends, return
+    {
+        if (tp.find("duty") != tp.npos){
+            getline(loadinp, tp); VectorXd electric_coeff = getnum(tp, 11);
+            duty_ratio_J = electric_coeff(0);
+            Amplitude_J = electric_coeff(1);
+            Frequency = electric_coeff(2);
+            ref_current_intensity_0 = electric_coeff(3);
+            ref_current_intensity_1 = electric_coeff(4);
+            ref_current_intensity_2 = electric_coeff(5);
+            bvalue = electric_coeff(6);
+            shock_int = electric_coeff(7);
+            shock_fin = electric_coeff(8);
+            flag_emode = electric_coeff(9);
+            K_ew = electric_coeff(10);
             logger.debug("duty_ratio_J = " + to_string(duty_ratio_J));
             logger.debug("Amplitude_J = " + to_string(Amplitude_J));
             logger.debug("Frequency = " + to_string(Frequency));
-        }
-        getline(loadinp, tp);
-        if (tp.find("Current") != tp.npos) {
-            // read current tensor
-            Matrix3d J_tensor;
-            for (int i = 0; i < 3; ++i) {
-                getline(loadinp, tp);
+            getline(loadinp, tp); //skip one line
+            for(int i = 0; i < 3; i++){
+                getline(loadinp, tp);//获得电流张量
                 J_tensor.row(i) = getnum(tp, 3);
             }
+        }
+        if (tp.find("temperature") != tp.npos){
+            getline(loadinp, tp); 
+            VectorXd tempK_coeff = getnum(tp, 2);
+            double tempK_rate = tempK_coeff(0);
+            double tempK_end = tempK_coeff(1);
+            Proc.set_tempK_control(tempK_rate, tempK_end);
         }
     }
     else{
@@ -160,130 +145,138 @@ int loadinput(string fname, Procs::Process &Proc)
 
 int sxinput(string fname, Polycs::polycrystal &pcrys)
 {
-    fstream sxinp; json sx_json;
+    fstream sxinp;
+    materialPhase mat; 
+    
     sxinp.open(fname,ios::in); //open .sx
-
-    if (sxinp.is_open()) //checking whether the file is open
-    {  
-        logger.info("Loading sx file " + fname + " ...");
-        string tp;     getline(sxinp, tp); //skip first line
-        string crysym; getline(sxinp, crysym); //crystal symmetry string
-        add_trans_miller(crysym.substr(0,5), sx_json);
-        getline(sxinp, tp);  add_lattice_const(getnum(tp, 6), sx_json); //cystal constants
-        int Millern = sx_json["Miller_n"];
-
-        getline(sxinp, tp);  //skip a line;
-        MatrixXd Cij6(6,6);  //Elastic constants;
-        for (int i=0; i<6; i++) { getline(sxinp, tp); Cij6.row(i) = getnum(tp, 6);}
-        add_elastic_constant(Cij6, sx_json);
-
-        getline(sxinp, tp);  //skip a line;
-        getline(sxinp, tp);  VectorXd therm = getnum(tp, 6); //Thermal coefficients
-        add_thermal_coefficient(therm, sx_json);
-        getline(sxinp ,tp); // this line is for thermal coeffs check or read plasitcity modes
-        if (tp.find("rho_material") != tp.npos){
-            getline(sxinp, tp); VectorXd thermal_coeff = getnum(tp, 7);
-            rho_material = thermal_coeff(0);
-            Cp_material = thermal_coeff(1);
-            sigma_e_mat = thermal_coeff(2);
-            h_ext = thermal_coeff(3);
-            Surface = thermal_coeff(4);
-            V_sample = thermal_coeff(5);
-            sigma_k = thermal_coeff(6);
-            getline(sxinp, tp);  //skip a line;        //Start reading slip and twinning modes
-        }
-        else{
-            rho_material = 0;
-            Cp_material = 0;
-            sigma_e_mat = 0;
-            h_ext = 0;
-            Surface = 0;
-            V_sample = 0;
-            sigma_k = 0;
-        }
-        logger.debug("rho_material = " + to_string(rho_material));
-        logger.debug("Cp_material = " + to_string(Cp_material));
-        logger.debug("sigma_e_mat = " + to_string(sigma_e_mat));
-        logger.debug("h_ext = " + to_string(h_ext));
-        logger.debug("Surface = " + to_string(Surface));
-        logger.debug("V_sample = " + to_string(V_sample));
-        logger.debug("sigma_k = " + to_string(sigma_k));
-        //关于传热的直接在这边赋值
-        getline(sxinp, tp);  int nmodesx = int(getnum(tp, 1)(0)); //total mode number in file
-        getline(sxinp, tp);  int nmodes = int(getnum(tp, 1)(0));  //considered in current run
-        getline(sxinp, tp);  VectorXd mode_i = getnum(tp, nmodes);  //the index of modes(mode_i)
-
-        //Start reading slip and twinning modes
-        int modes_num = 0; vector<int> mode_count; vector<json> sx_modes;
-        bool f = 1;  
-        for(int imode = 0; imode < nmodesx; ++imode){
-            getline(sxinp, tp);  //skip a line;
-            getline(sxinp, tp);  VectorXd mode_info = getnum(tp, 4);
-            /* mode_info 0: the serial number 
-             * 1: number of deformation systems
-             * 2: flag of slip (0 for twin; 1 for slip) 
-             * 3: flag of twin (1 for twin; 0 for slip)
-            */ 
-            MatrixXd nor_dir(int(mode_info(1)),2*Millern); //normal and direction of slip plane
-            /* if(int(mode_info(3))) getline(sxinp, tp); //special for twin */
-            for (int i = 0; i < int(mode_info(1)); i++) {
-                getline(sxinp, tp); nor_dir(i,all) = getnum(tp, 2*Millern);
-            }
-            f = (mode_i.array() == imode+1).any();
-            if(f){
-                json this_mode;
-                MatrixXd sn_matrix = cal_sn_info(nor_dir, sx_json["Mabc"], sx_json["Trans_Miller"], Millern, int(mode_info(1)));
-                this_mode["sn_info"] = get_vector(sn_matrix);
-                this_mode["mode_n"] = int(mode_info(1));
-                if (mode_info(2) == 1) this_mode["type"] = 0; //slip
-                else if (mode_info(3) == 1) this_mode["type"] = 1; //twin
-                else this_mode["type"] = 2; //other
-                modes_num += int(mode_info(1));
-                mode_count.push_back(int(mode_info(1)));
-                sx_modes.push_back(this_mode);
-            }                
-        }
-        sx_json["family_num"] = nmodes;
-        sx_json["modes_count_by_family"] = mode_count;
-        sx_json["modes_num"] = modes_num;
-
-        getline(sxinp, tp);  //skip a line;
-        getline(sxinp, tp);  int iharden = int(getnum(tp, 1)(0)); //hardening law(Voce=0, DV=1)
-        getline(sxinp, tp);  bool irate = bool(getnum(tp, 1)(0)); //"rate sensitive" flag(1: Y; 0: N)
-        getline(sxinp, tp);  sx_json["GZ"] = getnum(tp, 1)(0); //grain size: um
-        int harden_size;
-        if(iharden == 0) harden_size = 4; else harden_size = 18;
-
-        //Read hardening parameters of modes
-        double nrsx; vector<double> CRSS_p, hst;
-        for(int imode = 0; imode < nmodes; ++imode)
-        {
-            getline(sxinp, tp);  //skip a line;
-            getline(sxinp, tp);  nrsx = getnum(tp, 1)(0); //rate sensitivity
-            getline(sxinp, tp);  //CRSS parameters
-            if (sx_modes[imode]["type"] == 0) CRSS_p = getnum_vec(tp, harden_size);
-            else CRSS_p = getnum_vec(tp, 10);
-            getline(sxinp, tp);  //latent hardening parameters
-            if (sx_modes[imode]["type"] == 0) hst = getnum_vec(tp, 6); //6 types of hardening
-            else hst = getnum_vec(tp, 2);
-            sx_modes[imode]["nrsx"] = nrsx;
-            sx_modes[imode]["CRSS_p"] = CRSS_p;
-            sx_modes[imode]["hst"] = hst;
-        }
-        sx_json["modes"] = sx_modes;
-        json sx_per_mode = sx_info_postprocess(sx_json);
-        /* conjugate_mode_config(sx_per_mode); */
-        sx_json["sx_per_mode"] = sx_per_mode;
-        sxinp.close(); //close the file object.
-        pcrys.ini_from_json(sx_json);
-        /* pcrys.g[0].gmode[0]->print(); */
-        return 0;
-    }
-    else
+    if (!sxinp) //checking whether the file is open
     {
-    logger.error("Error code 0: .sx file cannot be opened");
-    return 1;
-}
+        logger.error("Error code 0: .sx file cannot be opened");
+        return 1;
+    }
+    logger.info("Loading sx file " + fname + " ...");
+    string tp;     getline(sxinp, tp); //skip first line
+    mat.phaseName = tp.substr(0, tp.find(" ")); //phase name
+    logger.info("Phase name: " + mat.phaseName);
+    string crysym; getline(sxinp, crysym); //crystal symmetry string
+    mat.add_trans_miller(crysym.substr(0,5));
+    logger.info("Crystal symmetry: " + crysym.substr(0,5));
+    
+    getline(sxinp, tp);
+    VectorXd lattice_const = getnum(tp, 6);
+    mat.add_lattice_const(lattice_const); //crystal constants
+    logger.info("Lattice constants: ");
+    logger.info(mat.latticeConstants);
+    
+    getline(sxinp, tp);  //skip a line;
+    MatrixXd Cij6(6,6);  //Elastic constants;
+    for (int i=0; i<6; i++) { 
+        getline(sxinp, tp); 
+        Cij6.row(i) = getnum(tp, 6);
+    }
+    mat.elasticConstants = Cij6;
+    logger.info("Elastic constants: ");
+    logger.info(mat.elasticConstants);
+
+    getline(sxinp, tp);  //skip a line;
+    getline(sxinp, tp);  
+    VectorXd therm = getnum(tp, 6); //Thermal coefficients
+    mat.thermalExpansionCoeffs = therm;
+    logger.info("Thermal coefficients: ");
+    logger.info(mat.thermalExpansionCoeffs);
+    
+    getline(sxinp, tp); // this line is for thermal coeffs check or read plasitcity modes
+    if (tp.find("rho_material") != tp.npos){
+        getline(sxinp, tp); 
+        VectorXd thermal_coeff = getnum(tp, 7);
+        mat.rho_material = thermal_coeff(0);
+        mat.Cp_material = thermal_coeff(1);
+        mat.sigma_e_mat = thermal_coeff(2);
+        mat.h_ext = thermal_coeff(3);
+        mat.Surface = thermal_coeff(4);
+        mat.V_sample = thermal_coeff(5);
+        mat.sigma_k = thermal_coeff(6);
+        getline(sxinp, tp);  //skip a line;        //Start reading slip and twinning modes
+        logger.info("rho_material = " + to_string(mat.rho_material));
+        logger.info("Cp_material = " + to_string(mat.Cp_material));
+        logger.info("sigma_e_mat = " + to_string(mat.sigma_e_mat));
+        logger.info("h_ext = " + to_string(mat.h_ext));
+        logger.info("Surface = " + to_string(mat.Surface));
+        logger.info("V_sample = " + to_string(mat.V_sample));
+        logger.info("sigma_k = " + to_string(mat.sigma_k));
+    }
+    
+    getline(sxinp, tp);  int nmodesx = int(getnum(tp, 1)(0)); //total mode number in file
+    getline(sxinp, tp);  int nmodes = int(getnum(tp, 1)(0));  //considered in current run
+    getline(sxinp, tp);  VectorXd mode_i = getnum(tp, nmodes);  //the index of modes(mode_i)
+
+    //Start reading slip and twinning modes
+    int modes_num = 0; 
+    mat.modes_count_by_family.clear();
+    mat.m_systems.clear();
+    
+    bool f = 1;  
+    for(int imode = 0; imode < nmodesx; ++imode){
+        getline(sxinp, tp);  //skip a line;
+        getline(sxinp, tp);  VectorXd mode_info = getnum(tp, 4);
+        /* mode_info 0: the serial number 
+         * 1: number of deformation systems
+         * 2: flag of slip (0 for twin; 1 for slip) 
+         * 3: flag of twin (1 for twin; 0 for slip)
+        */ 
+        MatrixXd nor_dir(int(mode_info(1)), 2*mat.Miller_n); //normal and direction of slip plane
+        for (int i = 0; i < int(mode_info(1)); i++) {
+            getline(sxinp, tp); 
+            nor_dir(i,all) = getnum(tp, 2*mat.Miller_n);
+        }
+        f = (mode_i.array() == imode+1).any();
+        if(f){
+            modeSys this_sys;
+            MatrixXd sn_matrix = mat.cal_sn_info(nor_dir, int(mode_info(1)));
+            this_sys.sn_info.resize(sn_matrix.rows(), sn_matrix.cols());
+            for(int i = 0; i < sn_matrix.rows(); i++) {
+                this_sys.sn_info.row(i) = sn_matrix.row(i);
+            }
+            this_sys.mode_n = int(mode_info(1));
+            if (mode_info(2) == 1) this_sys.type = 0; //slip
+            else if (mode_info(3) == 1) this_sys.type = 1; //twin
+            else this_sys.type = 2; //other
+            modes_num += int(mode_info(1));
+            mat.modes_count_by_family.push_back(int(mode_info(1)));
+            mat.m_systems.push_back(this_sys);
+        }                
+    }
+    mat.family_num = nmodes;
+    mat.modes_num = modes_num;
+
+    getline(sxinp, tp);  //skip a line;
+    getline(sxinp, tp);  int iharden = int(getnum(tp, 1)(0)); //hardening law(Voce=0, DV=1)
+    getline(sxinp, tp);  bool irate = bool(getnum(tp, 1)(0)); //"rate sensitive" flag(1: Y; 0: N)
+    getline(sxinp, tp);  mat.grainSize = getnum(tp, 1)(0); //grain size: um
+    int harden_size;
+    if(iharden == 0) harden_size = 4; else harden_size = 18;
+
+    //Read hardening parameters of modes
+    double nrsx; vector<double> CRSS_p, hst;
+    for(int imode = 0; imode < nmodes; ++imode)
+    {
+        getline(sxinp, tp);  //skip a line;
+        getline(sxinp, tp);  nrsx = getnum(tp, 1)(0); //rate sensitivity
+        getline(sxinp, tp);  //CRSS parameters
+        if (mat.m_systems[imode].type == 0) CRSS_p = getnum_vec(tp, harden_size);
+        else CRSS_p = getnum_vec(tp, 10);
+        getline(sxinp, tp);  //latent hardening parameters
+        if (mat.m_systems[imode].type == 0) hst = getnum_vec(tp, 6); //6 types of hardening
+        else hst = getnum_vec(tp, 2);
+        mat.m_systems[imode].strainRateSens = nrsx;
+        mat.m_systems[imode].control_params = CRSS_p;
+        mat.m_systems[imode].latent_params = hst;
+    }
+    mat.sx_info_postprocess();
+    sxinp.close(); //close the file object.
+    logger.debug("Finish reading the sx file.");
+    pcrys.add_phase_from_material(mat);
+    return 0;
 }
 
 int texinput(string fname, Polycs::polycrystal &pcrys)
@@ -390,70 +383,6 @@ vector<double> get_vector(VectorXd &matrix){
     return v;
 }
 
-void add_trans_miller(string crysym, json &sx_json){
-    //calculate conversion matrix of Miller indices according to the crysym
-    //transform str to lower case
-    for (int i = 0; i < crysym.size(); i++) crysym[i] = tolower(crysym[i]);
-    vector<double> Mtemp; int Miller_n; 
-    if(!crysym.compare("hexag"))
-        {
-            Miller_n = 4;
-            Mtemp = {1, 0, -1, 0, 0, 1, -1, 0, 0, 0, 0, 1};
-        }
-    else if(!crysym.compare("cubic")) 
-        {
-        Miller_n = 3;
-        Mtemp = {1, 0, 0, 0, 1, 0, 0, 0, 1};
-    }
-    else
-    {
-        logger.error("Error code 1: crystal symmetry is not supported.");
-        exit(1);
-    }
-    sx_json["crysym"] = crysym;
-    sx_json["Miller_n"] = Miller_n;
-    sx_json["Trans_Miller"] = Mtemp;
-}
-
-void add_lattice_const(VectorXd ccon, json &sx_json){
-    //add lattice constants to sx_json
-    vector<double> Cdim, Cang, Mtemp; Matrix3d Mabc; 
-    for(int i = 0; i < ccon.size(); i++){
-        if (i < 3) Cdim.push_back(ccon(i));
-        else Cang.push_back(ccon(i)/180*M_PI);
-    }
-    sx_json["Cdim"] = Cdim;
-    sx_json["Cang"] = Cang;
-    //calculate Mabc
-    Mabc(0,0)=sin(Cang[1]);
-    Mabc(1,0)=0.;
-    Mabc(2,0)=cos(Cang[1]);
-    Mabc(0,1)=(cos(Cang[2])-cos(Cang[0])*cos(Cang[1]))/sin(Cang[1]);
-    Mabc(2,1)=cos(Cang[0]);
-    Mabc(1,1)=sqrt(1.0-pow(Mabc(0,1),2)-pow(Mabc(2,1),2));
-    Mabc(0,2)=0.;
-    Mabc(1,2)=0.;
-    Mabc(2,2)=1.;
-    for(int i = 0; i < 3; i++){ for(int j = 0; j < 3; j++) Mtemp.push_back(Cdim[j] * Mabc(i,j));};
-    sx_json["Mabc"] = Mtemp;
-}
-
-void add_elastic_constant(MatrixXd Cij6, json &sx_json){
-    vector<double> ela_consts;
-    for(int i = 0; i < 6; i++){
-        for(int j = 0; j < 6; j++){
-            ela_consts.push_back(Cij6(i,j));
-        }
-    }
-    sx_json["Cij6"] = ela_consts;
-}
-
-void add_thermal_coefficient(VectorXd ther, json &sx_json){
-    vector<double> ther_consts;
-    for(int i = 0; i < ther.size(); i++) ther_consts.push_back(ther(i));
-    sx_json["therm"] = ther_consts;
-}
-
 MatrixXd cal_sn_info(MatrixXd &Min, vector<double> m_abc, vector<double> transMl, int Miller_n, int system_n){
     MatrixXd Min_s, Min_n, Mabc, Trans_Miller;
     Mabc = Eigen::Map<Matrix3d>(m_abc.data());
@@ -490,37 +419,4 @@ MatrixXd cal_sn_info(MatrixXd &Min, vector<double> m_abc, vector<double> transMl
             if(abs(Min_ns(i,j)) <= 1e-3 ) Min_ns(i,j) = 0.0;
 
     return Min_ns;
-}
-
-json sx_info_postprocess(json &sx_json){
-    vector<json> info_per_mode; int mode_id = 0;
-    for (auto &json_mode : sx_json["modes"]){
-        int system_n = json_mode["mode_n"];
-        for (int crt_mode=0; crt_mode < system_n; crt_mode++){
-            json this_mode;
-            this_mode["id"] = mode_id++;
-            this_mode["type"] = json_mode["type"]; //other
-            vector<double> sn;
-            for (int i = 6*crt_mode; i < 6*crt_mode+6; i++) sn.push_back(json_mode["sn_info"][i]);
-            this_mode["nrsx"] = json_mode["nrsx"];
-            this_mode["CRSS_p"] = json_mode["CRSS_p"];
-            this_mode["hst"] = json_mode["hst"];
-            this_mode["sn"] = sn;
-            this_mode["G"] = cal_shear_modulus(sx_json["Cij6"], sn);
-            info_per_mode.push_back(this_mode);
-        }
-    }
-    return info_per_mode;
-}
-
-double cal_shear_modulus(vector<double> Cij6, vector<double> sn){
-    Matrix3d slip_rotation; Matrix6d elastic_modulus;
-    Vector3d plane_norm, burgers_vec, trav_direc;
-    double shear_modulus;
-    plane_norm << sn[0], sn[1], sn[2]; burgers_vec << sn[3], sn[4], sn[5];
-    elastic_modulus = Eigen::Map<Matrix6d>(Cij6.data());
-    trav_direc = burgers_vec.cross(plane_norm);
-    slip_rotation << (burgers_vec/burgers_vec.norm()), plane_norm, trav_direc / trav_direc.norm();
-    shear_modulus = rotate_6d_stiff_modu(elastic_modulus, slip_rotation.transpose())(3,3);
-    return shear_modulus;
 }

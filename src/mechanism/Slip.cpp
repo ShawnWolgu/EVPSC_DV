@@ -2,30 +2,28 @@
 
 Slip::Slip() {};
 
-Slip::Slip(json &j_slip)
-{
+Slip::Slip(const ieMode &j_slip){
     /* logger.info("Initializing slip system..."); */
-    num = j_slip["id"];  shear_modulus = j_slip["G"];
+    num = j_slip.id;  shear_modulus = j_slip.shearModulus;
     type = mode_type::slip;
     /* logger.info("Slip system: " + to_string(j_slip["id"])); */
     /* logger.info("Shear modulus: " + to_string(shear_modulus)); */
     shear_rate = 0; drate_dtau = 0; acc_strain = 0; disloc_velocity = 0; 
-
-    VectorXd info_vec = to_vector(j_slip, "sn", 6);
-    plane_norm = info_vec(seq(0,2)); //normal 
-    burgers_vec = info_vec(seq(3,5)); //Burgers
+    plane_norm = j_slip.plane_norm; //normal
+    burgers_vec = j_slip.character_vec; //Burgers
     Pij = 0.5 * (burgers_vec / burgers_vec.norm() * plane_norm.transpose() + plane_norm * burgers_vec.transpose() / burgers_vec.norm());
     Rij = 0.5 * (burgers_vec * plane_norm.transpose() / burgers_vec.norm() - plane_norm * burgers_vec.transpose() / burgers_vec.norm());
 
-    rate_sen = j_slip["nrsx"];
-    int len = j_slip["CRSS_p"].size();
+    rate_sen = j_slip.strainRateSens;
+    int len = j_slip.control_params.size();
     if (len == 4) flag_harden = 0; else flag_harden = 1;
-    for (int i = 0; i != len; ++i) harden_params.push_back(j_slip["CRSS_p"][i]); 
-    for (int i = 0; i != j_slip["hst"].size(); ++i) latent_params.push_back(j_slip["hst"][i]);
+    for (int i = 0; i != len; ++i) harden_params.push_back(j_slip.control_params[i]); 
+    int latent_len = j_slip.latent_params.size();
+    for (int i = 0; i != latent_len; ++i) latent_params.push_back(j_slip.latent_params[i]);
     for (int i = 0; i != 5; ++i) update_params.push_back(0);
     if (flag_harden == 0) crss = harden_params[0];
     else {
-        disloc_density = j_slip["CRSS_p"][0];
+        disloc_density = harden_params[0];
         rho_mov = disloc_density;
         rho_init = disloc_density;
         rho_H = disloc_density;

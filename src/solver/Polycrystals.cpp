@@ -1,4 +1,5 @@
 #include "common/common.h"
+#include "io/material.h"
 #include "solver/Grains.h"
 #include "mechanism/PMode.h"
 
@@ -143,6 +144,42 @@ polycrystal::polycrystal()
     }
 }
 
+void polycrystal::add_phase_from_material(const materialPhase &mat){
+    crysCharacterInitialization(mat);
+    Cij6 = mat.elasticConstants;
+    voigt(Cij6,Cijkl);
+    ini_therm(mat.thermalExpansionCoeffs);
+    ini_GZ(mat.grainSize);
+    ini_gmode(mat);
+    family_count = mat.family_num;
+    VectorXd temp_vec(family_count);
+    for (int i = 0; i < family_count; i++) {
+        modes_count_by_family.push_back(mat.modes_count_by_family[i]);
+        density_by_family.push_back(0.0);
+        acc_strain_by_family.push_back(0.0);
+        crss_by_family.push_back(0.0);
+    }
+    for(int i = 0; i < grains_num; ++i) g[i].set_lat_hard_mat();
+    g[0].print_latent_matrix();
+	for(int i = 0; i < grains_num; ++i){
+	   for(int j = 0; j < g[i].modes_num; ++j){
+	       g[i].gmode[j]->update_status(g[i],0.0);
+	   }
+	}
+}
+
+int polycrystal::crysCharacterInitialization(const materialPhase &mat){
+    crysym = mat.crystalSymmetry;
+    Miller_n = mat.Miller_n;
+    for (int i = 0; i != 3; i++){
+        Cdim(i) = mat.latticeConstants[i];
+        Cang(i) = mat.latticeConstants[i+3];
+    }
+    Trans_Miller = mat.Trans_Miller;
+    Mabc = mat.Mabc;
+    return 0;
+}
+
 void polycrystal::set_boundary_conditions(Matrix3d udot_input, Matrix3d sig_rate_input, Matrix3i iudot_input, Vector6i isig_input){
     Sig_m = Matrix3d::Zero(); // The Default initial stress is zero.
     Sig_rate = sig_rate_input;
@@ -166,9 +203,6 @@ void polycrystal::ini_Udot_m(Matrix3d Udot_input)
     Dijp_AV = Matrix3d::Zero();
 }
 
-//not used
-void polycrystal::ini_Sig_m(Matrix3d Min){Sig_m = Min;}
-
 void polycrystal::set_IUdot(Matrix3i Min)
 {   
     IUdot = Min;
@@ -184,7 +218,6 @@ void polycrystal::set_IUdot(Matrix3i Min)
     IDdot(4)=int((IUdot(0,2)+IUdot(2,0)) == 2);
     IDdot(5)=int((IUdot(0,1)+IUdot(1,0)) == 2);
 }
-void polycrystal::set_ISdot(Vector6i Min){ISdot = Min;}
 
 int polycrystal::grains_n(int n)
 {
@@ -239,14 +272,6 @@ void polycrystal::Norm_weight()
         g[i].weight_ref = g[i].get_weight_g();
     }
 
-}
-
-int polycrystal::ini_cry(json &j){
-    crysym = j["crysym"];   Miller_n = j["Miller_n"]; 
-    Cdim = to_vector(j, "Cdim", 3);  Cang = to_vector(j, "Cang", 3);
-    Trans_Miller = to_matrix(j, "Trans_Miller", 3, Miller_n);
-    Mabc = to_matrix(j, "Mabc", 3, 3);
-    return 0;
 }
 
 int polycrystal::ini_cry(string strin, VectorXd vin)
@@ -337,20 +362,11 @@ int polycrystal::check_therm()
     return 0;
 }
 
-int polycrystal::ini_gmode(int n)
+int polycrystal::ini_gmode(const materialPhase &mat)
 {
     for(int i = 0; i < grains_num; i++)
     {
-        g[i].ini_gmode_g(n);
-    }
-    return 0;
-}
-
-int polycrystal::ini_gmode(json &j)
-{
-    for(int i = 0; i < grains_num; i++)
-    {
-        g[i].ini_gmode_g(j);
+        g[i].ini_gmode_g(mat);
     }
     return 0;
 }
@@ -364,31 +380,6 @@ int polycrystal::check_gmode()
     }
     return 0;
 }
-
-void polycrystal::ini_from_json(json &sx_json){
-    ini_cry(sx_json);
-    ini_Cij6(to_matrix(sx_json, "Cij6", 6, 6));
-    ini_therm((Vector6d)(to_vector(sx_json, "therm", 6)));
-    ini_GZ(sx_json["GZ"]);
-    //ini_heateffect//自己写
-    ini_gmode(sx_json);
-    family_count = sx_json["family_num"];
-    VectorXd temp_vec = to_vector(sx_json, "modes_count_by_family", family_count);
-    for (int i = 0; i < family_count; i++) {
-        modes_count_by_family.push_back(temp_vec(i));
-        density_by_family.push_back(0.0);
-        acc_strain_by_family.push_back(0.0);
-        crss_by_family.push_back(0.0);
-    }
-    for(int i = 0; i < grains_num; ++i) g[i].set_lat_hard_mat();
-    g[0].print_latent_matrix();
-	for(int i = 0; i < grains_num; ++i){
-	   for(int j = 0; j < g[i].modes_num; ++j){
-	       g[i].gmode[j]->update_status(g[i],0.0);
-	   }
-	}
-}
-
 
 int polycrystal::ini_GZ(double x)
 {

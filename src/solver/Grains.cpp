@@ -182,13 +182,12 @@ int grain::ini_gmode_g(int n)
     return 1;
 }
 
-int grain::ini_gmode_g(json &j)
-{
-    modes_num = j["modes_num"];
+int grain::ini_gmode_g(const materialPhase &mat){
+    modes_num = mat.info_modes.size();
     gmode = new PMode* [modes_num];
     int i = 0;
-    for (json &j_mode: j["sx_per_mode"]){
-        switch ((int)j_mode["type"]) {
+    for (const ieMode &j_mode: mat.info_modes){
+        switch (j_mode.type) {
             case 0:
                 gmode[i] = new Slip(j_mode);
                 break;

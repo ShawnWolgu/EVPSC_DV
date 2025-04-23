@@ -2,27 +2,49 @@
 
 PMode::PMode() {};
 
-PMode::PMode(json &j_mode)
-{
+PMode::PMode(const ieMode &j_mode){
     /* logger.info("Initializing a PMode object"); */
-    type = mode_type::undefined;  num = j_mode["id"];  shear_modulus = j_mode["G"];
+    type = mode_type::undefined;  
+    num = j_mode.id;
+    shear_modulus = j_mode.shearModulus;
     shear_rate = 0; drate_dtau = 0; acc_strain = 0, disloc_density = 0;
-
-    VectorXd info_vec = to_vector(j_mode, "sn", 6);
-    plane_norm = info_vec(seq(0,2)); //normal 
-    burgers_vec = info_vec(seq(3,5)); //Burgers
+    plane_norm = j_mode.plane_norm; //normal
+    burgers_vec = j_mode.character_vec; //Burgers
+    //
     Vector3d sense_vector = plane_norm.cross(burgers_vec/burgers_vec.norm());
     Pij = 0.5 * (burgers_vec / burgers_vec.norm() * plane_norm.transpose() + plane_norm * burgers_vec.transpose() / burgers_vec.norm());
     Rij = 0.5 * (burgers_vec * plane_norm.transpose() / burgers_vec.norm() - plane_norm * burgers_vec.transpose() / burgers_vec.norm());
     JPij = 0.5 * (sense_vector * plane_norm.transpose() + plane_norm * sense_vector.transpose());
 
-    rate_sen = j_mode["nrsx"];
-    int len = j_mode["CRSS_p"].size();
-    for (int i = 0; i != len; ++i) harden_params.push_back(j_mode["CRSS_p"][i]); 
-    for (int i = 0; i != j_mode["hst"].size(); ++i) latent_params.push_back(j_mode["hst"][i]);
+    rate_sen = j_mode.strainRateSens;
+    int len = j_mode.control_params.size();
+    for (int i = 0; i != len; ++i) harden_params.push_back(j_mode.control_params[i]); 
+    int latent_len = j_mode.latent_params.size();
+    for (int i = 0; i != latent_len; ++i) latent_params.push_back(j_mode.latent_params[i]);
     for (int i = 0; i != 5; ++i) update_params.push_back(0);
     crss = harden_params[0];
 }
+
+/* PMode::PMode(json &j_mode){ */
+/*     //logger.info("Initializing a PMode object"); */ 
+/*     type = mode_type::undefined;  num = j_mode["id"];  shear_modulus = j_mode["G"]; */
+/*     shear_rate = 0; drate_dtau = 0; acc_strain = 0, disloc_density = 0; */
+/**/
+/*     VectorXd info_vec = to_vector(j_mode, "sn", 6); */
+/*     plane_norm = info_vec(seq(0,2)); //normal  */
+/*     burgers_vec = info_vec(seq(3,5)); //Burgers */
+/*     Vector3d sense_vector = plane_norm.cross(burgers_vec/burgers_vec.norm()); */
+/*     Pij = 0.5 * (burgers_vec / burgers_vec.norm() * plane_norm.transpose() + plane_norm * burgers_vec.transpose() / burgers_vec.norm()); */
+/*     Rij = 0.5 * (burgers_vec * plane_norm.transpose() / burgers_vec.norm() - plane_norm * burgers_vec.transpose() / burgers_vec.norm()); */
+/*     JPij = 0.5 * (sense_vector * plane_norm.transpose() + plane_norm * sense_vector.transpose()); */
+/**/
+/*     rate_sen = j_mode["nrsx"]; */
+/*     int len = j_mode["CRSS_p"].size(); */
+/*     for (int i = 0; i != len; ++i) harden_params.push_back(j_mode["CRSS_p"][i]);  */
+/*     for (int i = 0; i != j_mode["hst"].size(); ++i) latent_params.push_back(j_mode["hst"][i]); */
+/*     for (int i = 0; i != 5; ++i) update_params.push_back(0); */
+/*     crss = harden_params[0]; */
+/* } */
 
 PMode::PMode(PMode* t_mode, bool a){
     type = mode_type::undefined;  num = t_mode->num;  shear_modulus = t_mode->shear_modulus;

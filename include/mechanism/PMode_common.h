@@ -3,3 +3,4 @@
 #include "solver/Grains.h"
 #include "common/global.h"
 #include "solver/Polycrystals.h"
+#include "io/material.h"

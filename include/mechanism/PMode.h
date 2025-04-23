@@ -3,6 +3,9 @@
 #include "common/base.h"
 
 //[Classes]
+struct ieMode;
+struct modeSys;
+//
 class grain;
 enum class mode_type {slip, twin, undefined};
 enum class twin_status {inactive, growth, saturated, governed};
@@ -18,13 +21,13 @@ class PMode
 
     public:
         PMode();
-        PMode(json & j_mode);
+        PMode(const ieMode &);
         PMode(PMode* t_mode, bool a);
         Matrix3d Pij;
         Matrix3d JPij;//J schmid 
         mode_type type = mode_type::undefined;
         int num = -1;
-        Vector3d burgers_vec,plane_norm;
+        Vector3d burgers_vec, plane_norm;
         void cal_shear_modulus(Matrix6d elastic_modulus);
         /* 
          * [Slip parameters : disvel model]
@@ -95,7 +98,7 @@ class Slip : public PMode
 
     public:
         Slip();
-        Slip(json &j_slip);
+        Slip(const ieMode &);
         Slip(Slip* t_mode, bool a);
         double t_wait = 0.0, t_run = 0.0, rho_sat = 0.0;
         // Override funcs
@@ -124,7 +127,7 @@ class Twin : public PMode
 
     public:
         Twin();
-        Twin(json &j_twin);
+        Twin(const ieMode &);
         Twin(Twin* t_mode, bool a);
         int grain_link = -1;
         double t_wait = 0.0, t_run = 0.0, rho_sat = 0.0, child_frac = 0.0;
@@ -154,7 +157,7 @@ class TwinG : public PMode
 
     public:
         TwinG();
-        TwinG(json &j_twin);
+        TwinG(const ieMode &);
         TwinG(TwinG* t_mode, bool a);
         int grain_link = -1;
         double t_wait = 0.0, t_run = 0.0, rho_sat = 0.0, child_frac = 0.0;

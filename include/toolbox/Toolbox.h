@@ -102,13 +102,8 @@ void rot_4th(double A[3][3][3][3], Matrix3d, double B[3][3][3][3]);
 
 //Refer to Appendix D: Crystal rotation (Rodrigues) and misorientation
 Matrix3d Rodrigues(Matrix3d);
-
 int Jacobi(Matrix3d A,Vector3d &D,Matrix3d &V);
-
-//Transfer a set of values from json["key"] to a MatrixXd
-MatrixXd to_matrix(json &j, string key, int n, int m);
-//Transfer a set of values from json["key"] to a VectorXd
-VectorXd to_vector(json &j, string key, int n);
+VectorXd to_vector(vector<double> &v, int n);
 
 int sign(double x);
 double cal_cosine(Vector3d vec_i, Vector3d vec_j);

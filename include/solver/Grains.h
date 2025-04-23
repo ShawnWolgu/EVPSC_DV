@@ -4,6 +4,7 @@
 #include <locale>
 
 class PMode;
+struct materialPhase;
 
 //[Class realization]
 class grain
@@ -92,7 +93,7 @@ class grain
 
         //input the number of deformation modes
         int ini_gmode_g(int);
-        int ini_gmode_g(json &);
+        int ini_gmode_g(const materialPhase &);
         int ini_gmode_g(grain &);
         int check_gmode_g();
 

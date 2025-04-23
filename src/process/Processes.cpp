@@ -158,9 +158,28 @@ void Process::loading(Polycs::polycrystal &pcrys){
                 continue;
             }
             time_acc += current_step * max_timestep;
-
-            Current_intensity = calculate_current_intensity(time_acc);
+            if (flag_emode == 0){
+                Current_intensity = 0.0;
+            }else if (flag_emode == 1){
+                Current_intensity = J_intensity_pulse(time_acc, duty_ratio_J, Amplitude_J, Frequency);
+            }else if(flag_emode == 2){
+                Current_intensity = J_shock_sim(time_acc, max_timestep*Nsteps, Amplitude_J, shock_int, shock_fin); 
+            }else{
+                logger.warn("Error. Please check the emode.");
+            } // 辨别电流模式
+            /* Current_intensity = calculate_current_intensity(time_acc); */
             custom_vars[5] = Current_intensity; // 输出电流到csv
+            if (Ictrl == 0){
+                double dtempK = tempK_rate * current_step * max_timestep;
+                if (temp_atmosphere < tempK_end && tempK_rate > 0.0) {
+                    temp_atmosphere += dtempK;
+                    if (temp_atmosphere > tempK_end) temp_atmosphere = tempK_end;
+                } else if (temp_atmosphere > tempK_end && tempK_rate < 0.0) {
+                    temp_atmosphere += dtempK;
+                    if (temp_atmosphere < tempK_end) temp_atmosphere = tempK_end;
+                }
+                pcrys.set_temperature(temp_atmosphere);
+            }
             pct_step += current_step;
             update_progress(pct_step);
             success_count++;

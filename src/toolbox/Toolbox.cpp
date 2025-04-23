@@ -859,14 +859,7 @@ int Jacobi(Matrix3d A,Vector3d &D,Matrix3d &V)
     return 1;
 }
 
-MatrixXd to_matrix(json &j, string key, int n, int m){
-    vector<double> v = j[key];
-    MatrixXd m1 = Eigen::Map<Eigen::MatrixXd>(v.data(), n, m); 
-    return m1;
-}
-
-VectorXd to_vector(json &j, string key, int n){
-    vector<double> v = j[key];
+VectorXd to_vector(vector<double> &v, int n){
     VectorXd v1 = Eigen::Map<Eigen::VectorXd>(v.data(), n);
     return v1;
 }
@@ -1064,18 +1057,7 @@ double J_intensity_pulse(double time_acc, double duty_ratio, double amplitude_J,
 
 
 // }
-//Suppressed
-double J_shock_sim(double time_acc, double deformation_max, double deformation_rate,  double amplitude_J ,double percent_init, double percent_final){
-    double time_tot = deformation_max/deformation_rate;
-    custom_vars[4] = time_acc;
-    if (time_tot*percent_init <= time_acc <= time_tot*percent_final){
-        return amplitude_J;
-    }else{
-        return 0;
-    }
-}//This is to define a electric_shock experiment simulation. Whether use is or not must be decided by the users.
-
-double J_shock_sim(double time_acc, double time_total,  double amplitude_J ,double percent_init, double percent_final){
+double J_shock_sim(double time_acc, double time_total, double amplitude_J ,double percent_init, double percent_final){
     custom_vars[4] = time_acc;
     if (time_total*percent_init <= time_acc <= time_total*percent_final){
         return amplitude_J;

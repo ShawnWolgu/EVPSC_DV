@@ -1,7 +1,6 @@
 #pragma once
 
 #include <Eigen/Dense>
-#include <nlohmann/json.hpp>
 #include <vector>
 #include <iostream>
 #include <fstream>
@@ -9,7 +8,6 @@
 
 using namespace std;
 using namespace Eigen;
-using json = nlohmann::json;
 namespace Polycs{ class polycrystal; }
 
 #define SQR2 1.41421356237309

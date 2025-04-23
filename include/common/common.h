@@ -4,3 +4,4 @@
 #include "common/global.h"
 #include "process/Processes.h"
 #include "solver/Polycrystals.h"
+#include "io/material.h"
