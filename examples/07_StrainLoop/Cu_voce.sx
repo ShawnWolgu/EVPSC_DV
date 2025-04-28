@@ -1,0 +1,38 @@
+*Material: Copper
+CUBIC                                crysym
+3.61  3.61  3.61   90.  90.  90.     cdim(i),cang(i)
+*Elastic stiffness of single crystal [MPa]
+  1.683e5   1.221e5   1.221e5     0.0     0.0     0.0
+  1.221e5   1.683e5   1.221e5     0.0     0.0     0.0
+  1.221e5   1.221e5   1.683e5     0.0     0.0     0.0
+    0.0     0.0     0.0     0.757e5   0.0e5     0.0e5
+    0.0     0.0     0.0     0.0e5     0.757e5   0.0e5
+    0.0     0.0     0.0     0.0e5     0.0e5     0.757e5
+*Thermal expansion coefficients of single crystal[K^(-1)]
+  5.7e-6   5.7e-6  10.3e-6   0.0e0   0.0e0   0.0e0
+SLIP AND TWINNING MODES
+1                               nmodesx
+1                               nmodes
+1                               mode(i)
+# Slip System: FCC{111}<1-10>
+ 1  12  1   0                           modex,nsmx,nrsx,iopsysx
+ 1  1  1        0  0.5 -0.5    
+ 1  1  1        0.5  0 -0.5    
+ 1  1  1        0.5 -0.5  0    
+-1  1  1        0  0.5 -0.5    
+-1  1  1        0.5  0  0.5    
+-1  1  1        0.5  0.5  0    
+ 1 -1  1        0  0.5  0.5    
+ 1 -1  1        0.5  0 -0.5    
+ 1 -1  1        0.5  0.5  0  
+ 1  1 -1        0  0.5  0.5    
+ 1  1 -1        0.5  0  0.5    
+ 1  1 -1        0.5 -0.5  0    
+CONSTITUTIVE LAW
+   0      Voce=0, DV=1
+   1      iratesens (0:rate insensitive, 1:rate sensitive)
+   70.    GRAIN SIZE
+  FCC{111}<1-10>
+   0.1     NRSX
+  1000  50  2000  10
+  1.0 1.0 1.0 1.0 1.0 1.0      hlatx

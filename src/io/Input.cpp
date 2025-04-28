@@ -447,7 +447,7 @@ string extractPath(const std::string& ftex, int a) {
     if (!isdigit(ftex[0])) {
         throw std::invalid_argument("Error: First character is not a digit in extractPath");
     }
-    int pathCount = ftex[0] - '0';
+    int pathCount = stoi(ftex.substr(0, ftex.find("(")));
     if (a < 0 || a >= pathCount) {
         throw std::out_of_range("Error: index should between 0 and " + std::to_string(pathCount-1) + " in extractPath");
     }
