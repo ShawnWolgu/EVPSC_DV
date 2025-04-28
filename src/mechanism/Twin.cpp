@@ -24,8 +24,7 @@ Twin::Twin(const ieMode &j_twin)
     status = twin_status::inactive;
 }
 
-Twin::Twin(Twin* t_twin, bool a)
-{
+Twin::Twin(Twin* t_twin, bool a){
     /* logger.info("Initializing twin system..."); */
     num = t_twin->num;  shear_modulus = t_twin->shear_modulus;
     type = mode_type::twin; grain_link = -1; 
@@ -42,6 +41,93 @@ Twin::Twin(Twin* t_twin, bool a)
     for (int i = 0; i != 5; ++i) update_params.push_back(0);
     crss = harden_params[0];
     status = twin_status::inactive;
+}
+
+Twin::~Twin(){
+}
+
+Twin::Twin(const Twin& other)
+    : PMode(other),  // 首先调用基类的拷贝构造函数
+      flag_harden(other.flag_harden),
+      disloc_velocity(other.disloc_velocity),
+      status(other.status),
+      link_variant(other.link_variant),
+      grain_link(other.grain_link),
+      t_wait(other.t_wait),
+      t_run(other.t_run),
+      rho_sat(other.rho_sat),
+      child_frac(other.child_frac){}
+
+Twin& Twin::operator=(const Twin& other)
+{
+    if (this != &other) {
+        PMode::operator=(other);
+        
+        flag_harden = other.flag_harden;
+        disloc_velocity = other.disloc_velocity;
+        status = other.status;
+        link_variant = other.link_variant;
+        grain_link = other.grain_link;
+        t_wait = other.t_wait;
+        t_run = other.t_run;
+        rho_sat = other.rho_sat;
+        child_frac = other.child_frac;
+    }
+    return *this;
+}
+
+Twin::Twin(Twin&& other) noexcept
+    : PMode(std::move(other)),  
+      flag_harden(other.flag_harden),
+      disloc_velocity(other.disloc_velocity),
+      status(other.status),
+      link_variant(other.link_variant),
+      grain_link(other.grain_link),
+      t_wait(other.t_wait),
+      t_run(other.t_run),
+      rho_sat(other.rho_sat),
+      child_frac(other.child_frac){
+    other.link_variant = nullptr;
+    
+    other.flag_harden = 0;
+    other.disloc_velocity = 0.0;
+    other.status = twin_status::inactive;
+    other.grain_link = -1;
+    other.t_wait = 0.0;
+    other.t_run = 0.0;
+    other.rho_sat = 0.0;
+    other.child_frac = 0.0;
+}
+
+Twin& Twin::operator=(Twin&& other) noexcept
+{
+    if (this != &other) {
+        PMode::operator=(std::move(other));
+        flag_harden = other.flag_harden;
+        disloc_velocity = other.disloc_velocity;
+        status = other.status;
+        link_variant = other.link_variant;
+        grain_link = other.grain_link;
+        t_wait = other.t_wait;
+        t_run = other.t_run;
+        rho_sat = other.rho_sat;
+        child_frac = other.child_frac;
+        
+        other.link_variant = nullptr;
+        other.flag_harden = 0;
+        other.disloc_velocity = 0.0;
+        other.status = twin_status::inactive;
+        other.grain_link = -1;
+        other.t_wait = 0.0;
+        other.t_run = 0.0;
+        other.rho_sat = 0.0;
+        other.child_frac = 0.0;
+    }
+    return *this;
+}
+
+Twin* Twin::clone() const {
+    return new Twin(*this);
 }
 
 void Twin::set_parent(int parent_id){

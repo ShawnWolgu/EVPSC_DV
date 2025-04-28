@@ -8,7 +8,7 @@ using namespace std;
 
 polycrystal::polycrystal()
 {
-
+    g.clear();
     //initial the macro stress&strain
     Eps_m = Matrix3d::Zero();
     Sig_m = Matrix3d::Zero();
@@ -20,16 +20,9 @@ polycrystal::polycrystal()
     Fij_m = Matrix3d::Identity();
 
     //initial the VP consistent
-    M_VP_SC = 1e-40 * Matrix5d::Identity();
-    C_VP_SC = M_VP_SC.inverse();
-    D0 = Vector6d::Zero();
-
-    Msup<<1,0,0,0,0,0,
-    0,1,0,0,0,0,
-    0,0,1,0,0,0,
-    0,0,0,2,0,0,
-    0,0,0,0,2,0,
-    0,0,0,0,0,2;
+    vPlasticCompli_SC = 1e-40 * Matrix5d::Identity();
+    vPlasticModu_SC = vPlasticCompli_SC.inverse();
+    D_vp_0 = Vector6d::Zero();
 
     Vector10d xth,xph,wth,wph;
     //integral points and weights
@@ -144,40 +137,26 @@ polycrystal::polycrystal()
     }
 }
 
-void polycrystal::add_phase_from_material(const materialPhase &mat){
-    crysCharacterInitialization(mat);
-    Cij6 = mat.elasticConstants;
-    voigt(Cij6,Cijkl);
-    ini_therm(mat.thermalExpansionCoeffs);
-    ini_GZ(mat.grainSize);
-    ini_gmode(mat);
-    family_count = mat.family_num;
-    VectorXd temp_vec(family_count);
-    for (int i = 0; i < family_count; i++) {
-        modes_count_by_family.push_back(mat.modes_count_by_family[i]);
+void polycrystal::add_grains(int phase_id, int grain_count, const vector<Vector4d> &eulerData, materialPhase *mat){
+    size_t original_size = g.size();
+    g.resize(original_size + grain_count);
+
+    for(int i = grains_num; i < grains_num+grain_count; i++){
+        g[i].initialization(i, phase_id, eulerData[i-grains_num], mat);
+    }  
+    g[original_size].print_latent_matrix();
+
+    family_count += mat->family_num;
+    for (int i = 0; i < mat->family_num; i++) {
+        modes_count_by_family.push_back(mat->modes_count_by_family[i]);
         density_by_family.push_back(0.0);
         acc_strain_by_family.push_back(0.0);
         crss_by_family.push_back(0.0);
     }
-    for(int i = 0; i < grains_num; ++i) g[i].set_lat_hard_mat();
-    g[0].print_latent_matrix();
-	for(int i = 0; i < grains_num; ++i){
-	   for(int j = 0; j < g[i].modes_num; ++j){
-	       g[i].gmode[j]->update_status(g[i],0.0);
-	   }
-	}
-}
 
-int polycrystal::crysCharacterInitialization(const materialPhase &mat){
-    crysym = mat.crystalSymmetry;
-    Miller_n = mat.Miller_n;
-    for (int i = 0; i != 3; i++){
-        Cdim(i) = mat.latticeConstants[i];
-        Cang(i) = mat.latticeConstants[i+3];
-    }
-    Trans_Miller = mat.Trans_Miller;
-    Mabc = mat.Mabc;
-    return 0;
+    stress_phases.push_back(Matrix3d::Zero());
+    strain_phases.push_back(Matrix3d::Zero());
+    grains_num += grain_count;
 }
 
 void polycrystal::set_boundary_conditions(Matrix3d udot_input, Matrix3d sig_rate_input, Matrix3i iudot_input, Vector6i isig_input){
@@ -219,37 +198,27 @@ void polycrystal::set_IUdot(Matrix3i Min)
     IDdot(5)=int((IUdot(0,1)+IUdot(1,0)) == 2);
 }
 
-int polycrystal::grains_n(int n)
-{
-    grains_num = n;
-    g = new grain[n*20];
-    //change the number of grains
-    for(int i = 0; i < n; i++)  g[i].grain_i = i;
-    return 0;
-}
-
 // New grain born based on the parent grain. Under tested
-int polycrystal::add_grain(Vector4d vin, int tp_id, int mode_id){
-    logger.debug("Add a new grain because of the twin sys " + to_string(mode_id) + " in grain " + to_string(tp_id));
-    /* grain* g_tmp = new grain(g[tp_id]); */
+
+int polycrystal::add_grain(Vector4d vin, int tp_id, int mode_id) {
+    logger.debug("Add a new child grain because of the mechanism " + to_string(mode_id) + " in grain " + to_string(tp_id));
+    int id = grains_num;
     grains_num++;
-    int id = grains_num-1;
-    g[id] = *new grain(g[tp_id]);
-    g[id].grain_i = id;
-    g[id].ini_euler_g(vin);
-    g[id].ini_gmode_g(g[tp_id]);
-    /* g[id].lat_hard_mat = g[tp_id].lat_hard_mat; */
-    g[id].set_stress_g(g[tp_id].get_stress_g());
-    /* g[id].print_latent_matrix(); */
-    if (mode_id != -1){
-        if (Twin* twinPtr = dynamic_cast<Twin*>(g[id].gmode[mode_id])){
+
+    grain new_grain;
+    g.push_back(new_grain);
+    
+    new_grain.grain_i = id;
+    new_grain.ini_euler_g(vin);
+    new_grain.ini_gmode_g(g[tp_id]);
+    new_grain.set_stress_g(g[tp_id].get_stress_g());
+    
+    if (mode_id != -1) {
+        if (Twin* twinPtr = dynamic_cast<Twin*>(new_grain.gmode[mode_id])) {
             twinPtr->set_parent(tp_id);
         }
     }
-    /* for(int j = 0; j < g[id].modes_num; ++j){ */
-    /*     g[id].gmode[j]->update_status(g[id],0.0); */
-        /* g[id].gmode[j]->print(); */
-    /* } */
+    
     return id;
 }
 
@@ -259,10 +228,7 @@ int polycrystal::check_grains_n()
     return grains_num; //print the number of grains
 }
 
-void polycrystal::ini_euler(Vector4d vin, int i){g[i].ini_euler_g(vin);} 
-
-void polycrystal::Norm_weight()
-{
+void polycrystal::weightNormalization(){
     double total_w = 0;
     for(int i = 0; i < grains_num; i++)
         total_w += g[i].get_weight_g();
@@ -271,119 +237,21 @@ void polycrystal::Norm_weight()
         g[i].set_weight_g(g[i].get_weight_g()/total_w);
         g[i].weight_ref = g[i].get_weight_g();
     }
-
 }
 
-int polycrystal::ini_cry(string strin, VectorXd vin)
-{
-    //transform str to lower case
-    for (int i = 0; i < strin.size(); i++)
-		strin[i] = tolower(strin[i]);
-    crysym = strin;    
-    Cdim = vin(seq(0,2));
-    Cang = vin(seq(3,5)) / 180 * M_PI; //Converting degrees to radians
-    
-    //calculate conversion matrix of Miller indices according to the crysym
-    if(!crysym.compare("hexag"))
-    {
-        Miller_n = 4;
-        MatrixXd Mtemp(3,4);
-        Trans_Miller = Mtemp;
-        Trans_Miller <<
-        1, 0, -1, 0,
-        0, 1, -1, 0,
-        0, 0,  0, 1;
-    }
-    else if(!crysym.compare("cubic")) 
-    {
-        Miller_n = 3;
-        MatrixXd Mtemp(3,3);
-        Trans_Miller = Mtemp;
-        Trans_Miller <<
-        1, 0,  0,
-        0, 1,  0,
-        0, 0,  1;
-    }
-
-    Mabc(0,0)=sin(Cang(1));
-    Mabc(1,0)=0.;
-    Mabc(2,0)=cos(Cang(1));
-    Mabc(0,1)=(cos(Cang(2))-cos(Cang(0))*cos(Cang(1)))/sin(Cang(1));
-    Mabc(2,1)=cos(Cang(0));
-    Mabc(1,1)=sqrt(1.0-pow(Mabc(0,1),2)-pow(Mabc(2,1),2));
-    Mabc(0,2)=0.;
-    Mabc(1,2)=0.;
-    Mabc(2,2)=1.;
-
-    for(int i = 0; i < 3; i++)
-        for(int j = 0; j < 3; j++)
-            Mabc(i,j) = Cdim(j) * Mabc(i,j);
-
-    return 0;
-}
-
-int polycrystal::get_Millern(){return Miller_n;}
-
-void polycrystal::check_cry()
-{
-    logger.debug("the crysym: "+crysym);
-    logger.debug("the cdim and cang:");
-    logger.debug(Cdim.transpose());
-    logger.debug(Cang.transpose());
-}
-
-void polycrystal::ini_Cij6(MatrixXd Min)
-{   
-    Cij6 = Min;
-    voigt(Cij6,Cijkl);
-}
-
-int polycrystal::check_Cij6()
-{
-    logger.debug("elastic constant:");
-    logger.debug(Cij6);
-    return 0;
-}
-
-int polycrystal::ini_therm(Vector6d vin)
-{
-    therm = vin;
-    for(int i = 0; i < grains_num; i++)
-    {
-        g[i].therm_expansion_config(therm);
+int polycrystal::check_gmode(){
+    for(int i = 0; i < grains_num; i++){
+        logger.debug("the number of modes in Grain "+std::to_string(i)+":");
+        logger.debug(std::to_string(g[i].check_gmode_g()));
     }
     return 0;
 }
 
-int polycrystal::check_therm()
-{
-    logger.debug("Thermal coefficient:");
-    logger.debug(therm.transpose());
-    return 0;
-}
-
-int polycrystal::ini_gmode(const materialPhase &mat)
-{
-    for(int i = 0; i < grains_num; i++)
-    {
-        g[i].ini_gmode_g(mat);
+int polycrystal::cal_aveGrainSize(){
+    aveGrainSize = 0;
+    for (int i = 0; i < grains_num; i++){
+        aveGrainSize += g[i].get_weight_g() * g[i].size;
     }
-    return 0;
-}
-
-int polycrystal::check_gmode()
-{
-    for(int i = 0; i < grains_num; i++)
-    {
-	logger.debug("the number of modes in Grain "+std::to_string(i)+":");
-	logger.debug(std::to_string(g[i].check_gmode_g()));
-    }
-    return 0;
-}
-
-int polycrystal::ini_GZ(double x)
-{
-    grain_size = x;
     return 0;
 }
 
@@ -410,10 +278,10 @@ int polycrystal::Selfconsistent_E(int Istep, double ERRM, int ITMAX)
     Matrix3d sig_g;
 
     // Calculate CUB
-    for(int G_n = 0; G_n < grains_num; G_n++)
-    {
+    for(int G_n = 0; G_n < grains_num; G_n++){
         // Rotate the tensor Cijkl in grain to Sample Axes
         Matrix3d euler_g = g[G_n].get_Euler_M_g();
+        Matrix6d Cij6 = g[G_n].get_Cij6_g();
         voigt(rotate_C66(Cij6, euler_g.transpose()), C4SA);
         g[G_n].Update_Cij6_SA_g(voigt(C4SA));
         sig_g = g[G_n].get_stress_g();
@@ -428,8 +296,8 @@ int polycrystal::Selfconsistent_E(int Istep, double ERRM, int ITMAX)
         CUB += Chg_basis6(C4SAS) * g[G_n].get_weight_g();
     }
 
-    if(Istep == 0)  CSC = CUB;  //first step, use the volume average
-    SSC = CSC.inverse();
+    if(Istep == 0)  elasticModu_SC = CUB;  //first step, use the volume average
+    elasticCompli = elasticModu_SC.inverse();
 
     //loop to make the guessed elastic stiffness CSC to the Eshelby calculated CNEW 
     Matrix6d SSC_new;
@@ -440,7 +308,7 @@ int polycrystal::Selfconsistent_E(int Istep, double ERRM, int ITMAX)
     {
         IT++;
         SSC_new = Matrix6d::Zero();
-        Chg_basis(CSC, C4SA);
+        Chg_basis(elasticModu_SC, C4SA);
 
         Matrix6d Ctilde;
         Matrix6d S66; //the Sijkl Equ[5-33] in sample axes in Manual 7d
@@ -456,8 +324,8 @@ int polycrystal::Selfconsistent_E(int Istep, double ERRM, int ITMAX)
         {
             /* Rotate the macro Elastic stiffness from Sample axes to the ellipsoid axes; */
             /* if Ishape = 0, which means the grains share the same ellipsoid axes  */
-            axisb_t = ell_axisb; 
-            axis_t = ell_axis; 
+            axis_t = g[0].get_ell_axis_g();
+            axisb_t = g[0].get_ell_axisb_g();
             /* Rotate the self consistent Elastic stiffness (CSC) */
             /* from sample axes to ellipsoid axes */
             Matrix6d C66 = rotate_C66(voigt(C4SA), axisb_t.transpose());
@@ -474,9 +342,9 @@ int polycrystal::Selfconsistent_E(int Istep, double ERRM, int ITMAX)
             // C~ = (M~)^-1 = C * (S^-1 - I)
             S66inv = S66.inverse(); // 6x6 of S^-1
             Matrix6d S66inv_I = S66inv - Matrix6d::Identity(); // 6x6 of (S^-1 - I)
-            Ctilde = CSC * S66inv_I;
+            Ctilde = elasticModu_SC * S66inv_I;
         }
-
+        
         Matrix6d B_g_ave = Matrix6d::Zero(); //<B_g>
 
         for(int G_n = 0; G_n < grains_num; G_n++)
@@ -488,7 +356,7 @@ int polycrystal::Selfconsistent_E(int Istep, double ERRM, int ITMAX)
                 // if Ishape = 1, which means the ellipsoid axes varies in grains,
                 axis_t = g[G_n].get_ell_axis_g();
                 axisb_t = g[G_n].get_ell_axisb_g();
-                Matrix6d C66 = rotate_C66(CSC, axisb_t.transpose());
+                Matrix6d C66 = rotate_C66(elasticModu_SC, axisb_t.transpose());
                 //calculate the Eshelby tensor
                 double S4_EA[3][3][3][3] = {0}; 
                 double R4_EA[3][3][3][3] = {0};
@@ -502,7 +370,7 @@ int polycrystal::Selfconsistent_E(int Istep, double ERRM, int ITMAX)
                 // C~ = (M~)^-1 = C * (S^-1 - I)
                 S66inv = S66.inverse(); // 6x6 of S^-1
                 Matrix6d S66inv_I = S66inv - Matrix6d::Identity();
-                Ctilde = CSC * S66inv_I;
+                Ctilde = elasticModu_SC * S66inv_I;
             }
 
             //store some matrix into grain
@@ -519,7 +387,7 @@ int polycrystal::Selfconsistent_E(int Istep, double ERRM, int ITMAX)
             Me_g = g[G_n].get_Mij6_J_g();
             Matrix6d Part1 = Me_g + Metilde;
             Matrix6d Part1_inv = Part1.inverse();
-            Matrix6d Part2 = SSC + Metilde; 
+            Matrix6d Part2 = elasticCompli + Metilde; 
             Matrix6d B_g = Part1_inv * Part2;
             B_g_ave += B_g * g[G_n].get_weight_g();
             //Calculate the New elastic consistent stiffness CNEW
@@ -529,9 +397,9 @@ int polycrystal::Selfconsistent_E(int Istep, double ERRM, int ITMAX)
         SSC_new = SSC_new * B_g_ave.inverse();
         //
         //error between CSC and CNEW
-        RER=Errorcal(SSC,SSC_new);
-        SSC = 0.5*(SSC_new+SSC_new.transpose());
-        CSC = SSC.inverse();
+        RER=Errorcal(elasticCompli,SSC_new);
+        elasticCompli = 0.5*(SSC_new+SSC_new.transpose());
+        elasticModu_SC = elasticCompli.inverse();
         logger.notice("**Error in ESC iteration "+to_string(IT)+": \t"+to_string(RER));
         if(isnan(RER)) return 1;
     } //while loop
@@ -541,7 +409,7 @@ int polycrystal::Selfconsistent_E(int Istep, double ERRM, int ITMAX)
     for(int G_n = 0; G_n < grains_num; G_n++){
         Matrix6d Me_tilde_g = g[G_n].get_Metilde_g();
         Matrix6d Me_g = g[G_n].get_Mij6_J_g();
-        Matrix6d B_g_retro = (Me_tilde_g + SSC) * (Me_tilde_g + Me_g).inverse();
+        Matrix6d B_g_retro = (Me_tilde_g + elasticCompli) * (Me_tilde_g + Me_g).inverse();
         B_g_ret_ave += B_g_retro * g[G_n].get_weight_g();
         Vector6d therm_exp_g_basis = Chg_basis6(g[G_n].get_therm_expansion());
         B_g_ret_thrmexp += B_g_retro * therm_exp_g_basis * g[G_n].get_weight_g();
@@ -584,7 +452,7 @@ int polycrystal::Selfconsistent_P(int Istep, double ERRM, int ITMAX)
             /* the transform matrix should be taken from the polycrystal  */
             axisb_t = ell_axisb; 
             axis_t = ell_axis;
-            Matrix6d C66 = rotate_C66(Btovoigt(C_VP_SC), axisb_t.transpose());
+            Matrix6d C66 = rotate_C66(Btovoigt(vPlasticModu_SC), axisb_t.transpose());
             //Calculate Eshelby tensor
             double S4_EA[3][3][3][3] = {0}; 
             double R4_EA[3][3][3][3] = {0};
@@ -599,7 +467,7 @@ int polycrystal::Selfconsistent_P(int Istep, double ERRM, int ITMAX)
             Matrix5d I_S55, I_S55_inv; // (I-S) and (I-S)^-1
             I_S55 = Matrix5d::Identity() - S55;
             I_S55_inv = I_S55.inverse();
-            Mtilde = I_S55_inv * S55 * M_VP_SC;
+            Mtilde = I_S55_inv * S55 * vPlasticCompli_SC;
             S55_inv = S55.inverse();
         }
 
@@ -613,7 +481,7 @@ int polycrystal::Selfconsistent_P(int Istep, double ERRM, int ITMAX)
             {
                 axis_t = g[G_n].get_ell_axis_g();
                 axisb_t = g[G_n].get_ell_axisb_g();
-                Matrix6d C66 = rotate_C66(Btovoigt(C_VP_SC), axisb_t.transpose());
+                Matrix6d C66 = rotate_C66(Btovoigt(vPlasticModu_SC), axisb_t.transpose());
                 //Calculate Eshelby tensor
                 double S4_EA[3][3][3][3] = {0}; 
                 double R4_EA[3][3][3][3] = {0};
@@ -628,7 +496,7 @@ int polycrystal::Selfconsistent_P(int Istep, double ERRM, int ITMAX)
                 Matrix5d I_S55, I_S55_inv; // (I-S) and (I-S)^-1
                 I_S55 = Matrix5d::Identity() - S55;
                 I_S55_inv = I_S55.inverse();
-                Mtilde = I_S55_inv * S55 * M_VP_SC;
+                Mtilde = I_S55_inv * S55 * vPlasticCompli_SC;
                 S55_inv = S55.inverse();
             }
             g[G_n].Update_Mptilde_g(Mtilde);  //store the M~
@@ -645,10 +513,10 @@ int polycrystal::Selfconsistent_P(int Istep, double ERRM, int ITMAX)
             //Calculate the localization tensor B_g, _g means the value depends on the grain
             // B_g = (M_g + M~)^-1 * (M_ + M~) 
             Matrix5d term_M = (M_g + Mtilde).inverse();
-            Matrix5d B_g = term_M * (M_VP_SC + Mtilde);
-            Matrix5d B_g_switch = (M_VP_SC + Mtilde) * term_M;
+            Matrix5d B_g = term_M * (vPlasticCompli_SC + Mtilde);
+            Matrix5d B_g_switch = (vPlasticCompli_SC + Mtilde) * term_M;
             // b_g = (M_g + M~)^-1 * (d- - d-_g)
-            Vector5d b_gv =  term_M * (Chg_basis5(voigt(D0))-d0_g);
+            Vector5d b_gv =  term_M * (Chg_basis5(voigt(D_vp_0))-d0_g);
             // MNEW = <M_g * B_g> Equ[5-40a]
             MNEW += M_g * B_g * weight_g;
             //<B_g> Equ[5-40b]
@@ -664,10 +532,10 @@ int polycrystal::Selfconsistent_P(int Istep, double ERRM, int ITMAX)
         MNEW = MNEW2;
         D0_new = B_g_switch_ave.inverse() * B_switch_d0_ave;
         /* calculate the error between the input M_VP_SC of do-while loop and the output MNEW of the loop  */
-        RER = Errorcal(M_VP_SC, MNEW);
-        M_VP_SC = MNEW;
-        D0 = voigt(Chg_basis(D0_new));
-        C_VP_SC = M_VP_SC.inverse();
+        RER = Errorcal(vPlasticCompli_SC, MNEW);
+        vPlasticCompli_SC = MNEW;
+        D_vp_0 = voigt(Chg_basis(D0_new));
+        vPlasticModu_SC = vPlasticCompli_SC.inverse();
 
         logger.notice("**Error in VPSC iteration :" + to_string(IT) + "\t" + to_string(RER));
         if(isnan(RER)) return 1;
@@ -794,10 +662,8 @@ int polycrystal::EVPSC(int istep, double Tincr){
     }
 
     Eps_m += Dij_m * Tincr; //update the macro strain tensor
-
     if(update_temperature_required) update_temperature(Tincr);
     update_status(Tincr);
-    update_info_by_family();
     return 0;
 }
 
@@ -809,10 +675,10 @@ void polycrystal::save_status(){
     Dije_AV_old = Dije_AV;
     Dijp_AV_old = Dijp_AV;
     Sig_m_old = Sig_m;
-    COLD = CSC;
+    elasticModu_old = elasticModu_SC;
     therm_expans_ave_old = therm_expansion_ave;
     ther_strain_m_old = thermal_strain_m;
-    C_VP_SC_old = C_VP_SC;
+    vPlasticModu_old = vPlasticModu_SC;
     for(int G_n = 0; G_n < grains_num; ++G_n)
         g[G_n].save_status_g();
 }
@@ -825,18 +691,17 @@ void polycrystal::restore_status(bool flag){
     Dije_AV = Dije_AV_old;
     Dijp_AV = Dijp_AV_old;
     Sig_m = Sig_m_old;
-    CSC = COLD;  C_VP_SC = C_VP_SC_old;
+    elasticModu_SC = elasticModu_old;  vPlasticModu_SC = vPlasticModu_old;
     therm_expansion_ave = therm_expans_ave_old;
     thermal_strain_m = ther_strain_m_old;
-    SSC = CSC.inverse();  M_VP_SC = C_VP_SC.inverse();
+    elasticCompli = elasticModu_SC.inverse();  vPlasticCompli_SC = vPlasticModu_SC.inverse();
     for(int G_n = 0; G_n < grains_num; ++G_n)
         g[G_n].restore_status_g();
 }
 
 // update the state in deformation systems and crystalline orientation and shapes
 void polycrystal::update_status(double time_incre){
-    if(Ishape == 0)
-    {
+    if(Ishape == 0){
         Update_Fij(time_incre);
         if(update_shape_required) Update_shape();
     }
@@ -852,8 +717,23 @@ void polycrystal::update_status(double time_incre){
     }
     #pragma omp barrier
     update_info_by_family();
+    update_phase_info();
     elastic_strain_m += Dije_AV * time_incre;
     plastic_strain_m += Dijp_AV * time_incre;
+}
+
+void polycrystal::update_phase_info(){
+    int tot_phase_num = global_materials.size();
+    for(Matrix3d &strain_p: strain_phases) strain_p = Matrix3d::Zero();
+    for(Matrix3d &stress_p: stress_phases) stress_p = Matrix3d::Zero();
+    for(int phase_id = 0; phase_id < tot_phase_num; ++phase_id){
+        for(int G_n = 0; G_n < grains_num; ++G_n){
+            if(g[G_n].phase_id != phase_id) continue;
+            double weight = g[G_n].get_weight_g();
+            strain_phases[phase_id] += g[G_n].get_strain_g() * weight;
+            stress_phases[phase_id] += g[G_n].get_stress_g() * weight;
+        }
+    }
 }
 
 void polycrystal::Cal_Sig_m(double Tincr)
@@ -885,9 +765,9 @@ void polycrystal::Cal_Sig_m(double Tincr)
     Matrix3d therm_strain_rate = (therm_expansion_ave * temperature_diff - ther_strain_m_old)/Tincr;
     Vector6d De = Bbasisadd(Chg_basis6(Dij_m), -DVP_AV) - Chg_basis6(therm_strain_rate); //De = D - Dp - D0 - Dt
     //Calculate AX = B, X is the macro stress
-    Matrix6d A = SSC;
+    Matrix6d A = elasticCompli;
     /* Matrix3d Mtemp = Sig_m_old / Tincr; */
-    Vector6d B = De + SSC * Chg_basis6(Sig_J);
+    Vector6d B = De + elasticCompli * Chg_basis6(Sig_J);
     /* According to the IUdot and ISDOT to solve AX = B, transform to solve At Xt = Bt */
     /* Xt in the unkown set of Udot and Sig */
     Vector6i Is = ISdot;
@@ -914,7 +794,7 @@ void polycrystal::Cal_Sig_m(double Tincr)
     Vector6d Sig_x, B_x;
     B_x = mult_dot(BC_D,Id) + mult_dot(AUX6,Is);
     Sig_x = (mult_dot(BC_S,Is) + mult_dot(AUX6,Id))*Tincr;//dotSigma
-    De = Chg_basis6(voigt(B_x)) - SSC * Chg_basis6(Sig_J);
+    De = Chg_basis6(voigt(B_x)) - elasticCompli * Chg_basis6(Sig_J);
     Vector6d Dij_m_v = Bbasisadd(De, DVP_AV) + Chg_basis6(therm_strain_rate); //D = De + Dp + D0 + Dt
     thermal_strain_m = therm_expansion_ave * temperature_diff;
     Dij_m = Chg_basis(Dij_m_v);
@@ -958,11 +838,11 @@ Vector6d polycrystal::get_Sig_m(){return voigt(Sig_m);}
 Vector6d polycrystal::get_Sig_ave(){return voigt(Sig_AV);}
 Vector6d polycrystal::get_Eps_m(){return voigt(Eps_m);}
 
-void polycrystal::get_euler(fstream &texfile)
-{
+void polycrystal::printEuler(fstream &texfile, int phase_id){
     IOFormat Outformat(StreamPrecision);
     for(int i = 0; i < grains_num; i++)
     {
+        if(g[i].phase_id != phase_id) continue;
         texfile << setprecision(4) << scientific << g[i].get_euler_g().transpose().format(Outformat) << "  ";
         texfile << setprecision(4) << scientific << g[i].get_weight_g_eff() << endl;
         for (int j = 0; j < g[i].modes_num; j++)
@@ -997,12 +877,25 @@ void polycrystal::update_twin_control(){
 void polycrystal::update_info_by_family(){
     PMode* modePtr = nullptr;
     int modes_from = 0, modes_to = 0;
+    vector<int> phaseModes;
+    for (auto mat_phase : global_materials){
+        phaseModes.push_back(mat_phase.modes_num);
+    }
+    int phase_id = 0;
     for (int family_id = 0; family_id < family_count; family_id++){
         if (family_id != 0) modes_from += modes_count_by_family[family_id - 1];
         modes_to += modes_count_by_family[family_id];
+        /* logger.debug("Phase " + to_string(phase_id) + ": " + to_string(modes_from) + " - " + to_string(modes_to)); */
+        if (modes_from >= phaseModes[phase_id]){
+            phase_id++;
+            modes_from = 0;
+            modes_to = modes_count_by_family[family_id];
+        }
+        /* logger.debug("Phase " + to_string(phase_id) + ": " + to_string(modes_from) + " - " + to_string(modes_to)); */
         double density_in_family = 0., acc_strain_in_family = 0., crss_in_family = 0.;
         double velocity_in_family = 0., debri_in_family = 0., rate_in_family = 0.;
         for (int grain_i = 0; grain_i < grains_num; grain_i++){
+            if (g[grain_i].phase_id != phase_id) continue;
             double weight_g = g[grain_i].get_weight_g();
             for (int mode_i = modes_from; mode_i < modes_to; mode_i++){
                 modePtr = g[grain_i].gmode[mode_i];
@@ -1017,6 +910,7 @@ void polycrystal::update_info_by_family(){
         density_by_family[family_id] = density_in_family;
         acc_strain_by_family[family_id] = acc_strain_in_family;
         crss_by_family[family_id] = crss_in_family;
+        /* logger.debug("Family " + to_string(family_id) + ": " + to_string(density_in_family) + " - " + to_string(acc_strain_in_family) + " - " + to_string(crss_in_family)); */
 
         int custom_id = (family_id * 3 + 6) > 11 ? 11 : (family_id * 3 + 6);
         custom_vars[custom_id] = velocity_in_family;

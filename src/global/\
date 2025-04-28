@@ -12,8 +12,9 @@ void skipLine(ifstream& file, int n) {
 
 void readPaths(ifstream& ininp, string& outputStr) {
     string tp;
-
-    getline(ininp, tp); // Check if the line is a number
+    getline(ininp, tp);
+    
+    // Check if the line is a number
     bool isNumber = true;
     for (char const &c : tp) {
         if (!isdigit(c)) {
@@ -76,16 +77,12 @@ int EVPSCinput(string &ftex, string &fsx, string &fload, Procs::Process &Proc) {
             return EXIT_FAILURE;
         }
     }
-    phaseCount = stoi(fsx.substr(0, fsx.find("(")));
-    logger.info("Number of phases: " + to_string(phaseCount));
     
     // Read process paths
     getline(ininp, tp);
     if (containsKeyword(tp, "path") && containsKeyword(tp, "process")) {
         readPaths(ininp, fload);
     }
-    processCount = stoi(fload.substr(0, fload.find("(")));
-    logger.info("Number of processes: " + to_string(processCount));
     
     // Read update control
     skipLine(ininp, 3);
@@ -107,7 +104,7 @@ int EVPSCinput(string &ftex, string &fsx, string &fload, Procs::Process &Proc) {
 
 int loadinput(string fname, Procs::Process &Proc)
 {
-    ifstream loadinp(fname);
+    fstream loadinp(fname, ios::in);
     logger.info("Loading process file " + fname + " ...");
     if (!loadinp) {
         logger.error("Error code 0: process file cannot be opened.");
@@ -202,9 +199,10 @@ int loadinput(string fname, Procs::Process &Proc)
     return EXIT_SUCCESS;
 }
 
-int sxinput(const string& fname, materialPhase &mat)
+int sxinput(string fname, Polycs::polycrystal &pcrys)
 {
     fstream sxinp;
+    materialPhase mat; 
     
     sxinp.open(fname,ios::in); //open .sx
     if (!sxinp) //checking whether the file is open
@@ -333,45 +331,46 @@ int sxinput(const string& fname, materialPhase &mat)
     mat.sx_info_postprocess();
     sxinp.close(); //close the file object.
     logger.debug("Finish reading the sx file.");
+    pcrys.add_phase_from_material(mat);
     return 0;
 }
 
-int texinput(const string& fname, int& grainCount, vector<Vector4d>& eulerData){
-    ifstream texinp(fname);
-    if (!texinp){
+int texinput(string fname, Polycs::polycrystal &pcrys)
+{
+    fstream texinp;
+    texinp.open(fname,ios::in); //open .tex
+    if (texinp.is_open())
+        {   //checking whether the file is open
+            logger.info("Reading texture file");
+            string tp;
+            //skip 3 lines;
+            for(int i = 0; i < 3; i++)
+            {
+                getline(texinp, tp);
+            }
+            //number of grains 
+            getline(texinp, tp);
+            VectorXd Gn = getnum(tp, 1);
+            //
+            pcrys.grains_n(int(Gn(0)));
+            // 
+            //Euler angle and weighs
+            Vector4d Euler_w(0,0,0,0);
+            for(int i = 0; i < int(Gn(0)); i++)
+            {
+                getline(texinp, tp);
+                Euler_w = getnum(tp, 4);
+                pcrys.ini_euler(getnum(tp, 4),i);
+            }
+            texinp.close(); //close the file object.
+            pcrys.Norm_weight();
+            return 0;        
+        }
+    else
+    {
         logger.error("Error code 0: texture file cannot be opened");
         return 1;
     }
-    logger.info("Reading texture file");
-    logger.info(fname);
-
-    string tp;
-    skipLine(texinp, 3);
-    getline(texinp, tp); 
-    VectorXd Gn = getnum(tp, 1);
-    grainCount = static_cast<int>(Gn(0));
-    if (grainCount <= 0) {
-        logger.error("Error code 2: invalid grain count in texture file: " + std::to_string(grainCount));
-        return 1;
-    }
-    
-    eulerData.reserve(grainCount);
-    for (int i = 0; i < grainCount; i++) {
-        if (!getline(texinp, tp)) {
-            logger.error("Error code 3: texture file format error - missing Euler angles for grain " + std::to_string(i));
-            return 1;
-        }
-        try {
-            Vector4d eulerAngles = getnum(tp, 4);
-            eulerData.push_back(eulerAngles);
-        }
-        catch (const std::exception& e) {
-            logger.error("Error code 4: failed to process Euler angles for grain " + std::to_string(i) + ": " + e.what());
-            return 1;
-        }
-    }
-    texinp.close(); 
-    return 0;
 }
 
 VectorXd getnum(string strin, int num)
@@ -440,41 +439,4 @@ vector<double> get_vector(VectorXd &matrix){
     return v;
 }
 
-string extractPath(const std::string& ftex, int a) {
-    if (ftex.empty()) {
-        throw std::invalid_argument("Error: Empty string in extractPath");
-    }
-    if (!isdigit(ftex[0])) {
-        throw std::invalid_argument("Error: First character is not a digit in extractPath");
-    }
-    int pathCount = ftex[0] - '0';
-    if (a < 0 || a >= pathCount) {
-        throw std::out_of_range("Error: index should between 0 and " + std::to_string(pathCount-1) + " in extractPath");
-    }
-    std::vector<std::string> paths;
-    size_t pos = 1; 
-    for (int i = 0; i < pathCount; ++i) {
-        size_t openBracket = ftex.find('(', pos);
-        if (openBracket == std::string::npos) {
-            throw std::invalid_argument("Error: format error: missing left bracket in extractPath");
-        }
-        
-        size_t closeBracket = ftex.find(')', openBracket);
-        if (closeBracket == std::string::npos) {
-            throw std::invalid_argument("Error: format error: missing right bracket in extractPath");
-        }
-        
-        std::string path = ftex.substr(openBracket + 1, closeBracket - openBracket - 1);
-        paths.push_back(path);
-        
-        pos = closeBracket + 1;
-        
-        if (i < pathCount - 1) {
-            if (pos >= ftex.length() || ftex[pos] != ',') {
-                throw std::invalid_argument("Error: format error: missing comma in extractPath");
-            }
-            pos++;
-        }
-    }
-    return paths[a]; // 索引从1开始，所以要减1
-}
+

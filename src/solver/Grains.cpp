@@ -23,114 +23,405 @@ grain::grain()
     Mpij6_g = 1e-10 * Matrix5d::Identity();
 }
 
-grain::grain(const grain& tp){
-    eps_g = tp.eps_g;
-    sig_g = tp.sig_g;
-    Dije_g = tp.Dije_g;
-    Dijp_g = tp.Dijp_g;
-    therm_expansion_g = tp.therm_expansion_g;
-    ell_axis_g = tp.ell_axis_g;
-    ell_axisb_g = tp.ell_axisb_g;
-    ellip_ang_g = tp.ellip_ang_g;
-    Iflat_g = tp.Iflat_g;
-    Fij_g = tp.Fij_g;
-    Udot_g = tp.Udot_g;
-    Dij_g = tp.Dij_g;
-    Dije_g = tp.Dije_g;
-    Dijp_g = tp.Dijp_g;
-    Wij_g = tp.Wij_g; 
-    d0_g = tp.d0_g;
-    Mpij6_g = tp.Mpij6_g;
-    Cij6_SA_g = tp.Cij6_SA_g;
-    Mij6_J_g = tp.Mij6_J_g;
-    Metilde_g = tp.Metilde_g;
-    Mptilde_g = tp.Mptilde_g;
-    Mpij6_g = tp.Mpij6_g;
-    grain_i = tp.grain_i;
-    modes_num = tp.modes_num;
-    gmode = new PMode* [modes_num];
-    for (int i = 0; i < modes_num; ++i){
-        switch (tp.gmode[i]->type) {
-            case mode_type::slip:
-                gmode[i] = new Slip(*(Slip*)tp.gmode[i]);
-                break;
-            case mode_type::twin:
-                gmode[i] = new TwinG(*(TwinG*)tp.gmode[i]);
-                break;
-            case mode_type::undefined:
-                gmode[i] = new PMode(*(PMode*)tp.gmode[i]);
-                break;
-            default:
-                logger.error("Unknown mode type");
-                return;
-        }
+grain::grain(const grain& other) : 
+    // 复制所有基本类型成员
+    grain_i(other.grain_i),
+    phase_id(other.phase_id),
+    modes_num(other.modes_num),
+    if_stress(other.if_stress),
+    size(other.size),
+    child_frac(other.child_frac),
+    weight_ref(other.weight_ref),
+    temperature(other.temperature),
+    temp_old(other.temp_old),
+    twin_term_flag(other.twin_term_flag),
+    mat(other.mat),  // 注意：这是浅拷贝，假设materialPhase对象在整个程序生命周期存在
+    gamma_total(other.gamma_total),
+    gamma_delta(other.gamma_delta),
+    weight(other.weight),
+    ell_crit_shape_g(other.ell_crit_shape_g),
+    Iflat_g(other.Iflat_g){
+    // 复制Matrix类型成员（Eigen库类型）
+    Cij6 = other.Cij6;
+    Cij6_SA_g = other.Cij6_SA_g;
+    Mij6_J_g = other.Mij6_J_g;
+    Metilde_g = other.Metilde_g;
+    Cij6_SA_g_old = other.Cij6_SA_g_old;
+    Mij6_J_g_old = other.Mij6_J_g_old;
+    Metilde_g_old = other.Metilde_g_old;
+    
+    Mptilde_g = other.Mptilde_g;
+    Mpij6_g = other.Mpij6_g;
+    Mptilde_g_old = other.Mptilde_g_old;
+    Mpij6_g_old = other.Mpij6_g_old;
+    
+    d0_g = other.d0_g;
+    
+    Fij_g = other.Fij_g;
+    Udot_g = other.Udot_g;
+    Dij_g = other.Dij_g;
+    Dije_g = other.Dije_g;
+    Dijp_g = other.Dijp_g;
+    therm_expansion_g = other.therm_expansion_g;
+    therm_strain_g = other.therm_strain_g;
+    Wij_g = other.Wij_g;
+    eps_g = other.eps_g;
+    sig_g = other.sig_g;
+    sig_g_old = other.sig_g_old;
+    Dij_g_old = other.Dij_g_old;
+    Dije_g_old = other.Dije_g_old;
+    Dijp_g_old = other.Dijp_g_old;
+    d0_g_old = other.d0_g_old;
+    therm_strain_g_old = other.therm_strain_g_old;
+    
+    ell_axis_g = other.ell_axis_g;
+    ell_axisb_g = other.ell_axisb_g;
+    ellip_ang_g = other.ellip_ang_g;
+    
+    Euler_M = other.Euler_M;
+    
+    // 复制数组类型成员
+    memcpy(Cijkl, other.Cijkl, 3*3*3*3*sizeof(double));
+    memcpy(RSinv_C, other.RSinv_C, 3*3*3*3*sizeof(double));
+    memcpy(RSinv_VP, other.RSinv_VP, 3*3*3*3*sizeof(double));
+    memcpy(RSinv_C_old, other.RSinv_C_old, 3*3*3*3*sizeof(double));
+    memcpy(RSinv_VP_old, other.RSinv_VP_old, 3*3*3*3*sizeof(double));
+    
+    // 复制 gamma_delta_gmode 数组（如果存在）
+    if (other.gamma_delta_gmode) {
+        gamma_delta_gmode = new double[modes_num];
+        memcpy(gamma_delta_gmode, other.gamma_delta_gmode, modes_num * sizeof(double));
+    } else {
+        gamma_delta_gmode = NULL;
     }
-    gamma_delta_gmode = tp.gamma_delta_gmode;
-    weight = tp.weight;
-    weight_ref = tp.weight_ref;
-    Euler_M = tp.Euler_M;
-    gamma_total = tp.gamma_total;
-    gamma_delta = tp.gamma_delta;
-    if_stress = tp.if_stress;
-    child_frac = tp.child_frac;
-    twin_term_flag = tp.twin_term_flag;
-    lat_hard_mat = tp.lat_hard_mat;
+    
+    // 深拷贝 gmode 指针数组
+    if (other.gmode && other.modes_num > 0) {
+        gmode = new PMode*[other.modes_num];
+        for (int i = 0; i < other.modes_num; i++) {
+            if (other.gmode[i]) {
+                gmode[i] = new PMode(*other.gmode[i]);  // 假设存在拷贝构造函数
+            } else {
+                gmode[i] = NULL;
+            }
+        }
+    } else {
+        gmode = NULL;
+    }
+    // 复制 lat_hard_mat
+    lat_hard_mat = other.lat_hard_mat;  // vector<vector<double>> 会自动进行深拷贝
 }
 
-grain& grain::operator=(const grain& tp){
-    if (this == &tp) return *this;
-    eps_g = tp.eps_g;
-    sig_g = tp.sig_g;
-    Dije_g = tp.Dije_g;
-    Dijp_g = tp.Dijp_g;
-    therm_expansion_g = tp.therm_expansion_g;
-    ell_axis_g = tp.ell_axis_g;
-    ell_axisb_g = tp.ell_axisb_g;
-    ellip_ang_g = tp.ellip_ang_g;
-    Iflat_g = tp.Iflat_g;
-    Fij_g = tp.Fij_g;
-    Udot_g = tp.Udot_g;
-    Dij_g = tp.Dij_g;
-    Dije_g = tp.Dije_g;
-    Dijp_g = tp.Dijp_g;
-    Wij_g = tp.Wij_g; 
-    d0_g = tp.d0_g;
-    Mpij6_g = tp.Mpij6_g;
-    Cij6_SA_g = tp.Cij6_SA_g;
-    Mij6_J_g = tp.Mij6_J_g;
-    Metilde_g = tp.Metilde_g;
-    Mptilde_g = tp.Mptilde_g;
-    Mpij6_g = tp.Mpij6_g;
-    grain_i = tp.grain_i;
-    modes_num = tp.modes_num;
-    gmode = new PMode* [modes_num];
-    for (int i = 0; i < modes_num; ++i){
-        switch (tp.gmode[i]->type) {
-            case mode_type::slip:
-                gmode[i] = new Slip(*(Slip*)tp.gmode[i]);
-                break;
-            case mode_type::twin:
-                gmode[i] = new TwinG(*(TwinG*)tp.gmode[i]);
-                break;
-            case mode_type::undefined:
-                gmode[i] = new PMode(*(PMode*)tp.gmode[i]);
-                break;
-            default:
-                logger.error("Unknown mode type");
-                break;
+grain::grain(grain&& other) noexcept :
+    // 移动所有基本类型成员
+    grain_i(other.grain_i),
+    phase_id(other.phase_id),
+    modes_num(other.modes_num),
+    if_stress(other.if_stress),
+    size(other.size),
+    child_frac(other.child_frac),
+    weight_ref(other.weight_ref),
+    temperature(other.temperature),
+    temp_old(other.temp_old),
+    twin_term_flag(other.twin_term_flag),
+    mat(other.mat),  // 简单移动指针
+    gamma_total(other.gamma_total),
+    gamma_delta(other.gamma_delta),
+    weight(other.weight),
+    ell_crit_shape_g(other.ell_crit_shape_g),
+    Iflat_g(other.Iflat_g)
+{
+    // 移动Eigen矩阵成员 (Eigen支持移动语义)
+    Cij6 = std::move(other.Cij6);
+    Cij6_SA_g = std::move(other.Cij6_SA_g);
+    Mij6_J_g = std::move(other.Mij6_J_g);
+    Metilde_g = std::move(other.Metilde_g);
+    Cij6_SA_g_old = std::move(other.Cij6_SA_g_old);
+    Mij6_J_g_old = std::move(other.Mij6_J_g_old);
+    Metilde_g_old = std::move(other.Metilde_g_old);
+    
+    Mptilde_g = std::move(other.Mptilde_g);
+    Mpij6_g = std::move(other.Mpij6_g);
+    Mptilde_g_old = std::move(other.Mptilde_g_old);
+    Mpij6_g_old = std::move(other.Mpij6_g_old);
+    
+    d0_g = std::move(other.d0_g);
+    
+    Fij_g = std::move(other.Fij_g);
+    Udot_g = std::move(other.Udot_g);
+    Dij_g = std::move(other.Dij_g);
+    Dije_g = std::move(other.Dije_g);
+    Dijp_g = std::move(other.Dijp_g);
+    therm_expansion_g = std::move(other.therm_expansion_g);
+    therm_strain_g = std::move(other.therm_strain_g);
+    Wij_g = std::move(other.Wij_g);
+    eps_g = std::move(other.eps_g);
+    sig_g = std::move(other.sig_g);
+    sig_g_old = std::move(other.sig_g_old);
+    Dij_g_old = std::move(other.Dij_g_old);
+    Dije_g_old = std::move(other.Dije_g_old);
+    Dijp_g_old = std::move(other.Dijp_g_old);
+    d0_g_old = std::move(other.d0_g_old);
+    therm_strain_g_old = std::move(other.therm_strain_g_old);
+    
+    ell_axis_g = std::move(other.ell_axis_g);
+    ell_axisb_g = std::move(other.ell_axisb_g);
+    ellip_ang_g = std::move(other.ellip_ang_g);
+    
+    Euler_M = std::move(other.Euler_M);
+    
+    // 复制数组类型成员 (不能移动内置数组，只能复制)
+    memcpy(Cijkl, other.Cijkl, 3*3*3*3*sizeof(double));
+    memcpy(RSinv_C, other.RSinv_C, 3*3*3*3*sizeof(double));
+    memcpy(RSinv_VP, other.RSinv_VP, 3*3*3*3*sizeof(double));
+    memcpy(RSinv_C_old, other.RSinv_C_old, 3*3*3*3*sizeof(double));
+    memcpy(RSinv_VP_old, other.RSinv_VP_old, 3*3*3*3*sizeof(double));
+    
+    // 移动 gamma_delta_gmode 指针
+    gamma_delta_gmode = other.gamma_delta_gmode;
+    other.gamma_delta_gmode = nullptr;  // 防止源对象析构时释放内存
+    
+    // 移动 gmode 指针数组
+    gmode = other.gmode;
+    other.gmode = nullptr;  // 防止源对象析构时释放内存
+    
+    // 移动 lat_hard_mat (vector的移动是高效的)
+    lat_hard_mat = std::move(other.lat_hard_mat);
+    
+    // 重置源对象的状态，防止析构时出现问题
+    other.modes_num = 0;
+    other.mat = nullptr;  // 可选，取决于实际所有权语义
+}
+
+grain& grain::operator=(const grain& other) {
+    if (this != &other) { // 防止自我赋值
+        // 释放当前对象的资源
+        if (gamma_delta_gmode) {
+            delete[] gamma_delta_gmode;
+            gamma_delta_gmode = nullptr;
         }
+        
+        if (gmode) {
+            for (int i = 0; i < modes_num; ++i) {
+                delete gmode[i];  // 假设PMode有适当的析构函数
+            }
+            delete[] gmode;
+            gmode = nullptr;
+        }
+        
+        // 复制基本类型成员
+        grain_i = other.grain_i;
+        phase_id = other.phase_id;
+        modes_num = other.modes_num;
+        if_stress = other.if_stress;
+        size = other.size;
+        child_frac = other.child_frac;
+        weight_ref = other.weight_ref;
+        temperature = other.temperature;
+        temp_old = other.temp_old;
+        twin_term_flag = other.twin_term_flag;
+        mat = other.mat;  // 简单复制指针
+        gamma_total = other.gamma_total;
+        gamma_delta = other.gamma_delta;
+        weight = other.weight;
+        ell_crit_shape_g = other.ell_crit_shape_g;
+        Iflat_g = other.Iflat_g;
+        
+        // 复制Eigen矩阵成员
+        Cij6 = other.Cij6;
+        Cij6_SA_g = other.Cij6_SA_g;
+        Mij6_J_g = other.Mij6_J_g;
+        Metilde_g = other.Metilde_g;
+        Cij6_SA_g_old = other.Cij6_SA_g_old;
+        Mij6_J_g_old = other.Mij6_J_g_old;
+        Metilde_g_old = other.Metilde_g_old;
+        
+        Mptilde_g = other.Mptilde_g;
+        Mpij6_g = other.Mpij6_g;
+        Mptilde_g_old = other.Mptilde_g_old;
+        Mpij6_g_old = other.Mpij6_g_old;
+        
+        d0_g = other.d0_g;
+        
+        Fij_g = other.Fij_g;
+        Udot_g = other.Udot_g;
+        Dij_g = other.Dij_g;
+        Dije_g = other.Dije_g;
+        Dijp_g = other.Dijp_g;
+        therm_expansion_g = other.therm_expansion_g;
+        therm_strain_g = other.therm_strain_g;
+        Wij_g = other.Wij_g;
+        eps_g = other.eps_g;
+        sig_g = other.sig_g;
+        sig_g_old = other.sig_g_old;
+        Dij_g_old = other.Dij_g_old;
+        Dije_g_old = other.Dije_g_old;
+        Dijp_g_old = other.Dijp_g_old;
+        d0_g_old = other.d0_g_old;
+        therm_strain_g_old = other.therm_strain_g_old;
+        
+        ell_axis_g = other.ell_axis_g;
+        ell_axisb_g = other.ell_axisb_g;
+        ellip_ang_g = other.ellip_ang_g;
+        
+        Euler_M = other.Euler_M;
+        
+        // 复制数组类型成员
+        memcpy(Cijkl, other.Cijkl, 3*3*3*3*sizeof(double));
+        memcpy(RSinv_C, other.RSinv_C, 3*3*3*3*sizeof(double));
+        memcpy(RSinv_VP, other.RSinv_VP, 3*3*3*3*sizeof(double));
+        memcpy(RSinv_C_old, other.RSinv_C_old, 3*3*3*3*sizeof(double));
+        memcpy(RSinv_VP_old, other.RSinv_VP_old, 3*3*3*3*sizeof(double));
+        
+        // 深度复制 gamma_delta_gmode 数组
+        if (other.gamma_delta_gmode && modes_num > 0) {
+            gamma_delta_gmode = new double[modes_num];
+            memcpy(gamma_delta_gmode, other.gamma_delta_gmode, modes_num * sizeof(double));
+        }
+        
+        // 深度复制 gmode 数组及其内容
+        if (other.gmode && modes_num > 0) {
+            gmode = new PMode*[modes_num];
+            for (int i = 0; i < modes_num; ++i) {
+                // 假设PMode有适当的拷贝构造函数
+                gmode[i] = new PMode(*other.gmode[i]);
+            }
+        }
+        
+        lat_hard_mat = other.lat_hard_mat;
     }
-    gamma_delta_gmode = tp.gamma_delta_gmode;
-    weight = tp.weight;
-    weight_ref = tp.weight_ref;
-    Euler_M = tp.Euler_M;
-    gamma_total = tp.gamma_total;
-    gamma_delta = tp.gamma_delta;
-    if_stress = tp.if_stress;
-    child_frac = tp.child_frac;
-    twin_term_flag = tp.twin_term_flag;
-    lat_hard_mat = tp.lat_hard_mat;
     return *this;
+}
+
+grain& grain::operator=(grain&& other) noexcept {
+    if (this != &other) { // 防止自我赋值
+        // 释放当前对象的资源
+        if (gamma_delta_gmode) {
+            delete[] gamma_delta_gmode;
+            gamma_delta_gmode = nullptr;
+        }
+        
+        if (gmode) {
+            for (int i = 0; i < modes_num; ++i) {
+                delete gmode[i];  // 假设PMode有适当的析构函数
+            }
+            delete[] gmode;
+            gmode = nullptr;
+        }
+        
+        // 复制基本类型成员
+        grain_i = other.grain_i;
+        phase_id = other.phase_id;
+        modes_num = other.modes_num;
+        if_stress = other.if_stress;
+        size = other.size;
+        child_frac = other.child_frac;
+        weight_ref = other.weight_ref;
+        temperature = other.temperature;
+        temp_old = other.temp_old;
+        twin_term_flag = other.twin_term_flag;
+        mat = other.mat;  // 简单移动指针
+        gamma_total = other.gamma_total;
+        gamma_delta = other.gamma_delta;
+        weight = other.weight;
+        ell_crit_shape_g = other.ell_crit_shape_g;
+        Iflat_g = other.Iflat_g;
+        
+        // 移动Eigen矩阵成员
+        Cij6 = std::move(other.Cij6);
+        Cij6_SA_g = std::move(other.Cij6_SA_g);
+        Mij6_J_g = std::move(other.Mij6_J_g);
+        Metilde_g = std::move(other.Metilde_g);
+        Cij6_SA_g_old = std::move(other.Cij6_SA_g_old);
+        Mij6_J_g_old = std::move(other.Mij6_J_g_old);
+        Metilde_g_old = std::move(other.Metilde_g_old);
+        
+        Mptilde_g = std::move(other.Mptilde_g);
+        Mpij6_g = std::move(other.Mpij6_g);
+        Mptilde_g_old = std::move(other.Mptilde_g_old);
+        Mpij6_g_old = std::move(other.Mpij6_g_old);
+        
+        d0_g = std::move(other.d0_g);
+        
+        Fij_g = std::move(other.Fij_g);
+        Udot_g = std::move(other.Udot_g);
+        Dij_g = std::move(other.Dij_g);
+        Dije_g = std::move(other.Dije_g);
+        Dijp_g = std::move(other.Dijp_g);
+        therm_expansion_g = std::move(other.therm_expansion_g);
+        therm_strain_g = std::move(other.therm_strain_g);
+        Wij_g = std::move(other.Wij_g);
+        eps_g = std::move(other.eps_g);
+        sig_g = std::move(other.sig_g);
+        sig_g_old = std::move(other.sig_g_old);
+        Dij_g_old = std::move(other.Dij_g_old);
+        Dije_g_old = std::move(other.Dije_g_old);
+        Dijp_g_old = std::move(other.Dijp_g_old);
+        d0_g_old = std::move(other.d0_g_old);
+        therm_strain_g_old = std::move(other.therm_strain_g_old);
+        
+        ell_axis_g = std::move(other.ell_axis_g);
+        ell_axisb_g = std::move(other.ell_axisb_g);
+        ellip_ang_g = std::move(other.ellip_ang_g);
+        
+        Euler_M = std::move(other.Euler_M);
+        
+        // 复制数组类型成员 (不能移动内置数组，只能复制)
+        memcpy(Cijkl, other.Cijkl, 3*3*3*3*sizeof(double));
+        memcpy(RSinv_C, other.RSinv_C, 3*3*3*3*sizeof(double));
+        memcpy(RSinv_VP, other.RSinv_VP, 3*3*3*3*sizeof(double));
+        memcpy(RSinv_C_old, other.RSinv_C_old, 3*3*3*3*sizeof(double));
+        memcpy(RSinv_VP_old, other.RSinv_VP_old, 3*3*3*3*sizeof(double));
+        
+        // 移动指针成员
+        gamma_delta_gmode = other.gamma_delta_gmode;
+        other.gamma_delta_gmode = nullptr;
+        
+        gmode = other.gmode;
+        other.gmode = nullptr;
+        
+        // 移动 vector 成员
+        lat_hard_mat = std::move(other.lat_hard_mat);
+        
+        // 重置源对象的状态
+        other.modes_num = 0;
+        other.mat = nullptr;  // 可选，取决于实际所有权语义
+    }
+    
+    return *this;
+}
+
+grain::~grain() {
+    if (gamma_delta_gmode) {
+        delete[] gamma_delta_gmode;
+        gamma_delta_gmode = nullptr;
+    }
+    
+    if (gmode) {
+        for (int i = 0; i < modes_num; ++i) {
+            delete gmode[i];  // 删除每个PMode对象
+        }
+        delete[] gmode;       // 删除指针数组
+        gmode = nullptr;
+    }
+    mat = nullptr;
+}
+
+void grain::initialization(int id, int phase_i, Vector4d euler, materialPhase* mat_pointer){
+    grain_i = id;
+    phase_id = phase_i;
+    ini_euler_g(euler);
+    mat = mat_pointer;
+    Cij6 = mat->elasticConstants;
+    voigt(Cij6, Cijkl);
+    Vector6d temp_alpha = mat->thermalExpansionCoeffs.head<6>();
+    therm_expansion_g = voigt(temp_alpha);
+    size = mat->grainSize;
+    ini_gmode_g(*mat);
+    set_lat_hard_mat();
+    for(int j = 0; j < modes_num; ++j){
+        gmode[j]->update_status(*this,0.0);
+    }
 }
 
 Vector3d grain::get_ell_axis_g(){return ell_axis_g;}
@@ -159,6 +450,10 @@ Vector3d grain::get_euler_g(int mode_num){
 
 Matrix3d grain::get_Euler_M_g(){return Euler_M;}
 
+Matrix6d grain::get_Cij6_g(){
+    return Cij6;
+}
+
 double grain::get_weight_g(){return weight;}
 
 double grain::get_weight_g(int mode_num){
@@ -182,11 +477,11 @@ int grain::ini_gmode_g(int n)
     return 1;
 }
 
-int grain::ini_gmode_g(const materialPhase &mat){
-    modes_num = mat.info_modes.size();
+int grain::ini_gmode_g(const materialPhase &mater){
+    modes_num = mater.info_modes.size();
     gmode = new PMode* [modes_num];
     int i = 0;
-    for (const ieMode &j_mode: mat.info_modes){
+    for (const ieMode &j_mode: mater.info_modes){
         switch (j_mode.type) {
             case 0:
                 gmode[i] = new Slip(j_mode);

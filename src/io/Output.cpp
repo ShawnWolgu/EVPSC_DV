@@ -58,6 +58,14 @@ void initial_output_files(){
     for(int i = 0; i < modes_count; ++i) grain_out << "," << 0.0;
     grain_out << endl;
 
+    for(fstream &phase_out_i : phase_out){
+        phase_out_i << "EVM,E11,E22,E33,E23,E13,E12,S11,S22,S33,S23,S13,S12\n";
+        phase_out_i << 0.0 << ",";
+        for(int i = 0; i < 6; ++i) ss_out_csv << 0.0 << ",";
+        for(int i = 0; i < 5; ++i) ss_out_csv << 0.0 << ",";
+        phase_out_i << 0.0 << endl;
+    }
+
     logger.notice("Output files are initialized.");
 }
 
@@ -101,6 +109,21 @@ void output_info(){
     for(int i = 0; i < custom_length; ++i) custom_out << "," << custom_vars[i];
     custom_out << endl;
     for(int i = 0; i < custom_length; ++i) custom_vars[i] = 0.0;
+}
+
+void output_phase_info(){
+    Polycs::polycrystal* pcrys = &global_polycrys;
+    double equi_strain = calc_equivalent_value(pcrys->get_Eps_m());
+    int phase_id = 0;
+    for(fstream &phase_out_i : phase_out){
+        Vector6d vec_strain = voigt(global_polycrys.strain_phases[phase_id]);
+        Vector6d vec_stress = voigt(global_polycrys.stress_phases[phase_id]);
+        phase_out_i << equi_strain << ",";
+        for(int i = 0; i < 6; ++i) phase_out_i << vec_strain(i) << ",";
+        for(int i = 0; i < 5; ++i) phase_out_i << vec_stress(i) << ",";
+        phase_out_i << vec_stress(5) << endl;
+        ++phase_id;
+    }
 }
 
 void output_grain_info(int i){

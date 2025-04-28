@@ -58,6 +58,76 @@ Slip::Slip(Slip* t_slip, bool a)
     }
 }
 
+Slip::Slip(const Slip& other)
+    : PMode(other), // 首先调用基类的拷贝构造函数
+      flag_harden(other.flag_harden),
+      disloc_velocity(other.disloc_velocity),
+      lh_coeff(other.lh_coeff),
+      rho_mov(other.rho_mov),
+      t_wait(other.t_wait),
+      t_run(other.t_run),
+      rho_sat(other.rho_sat){}
+
+Slip& Slip::operator=(const Slip& other) {
+    if (this != &other) {
+        PMode::operator=(other);
+        
+        flag_harden = other.flag_harden;
+        disloc_velocity = other.disloc_velocity;
+        lh_coeff = other.lh_coeff;
+        rho_mov = other.rho_mov;
+        t_wait = other.t_wait;
+        t_run = other.t_run;
+        rho_sat = other.rho_sat;
+    }
+    return *this;
+}
+
+Slip::Slip(Slip&& other) noexcept
+    : PMode(std::move(other)), // 首先调用基类的移动构造函数
+      flag_harden(other.flag_harden),
+      disloc_velocity(other.disloc_velocity),
+      lh_coeff(other.lh_coeff),
+      rho_mov(other.rho_mov),
+      t_wait(other.t_wait),
+      t_run(other.t_run),
+      rho_sat(other.rho_sat){
+    other.flag_harden = 0;
+    other.disloc_velocity = 0.0;
+    other.lh_coeff = 1.0;
+    other.rho_mov = 0.0;
+    other.t_wait = 0.0;
+    other.t_run = 0.0;
+    other.rho_sat = 0.0;
+}
+
+Slip& Slip::operator=(Slip&& other) noexcept {
+    if (this != &other) {
+        PMode::operator=(std::move(other));
+        
+        flag_harden = other.flag_harden;
+        disloc_velocity = other.disloc_velocity;
+        lh_coeff = other.lh_coeff;
+        rho_mov = other.rho_mov;
+        t_wait = other.t_wait;
+        t_run = other.t_run;
+        rho_sat = other.rho_sat;
+        
+        other.flag_harden = 0;
+        other.disloc_velocity = 0.0;
+        other.lh_coeff = 1.0;
+        other.rho_mov = 0.0;
+        other.t_wait = 0.0;
+        other.t_run = 0.0;
+        other.rho_sat = 0.0;
+    }
+    return *this;
+}
+
+Slip* Slip::clone() const {
+    return new Slip(*this);
+}
+
 void Slip::check_sn_mode()
 {
     logger.info("Slip system: " + to_string(num));

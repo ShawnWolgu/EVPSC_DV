@@ -51,6 +51,98 @@ TwinG::TwinG(TwinG* t_twin, bool a)
     
 }
 
+TwinG::~TwinG(){}
+
+TwinG::TwinG(const TwinG& other)
+    : PMode(other),  // 首先调用基类的拷贝构造函数
+      flag_harden(other.flag_harden),
+      disloc_velocity(other.disloc_velocity),
+      status(other.status),
+      equivalent_frac(other.equivalent_frac),
+      grain_link(other.grain_link),
+      t_wait(other.t_wait),
+      t_run(other.t_run),
+      rho_sat(other.rho_sat),
+      child_frac(other.child_frac),
+      euler_twin(other.euler_twin){}
+
+TwinG& TwinG::operator=(const TwinG& other)
+{
+    if (this != &other) {
+        PMode::operator=(other);
+        
+        flag_harden = other.flag_harden;
+        disloc_velocity = other.disloc_velocity;
+        status = other.status;
+        equivalent_frac = other.equivalent_frac;
+        grain_link = other.grain_link;
+        t_wait = other.t_wait;
+        t_run = other.t_run;
+        rho_sat = other.rho_sat;
+        child_frac = other.child_frac;
+        euler_twin = other.euler_twin;
+    }
+    return *this;
+}
+
+TwinG::TwinG(TwinG&& other) noexcept
+    : PMode(std::move(other)),  // 首先调用基类的移动构造函数
+      flag_harden(other.flag_harden),
+      disloc_velocity(other.disloc_velocity),
+      status(other.status),
+      equivalent_frac(other.equivalent_frac),
+      grain_link(other.grain_link),
+      t_wait(other.t_wait),
+      t_run(other.t_run),
+      rho_sat(other.rho_sat),
+      child_frac(other.child_frac),
+      euler_twin(std::move(other.euler_twin)){
+    other.flag_harden = 0;
+    other.disloc_velocity = 0.0;
+    other.status = twin_status::inactive;
+    other.equivalent_frac = 0.0;
+    other.grain_link = -1;
+    other.t_wait = 0.0;
+    other.t_run = 0.0;
+    other.rho_sat = 0.0;
+    other.child_frac = 0.0;
+}
+
+TwinG& TwinG::operator=(TwinG&& other) noexcept
+{
+    if (this != &other) {
+        PMode::operator=(std::move(other));
+        
+        flag_harden = other.flag_harden;
+        disloc_velocity = other.disloc_velocity;
+        status = other.status;
+        equivalent_frac = other.equivalent_frac;
+        grain_link = other.grain_link;
+        t_wait = other.t_wait;
+        t_run = other.t_run;
+        rho_sat = other.rho_sat;
+        child_frac = other.child_frac;
+        euler_twin = std::move(other.euler_twin);
+        
+        other.flag_harden = 0;
+        other.disloc_velocity = 0.0;
+        other.status = twin_status::inactive;
+        other.equivalent_frac = 0.0;
+        other.grain_link = -1;
+        other.t_wait = 0.0;
+        other.t_run = 0.0;
+        other.rho_sat = 0.0;
+        other.child_frac = 0.0;
+    }
+    return *this;
+}
+
+TwinG* TwinG::clone() const
+{
+    return new TwinG(*this);
+}
+
+
 void TwinG::check_sn_mode()
 {
     logger.info("Twin system: " + to_string(num));

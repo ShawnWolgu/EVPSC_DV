@@ -25,26 +25,182 @@ PMode::PMode(const ieMode &j_mode){
     crss = harden_params[0];
 }
 
-/* PMode::PMode(json &j_mode){ */
-/*     //logger.info("Initializing a PMode object"); */ 
-/*     type = mode_type::undefined;  num = j_mode["id"];  shear_modulus = j_mode["G"]; */
-/*     shear_rate = 0; drate_dtau = 0; acc_strain = 0, disloc_density = 0; */
-/**/
-/*     VectorXd info_vec = to_vector(j_mode, "sn", 6); */
-/*     plane_norm = info_vec(seq(0,2)); //normal  */
-/*     burgers_vec = info_vec(seq(3,5)); //Burgers */
-/*     Vector3d sense_vector = plane_norm.cross(burgers_vec/burgers_vec.norm()); */
-/*     Pij = 0.5 * (burgers_vec / burgers_vec.norm() * plane_norm.transpose() + plane_norm * burgers_vec.transpose() / burgers_vec.norm()); */
-/*     Rij = 0.5 * (burgers_vec * plane_norm.transpose() / burgers_vec.norm() - plane_norm * burgers_vec.transpose() / burgers_vec.norm()); */
-/*     JPij = 0.5 * (sense_vector * plane_norm.transpose() + plane_norm * sense_vector.transpose()); */
-/**/
-/*     rate_sen = j_mode["nrsx"]; */
-/*     int len = j_mode["CRSS_p"].size(); */
-/*     for (int i = 0; i != len; ++i) harden_params.push_back(j_mode["CRSS_p"][i]);  */
-/*     for (int i = 0; i != j_mode["hst"].size(); ++i) latent_params.push_back(j_mode["hst"][i]); */
-/*     for (int i = 0; i != 5; ++i) update_params.push_back(0); */
-/*     crss = harden_params[0]; */
-/* } */
+PMode::PMode(const PMode& other)
+    : temperature(other.temperature),
+      ref_strain_rate(other.ref_strain_rate),
+      Rij(other.Rij),
+      shear_rate_old(other.shear_rate_old),
+      drate_dtau_old(other.drate_dtau_old),
+      disloc_density_old(other.disloc_density_old),
+      crss_old(other.crss_old),
+      acc_strain_old(other.acc_strain_old),
+      rss_old(other.rss_old),
+      velocity_old(other.velocity_old),
+      rho_init_old(other.rho_init_old),
+      rho_H_old(other.rho_H_old),
+      rho_debri_old(other.rho_debri_old),
+      Pij(other.Pij),
+      JPij(other.JPij),
+      type(other.type),
+      num(other.num),
+      burgers_vec(other.burgers_vec),
+      plane_norm(other.plane_norm),
+      harden_params(other.harden_params),
+      update_params(other.update_params),
+      latent_params(other.latent_params),
+      rate_sen(other.rate_sen),
+      shear_rate(other.shear_rate),
+      drate_dtau(other.drate_dtau),
+      shear_modulus(other.shear_modulus),
+      disloc_density(other.disloc_density),
+      crss(other.crss),
+      acc_strain(other.acc_strain),
+      rss(other.rss),
+      velocity(other.velocity),
+      J_slipsystem(other.J_slipsystem),
+      rho_init(other.rho_init),
+      rho_H(other.rho_H),
+      rho_debri(other.rho_debri){}
+
+PMode& PMode::operator=(const PMode& other) {
+    if (this != &other) {
+        temperature = other.temperature;
+        ref_strain_rate = other.ref_strain_rate;
+        Rij = other.Rij;
+        shear_rate_old = other.shear_rate_old;
+        drate_dtau_old = other.drate_dtau_old;
+        disloc_density_old = other.disloc_density_old;
+        crss_old = other.crss_old;
+        acc_strain_old = other.acc_strain_old;
+        rss_old = other.rss_old;
+        velocity_old = other.velocity_old;
+        rho_init_old = other.rho_init_old;
+        rho_H_old = other.rho_H_old;
+        rho_debri_old = other.rho_debri_old;
+        
+        Pij = other.Pij;
+        JPij = other.JPij;
+        type = other.type;
+        num = other.num;
+        burgers_vec = other.burgers_vec;
+        plane_norm = other.plane_norm;
+        
+        harden_params = other.harden_params;
+        update_params = other.update_params;
+        latent_params = other.latent_params;
+        
+        rate_sen = other.rate_sen;
+        shear_rate = other.shear_rate;
+        drate_dtau = other.drate_dtau;
+        shear_modulus = other.shear_modulus;
+        disloc_density = other.disloc_density;
+        crss = other.crss;
+        acc_strain = other.acc_strain;
+        rss = other.rss;
+        velocity = other.velocity;
+        J_slipsystem = other.J_slipsystem;
+        rho_init = other.rho_init;
+        rho_H = other.rho_H;
+        rho_debri = other.rho_debri;
+    }
+    return *this;
+}
+
+PMode::PMode(PMode&& other) noexcept
+    : temperature(other.temperature),
+      ref_strain_rate(other.ref_strain_rate),
+      Rij(std::move(other.Rij)),
+      shear_rate_old(other.shear_rate_old),
+      drate_dtau_old(other.drate_dtau_old),
+      disloc_density_old(other.disloc_density_old),
+      crss_old(other.crss_old),
+      acc_strain_old(other.acc_strain_old),
+      rss_old(other.rss_old),
+      velocity_old(other.velocity_old),
+      rho_init_old(other.rho_init_old),
+      rho_H_old(other.rho_H_old),
+      rho_debri_old(other.rho_debri_old),
+      Pij(std::move(other.Pij)),
+      JPij(std::move(other.JPij)),
+      type(other.type),
+      num(other.num),
+      burgers_vec(std::move(other.burgers_vec)),
+      plane_norm(std::move(other.plane_norm)),
+      harden_params(std::move(other.harden_params)),
+      update_params(std::move(other.update_params)),
+      latent_params(std::move(other.latent_params)),
+      rate_sen(other.rate_sen),
+      shear_rate(other.shear_rate),
+      drate_dtau(other.drate_dtau),
+      shear_modulus(other.shear_modulus),
+      disloc_density(other.disloc_density),
+      crss(other.crss),
+      acc_strain(other.acc_strain),
+      rss(other.rss),
+      velocity(other.velocity),
+      J_slipsystem(other.J_slipsystem),
+      rho_init(other.rho_init),
+      rho_H(other.rho_H),
+      rho_debri(other.rho_debri)
+{
+    other.num = -1;
+    other.type = mode_type::undefined;
+    other.temperature = 0.0;
+    other.ref_strain_rate = 0.001;
+}
+
+PMode& PMode::operator=(PMode&& other) noexcept {
+    if (this != &other) {
+        temperature = other.temperature;
+        ref_strain_rate = other.ref_strain_rate;
+        Rij = std::move(other.Rij);
+        shear_rate_old = other.shear_rate_old;
+        drate_dtau_old = other.drate_dtau_old;
+        disloc_density_old = other.disloc_density_old;
+        crss_old = other.crss_old;
+        acc_strain_old = other.acc_strain_old;
+        rss_old = other.rss_old;
+        velocity_old = other.velocity_old;
+        rho_init_old = other.rho_init_old;
+        rho_H_old = other.rho_H_old;
+        rho_debri_old = other.rho_debri_old;
+        
+        Pij = std::move(other.Pij);
+        JPij = std::move(other.JPij);
+        type = other.type;
+        num = other.num;
+        burgers_vec = std::move(other.burgers_vec);
+        plane_norm = std::move(other.plane_norm);
+        
+        harden_params = std::move(other.harden_params);
+        update_params = std::move(other.update_params);
+        latent_params = std::move(other.latent_params);
+        
+        rate_sen = other.rate_sen;
+        shear_rate = other.shear_rate;
+        drate_dtau = other.drate_dtau;
+        shear_modulus = other.shear_modulus;
+        disloc_density = other.disloc_density;
+        crss = other.crss;
+        acc_strain = other.acc_strain;
+        rss = other.rss;
+        velocity = other.velocity;
+        J_slipsystem = other.J_slipsystem;
+        rho_init = other.rho_init;
+        rho_H = other.rho_H;
+        rho_debri = other.rho_debri;
+        
+        other.num = -1;
+        other.type = mode_type::undefined;
+        other.temperature = 0.0;
+        other.ref_strain_rate = 0.001;
+    }
+    return *this;
+}
+
+PMode* PMode::clone() const {
+    return new PMode(*this);
+}
 
 PMode::PMode(PMode* t_mode, bool a){
     type = mode_type::undefined;  num = t_mode->num;  shear_modulus = t_mode->shear_modulus;

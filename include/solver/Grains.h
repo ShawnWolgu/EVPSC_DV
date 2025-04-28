@@ -10,6 +10,8 @@ struct materialPhase;
 class grain
 {
     private:
+        Matrix6d Cij6; //Elastic stiffness in grain Axes
+        double   Cijkl[3][3][3][3]; // Elastic modulus in 4th tensor.
         Matrix6d Cij6_SA_g; //Elastic stiffness in sample Axes
         Matrix6d Mij6_J_g;  //Elastic compliance invovling Jaumann rate in sample Axes
         Matrix6d Metilde_g; //the (Me~)^-1 in elastic consistency
@@ -68,18 +70,27 @@ class grain
 
     public:
         int grain_i; // The Number
+        int phase_id; // The Phase Number
         int modes_num = 0;
         int if_stress = 0; //flag of stress calculation
-        double child_frac = 0.0, weight_ref = 0.0, temperature = 0., temp_old = 0.;
+        double size = 0.0; //the size of the grain
+        double child_frac = 0.0; // the fraction of the child grain
+        double weight_ref = 0.0; // the reference weight of the grain
+        double temperature = 0., temp_old = 0.;
         bool twin_term_flag;
+        materialPhase* mat; // pointer to the materialPhase
 
         grain();
         grain(const grain& g);
-        grain& operator=(const grain& g);
+        grain(grain&& other) noexcept;
+        grain& operator=(const grain& other);
+        grain& operator=(grain&& g) noexcept;
+        ~grain();
         //move from private to public
         PMode** gmode = NULL; // deformation modes
 
         //input the euler angle and weights
+        void initialization(int id, int phase_id, Vector4d euler, materialPhase* mat);
         void ini_euler_g(Vector4d);
         Vector3d get_euler_g();
         Vector3d get_euler_g(int mode_num);
@@ -132,6 +143,7 @@ class grain
         Matrix3d get_Dij_g();
         Matrix3d get_Udot_g();
         Matrix3d get_Wij_g();
+        Matrix6d get_Cij6_g();
 
         //calculate the stress in grains with Newton-Rapthon iteration
         //Parameters:

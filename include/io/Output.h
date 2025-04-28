@@ -3,5 +3,6 @@
 
 void initial_output_files();
 void output_info();
+void output_phase_info();
 void output_grain_info(int i);
 

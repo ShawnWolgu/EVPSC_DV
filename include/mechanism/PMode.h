@@ -23,6 +23,12 @@ class PMode
         PMode();
         PMode(const ieMode &);
         PMode(PMode* t_mode, bool a);
+        PMode(const PMode& other);
+        PMode(PMode&& other) noexcept;
+        PMode& operator=(const PMode& other);
+        PMode& operator=(PMode&& other) noexcept;
+        virtual ~PMode() = default;
+        virtual PMode* clone() const;
         Matrix3d Pij;
         Matrix3d JPij;//J schmid 
         mode_type type = mode_type::undefined;
@@ -100,6 +106,13 @@ class Slip : public PMode
         Slip();
         Slip(const ieMode &);
         Slip(Slip* t_mode, bool a);
+        ~Slip() override = default;
+        Slip(const Slip& other);
+        Slip& operator=(const Slip& other);
+        Slip(Slip&& other) noexcept;
+        Slip& operator=(Slip&& other) noexcept;
+        Slip* clone() const override;
+
         double t_wait = 0.0, t_run = 0.0, rho_sat = 0.0;
         // Override funcs
         void check_hardening_mode() override;
@@ -129,6 +142,14 @@ class Twin : public PMode
         Twin();
         Twin(const ieMode &);
         Twin(Twin* t_mode, bool a);
+
+        ~Twin() override;
+        Twin(const Twin& other);
+        Twin& operator=(const Twin& other);
+        Twin(Twin&& other) noexcept;
+        Twin& operator=(Twin&& other) noexcept;
+        Twin* clone() const override;
+
         int grain_link = -1;
         double t_wait = 0.0, t_run = 0.0, rho_sat = 0.0, child_frac = 0.0;
         void set_parent(int parent_id);
@@ -159,6 +180,14 @@ class TwinG : public PMode
         TwinG();
         TwinG(const ieMode &);
         TwinG(TwinG* t_mode, bool a);
+
+        ~TwinG() override;
+        TwinG(const TwinG& other);
+        TwinG& operator=(const TwinG& other);
+        TwinG(TwinG&& other) noexcept;
+        TwinG& operator=(TwinG&& other) noexcept;
+        TwinG* clone() const override;
+
         int grain_link = -1;
         double t_wait = 0.0, t_run = 0.0, rho_sat = 0.0, child_frac = 0.0;
         Vector4d euler_twin;

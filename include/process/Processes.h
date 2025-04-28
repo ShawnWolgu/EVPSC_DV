@@ -23,7 +23,8 @@ private:
     double Eincr; //the increment of strain in every istep
     int Ictrl;
     int Nsteps; // total steps
-    int istep; // current step
+    int istep = 0; // current step
+    int this_step = 0; // current step (+previous processes)
     double temperature_input; // /(K) temperature 
     double tempK_rate = 0.0; // /(K/s) temperature rate
     double tempK_end = 0.0; // /(K) end temperature

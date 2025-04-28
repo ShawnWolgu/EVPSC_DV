@@ -10,6 +10,8 @@ namespace Procs{ class Process; }
 extern int texctrl;
 extern bool update_orientation_required, update_shape_required, update_CRSS_required, update_temperature_required;
 extern double temp_atmosphere, temperature_ref;
+extern int phaseCount;
+extern int processCount;
 
 // [Some Material Properties]
 extern double rho_material, Cp_material, sigma_e_mat, h_ext, Surface, V_sample, sigma_k;
@@ -28,7 +30,6 @@ extern double time_acc;
 
 // [Output fstreams]
 extern vector<double> custom_vars;
-extern fstream tex_out; //output of the texture
 extern fstream density_out; //output of the grain information
 extern fstream acc_strain_out;
 extern fstream crss_out;
@@ -36,10 +37,14 @@ extern fstream ss_out_csv; //output of the macro stress-strain curves
 extern fstream ave_ss_out; //output of the average stress-strain curves
 extern fstream grain_out; //output of the grain information
 extern fstream custom_out; //output of the custom variables
+extern vector<fstream> phase_out; //output of the phase information
+extern vector<fstream> tex_out; //output of the texture information
 
 // [Some global objects]
 extern Polycs::polycrystal global_polycrys;
 extern Procs::Process global_proc;
+struct materialPhase;
+extern vector<materialPhase> global_materials;
 class Logger;
 extern Logger logger;
 

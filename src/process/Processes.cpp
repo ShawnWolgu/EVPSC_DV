@@ -7,16 +7,7 @@ using namespace Procs;
 
 Process::Process(){};
 
-Process::~Process()
-{
-    /* Out_texture(global_polycrys, istep); */
-    tex_out.close();
-    density_out.close();
-    ss_out_csv.close();
-    ave_ss_out.close();
-    custom_out.close();
-    crss_out.close();
-}
+Process::~Process(){};
 
 void Process::load_ctrl(Vector4d Vin)
 {
@@ -188,26 +179,35 @@ void Process::loading(Polycs::polycrystal &pcrys){
             coeff_step = min(coeff_step, 1.0);
         } while (pct_step < 1-1e-10);
         cout.flush();
-        if(!((istep+1)%texctrl)) Out_texture(pcrys,istep);
+        if(!((this_step+1)%texctrl)) Out_texture(pcrys,this_step);
         output_info();
+        output_phase_info();
         output_grain_info(0);
         if(!is_convergent) {
-            Out_texture(pcrys, istep);
+            Out_texture(pcrys, this_step);
             break;
         }
+        this_step++;
     }
     /* Out_texture(pcrys,Nsteps); */
 }
 
-void Process::Out_texture(Polycs::polycrystal &pcrys, int istep)
+void Process::Out_texture(Polycs::polycrystal &pcrys, int this_step)
 {
     IOFormat Outformat(StreamPrecision);
-    logger.notice("Output texture at step " + to_string(istep));
-    tex_out << "TEXTURE AT STEP = " << istep+1 << endl;
-    tex_out << setprecision(4) << pcrys.get_ell_axis().transpose().format(Outformat)<< endl; 
-    tex_out << setprecision(4) << pcrys.get_ellip_ang().transpose().format(Outformat) << endl << endl;
-    pcrys.get_euler(tex_out);
-    tex_out << endl;
+    logger.notice("Output texture at step " + to_string(this_step));
+    for(int phase_id = 0; phase_id < phaseCount; ++phase_id){
+        fstream &tex_out_i = tex_out[phase_id];
+        if (!tex_out_i.is_open()) {
+            logger.error("Failed to open output file for phase " + to_string(phase_id));
+            continue;  // 跳过该相
+        }
+        tex_out_i << "TEXTURE AT STEP = " << this_step+1 << endl;
+        tex_out_i << setprecision(4) << pcrys.get_ell_axis().transpose().format(Outformat)<< endl; 
+        tex_out_i << setprecision(4) << pcrys.get_ellip_ang().transpose().format(Outformat) << endl << endl;
+        pcrys.printEuler(tex_out_i, phase_id);
+        tex_out_i << endl;
+    }
 }
 
 void Process::Out_texset(int input){texctrl = input;}

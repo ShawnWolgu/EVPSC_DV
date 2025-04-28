@@ -1,4 +1,5 @@
 #include "common/common.h"
+#include "io/material.h"
 
 // [Simulation Settings]
 int texctrl = 0; //print the texture every n steps(0 means only print at the end)
@@ -6,6 +7,8 @@ bool update_orientation_required = true; //update the orientation 1:yes 0:no
 bool update_shape_required = false; //update the ellipsoid shape 1:yes 0:nobool
 bool update_CRSS_required = true; //update the CRSS 1:yes 0:no
 bool update_temperature_required = false; //update the temperature 1:yes 0:no
+int phaseCount = 0; //number of phases
+int processCount = 0; //number of processes
 
 // [Temperature]
 double temp_atmosphere = 0.0; // temperature of the atmosphere
@@ -40,10 +43,10 @@ Matrix3d J_tensor = Matrix3d::Zero();
 Logger logger;
 Polycs::polycrystal global_polycrys;
 Procs::Process global_proc;
+vector<materialPhase> global_materials; //material properties
 
 // [Output fstreams]
 vector<double> custom_vars(12,0.0); //custom variables
-fstream tex_out("Tex.out", ios::out); //output of the texture
 fstream density_out("Density.csv",ios::out); 
 fstream acc_strain_out("Acc_Strain.csv",ios::out);
 fstream crss_out("CRSS.csv",ios::out);
@@ -51,4 +54,5 @@ fstream ss_out_csv("str_str.csv",ios::out); //output of the macro stress-strain 
 fstream ave_ss_out("ave_str_str.csv",ios::out); //output of the average stress-strain curves
 fstream grain_out("grain_info.csv",ios::out); //output of the grain information"
 fstream custom_out("custom.csv",ios::out); //output of the custom variables
-
+vector<fstream> phase_out; //output of the phase information
+vector<fstream> tex_out;
