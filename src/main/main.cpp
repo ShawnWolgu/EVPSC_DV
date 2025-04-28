@@ -4,6 +4,7 @@
 #include <chrono>
 #include <regex>
 #include "io/Input.h"
+#include "io/Output.h"
 
 int main()
 {
@@ -33,6 +34,7 @@ int main()
     global_polycrys.weightNormalization();
     global_polycrys.cal_aveGrainSize();
 
+    initial_output_files();
     for (int i = 0; i < processCount; i++){
         string load_path_i = extractPath(load_path, i);
         if(loadinput(load_path_i, global_proc)) exit(0);

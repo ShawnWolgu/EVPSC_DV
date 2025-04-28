@@ -61,8 +61,8 @@ void initial_output_files(){
     for(fstream &phase_out_i : phase_out){
         phase_out_i << "EVM,E11,E22,E33,E23,E13,E12,S11,S22,S33,S23,S13,S12\n";
         phase_out_i << 0.0 << ",";
-        for(int i = 0; i < 6; ++i) ss_out_csv << 0.0 << ",";
-        for(int i = 0; i < 5; ++i) ss_out_csv << 0.0 << ",";
+        for(int i = 0; i < 6; ++i) phase_out_i << 0.0 << ",";
+        for(int i = 0; i < 5; ++i) phase_out_i << 0.0 << ",";
         phase_out_i << 0.0 << endl;
     }
 

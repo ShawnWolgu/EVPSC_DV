@@ -119,7 +119,6 @@ void Process::loading(Polycs::polycrystal &pcrys){
     if (temperature_ref < 1e-3)  temperature_ref = temperature_input;
     if (pcrys.temperature_poly < 1e-3)  pcrys.set_temperature(temperature_input);
     pcrys.set_boundary_conditions(UDWdot_input, Sdot_input, IUDWdot, ISdot);
-    initial_output_files();
     double coeff_step = 1, current_step = 1.;
     int success_count = 0;
     for(istep = 0; istep < Nsteps; ++istep)

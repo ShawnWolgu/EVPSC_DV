@@ -160,7 +160,6 @@ void polycrystal::add_grains(int phase_id, int grain_count, const vector<Vector4
 }
 
 void polycrystal::set_boundary_conditions(Matrix3d udot_input, Matrix3d sig_rate_input, Matrix3i iudot_input, Vector6i isig_input){
-    Sig_m = Matrix3d::Zero(); // The Default initial stress is zero.
     Sig_rate = sig_rate_input;
     ISdot = isig_input;
     set_IUdot(iudot_input);

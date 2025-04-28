@@ -50,8 +50,8 @@ class polycrystal{
         Matrix3d Dije_AV; //the elastic part
         Matrix3d Dijp_AV; //the vp part
     
-        Matrix3d Eps_m; //macro strain
-        Matrix3d Sig_m; //macro stress 
+        Matrix3d Eps_m = Matrix3d::Zero(); //macro strain
+        Matrix3d Sig_m = Matrix3d::Zero(); //macro stress 
         Matrix3d Sig_rate; // stress increment
         Matrix3d Sig_AV; //the average stress tensor of all garins
         Matrix3d Sig_m_old; //macro stress in last increment
