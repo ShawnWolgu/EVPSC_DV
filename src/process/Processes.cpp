@@ -112,6 +112,20 @@ void Process::timestep_control(){
 }
 
 void Process::loading(Polycs::polycrystal &pcrys){
+    prepare_loading(pcrys);
+    for(istep = 0; istep < Nsteps; ++istep)
+    {
+        if(!process_step(pcrys, istep)) {
+            Out_texture(pcrys, this_step);
+            break;
+        }
+        output_step_result(pcrys);
+        this_step++;
+    }
+    /* Out_texture(pcrys,Nsteps); */
+}
+
+void Process::prepare_loading(Polycs::polycrystal &pcrys){
     timestep_control();
     time_acc = 0;
     temp_atmosphere = temperature_input; //loading temp_init from the txt.in 
@@ -119,76 +133,90 @@ void Process::loading(Polycs::polycrystal &pcrys){
     if (temperature_ref < 1e-3)  temperature_ref = temperature_input;
     if (pcrys.temperature_poly < 1e-3)  pcrys.set_temperature(temperature_input);
     pcrys.set_boundary_conditions(UDWdot_input, Sdot_input, IUDWdot, ISdot);
+}
+
+bool Process::process_step(Polycs::polycrystal &pcrys, int istep) {
+    logger.info("");
+    logger.info("**********\tSTEP\t" + to_string(istep) + "\t**********");
+    logger.info("");
+    bool is_convergent = true;
+    double pct_step = 0;
     double coeff_step = 1, current_step = 1.;
     int success_count = 0;
-    for(istep = 0; istep < Nsteps; ++istep)
-    {
-        logger.info("");
-        logger.info("**********\tSTEP\t"+ to_string(istep) + "\t**********");
-        logger.info("");
-        bool is_convergent = true;
-        double pct_step = 0; 
-        update_progress(pct_step);
-        do{
-            current_step = min(1.0 - pct_step, coeff_step);
-            logger.notice("Step " + to_string(istep) + ":\t" + to_string(pct_step) + " to " + to_string(pct_step + current_step));
-            int return_SC = pcrys.EVPSC(istep, current_step * max_timestep);
-            if (return_SC != 0) {
-                success_count = 0;
-                pcrys.restore_status(false);
-                logger.warn("Not convergent... Retry with a smaller increment.");
-                logger.notice("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
-                if(isnan(pcrys.error_SC)) coeff_step *= 0.1;
-                else coeff_step *= 0.66;
-                if (coeff_step < 1e-10) {
-                    logger.error("Not convergent... Abort.");
-                    is_convergent = false;
-                    break;
-                }
-                continue;
-            }
-            time_acc += current_step * max_timestep;
-            if (flag_emode == 0){
-                Current_intensity = 0.0;
-            }else if (flag_emode == 1){
-                Current_intensity = J_intensity_pulse(time_acc, duty_ratio_J, Amplitude_J, Frequency);
-            }else if(flag_emode == 2){
-                Current_intensity = J_shock_sim(time_acc, max_timestep*Nsteps, Amplitude_J, shock_int, shock_fin); 
-            }else{
-                logger.warn("Error. Please check the emode.");
-            } // 辨别电流模式
-            /* Current_intensity = calculate_current_intensity(time_acc); */
-            custom_vars[5] = Current_intensity; // 输出电流到csv
-            if (Ictrl == 0){
-                double dtempK = tempK_rate * current_step * max_timestep;
-                if (temp_atmosphere < tempK_end && tempK_rate > 0.0) {
-                    temp_atmosphere += dtempK;
-                    if (temp_atmosphere > tempK_end) temp_atmosphere = tempK_end;
-                } else if (temp_atmosphere > tempK_end && tempK_rate < 0.0) {
-                    temp_atmosphere += dtempK;
-                    if (temp_atmosphere < tempK_end) temp_atmosphere = tempK_end;
-                }
-                pcrys.set_temperature(temp_atmosphere);
-            }
-            pct_step += current_step;
-            update_progress(pct_step);
-            success_count++;
-            if (success_count > 3) coeff_step *= 1.5;
-            else if (success_count > 6) coeff_step *= 2;
-            coeff_step = min(coeff_step, 1.0);
-        } while (pct_step < 1-1e-10);
-        cout.flush();
-        if(!((this_step+1)%texctrl)) Out_texture(pcrys,this_step);
-        output_info();
-        output_phase_info();
-        output_grain_info(0);
-        if(!is_convergent) {
-            Out_texture(pcrys, this_step);
-            break;
+    update_progress(pct_step);
+    do {
+        current_step = min(1.0 - pct_step, coeff_step);
+        logger.notice("Step " + to_string(istep) + ":\t" + to_string(pct_step) + " to " + to_string(pct_step + current_step));
+        int return_SC = pcrys.EVPSC(istep, current_step * max_timestep);
+        if (return_SC != 0) {
+            handle_nonconvergence(pcrys, coeff_step, is_convergent, success_count);
+            if (!is_convergent) break;
+            continue;
         }
-        this_step++;
+        update_after_success(pcrys, current_step, success_count);
+        pct_step += current_step;
+        if (success_count > 3) coeff_step *= 1.5;
+        else if (success_count > 6) coeff_step *= 2;
+        coeff_step = min(coeff_step, 1.0);
+        update_progress(pct_step);
+    } while (pct_step < 1 - 1e-10);
+    cout.flush();
+    return is_convergent;
+}
+
+void Process::handle_nonconvergence(Polycs::polycrystal &pcrys, double &coeff_step, bool &is_convergent, int &success_count) {
+    success_count = 0;
+    pcrys.restore_status(false);
+    logger.warn("Not convergent... Retry with a smaller increment.");
+    logger.notice("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
+    if (isnan(pcrys.error_SC)) coeff_step *= 0.1;
+    else coeff_step *= 0.66;
+    if (coeff_step < 1e-10) {
+        logger.error("Not convergent... Abort.");
+        is_convergent = false;
     }
-    /* Out_texture(pcrys,Nsteps); */
+}
+
+void Process::update_after_success(Polycs::polycrystal &pcrys, double current_step, int &success_count) {
+    time_acc += current_step * max_timestep;
+    update_current_intensity(time_acc);    
+    update_temperature(pcrys, current_step);
+    custom_vars[5] = Current_intensity;     
+    success_count++;
+}
+
+void Process::update_current_intensity(double time_acc) {
+    if (flag_emode == 0) {
+        Current_intensity = 0.0;
+    } else if (flag_emode == 1) {
+        Current_intensity = J_intensity_pulse(time_acc, duty_ratio_J, Amplitude_J, Frequency);
+    } else if (flag_emode == 2) {
+        Current_intensity = J_shock_sim(time_acc, max_timestep * Nsteps, Amplitude_J, shock_int, shock_fin);
+    } else {
+        logger.warn("Error. Please check the emode.");
+    }
+}
+
+void Process::update_temperature(Polycs::polycrystal &pcrys, double current_step) {
+    if (Ictrl == 0) {
+        double dtempK = tempK_rate * current_step * max_timestep;
+        if (temp_atmosphere < tempK_end && tempK_rate > 0.0) {
+            temp_atmosphere += dtempK;
+            if (temp_atmosphere > tempK_end) temp_atmosphere = tempK_end;
+        } else if (temp_atmosphere > tempK_end && tempK_rate < 0.0) {
+            temp_atmosphere += dtempK;
+            if (temp_atmosphere < tempK_end) temp_atmosphere = tempK_end;
+        }
+        pcrys.set_temperature(temp_atmosphere);
+    }
+}
+
+void Process::output_step_result(Polycs::polycrystal &pcrys) {
+    if (!((this_step + 1) % texctrl))
+        Out_texture(pcrys, this_step);
+    output_info();
+    output_phase_info();
+    output_grain_info(0);
 }
 
 void Process::Out_texture(Polycs::polycrystal &pcrys, int this_step)

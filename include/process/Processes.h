@@ -58,6 +58,15 @@ public:
     void set_tempK_control(double rate, double end_temp);
     double calculate_current_intensity(double time) const;
     void timestep_control();
+
+    // Loading process 
+    void prepare_loading(Polycs::polycrystal &pcrys);
+    bool process_step(Polycs::polycrystal &pcrys, int istep);
+    void handle_nonconvergence(Polycs::polycrystal &pcrys, double &coeff_step, bool &is_convergent, int &success_count);
+    void update_after_success(Polycs::polycrystal &pcrys, double current_step, int &success_count);
+    void update_current_intensity(double time_acc);
+    void update_temperature(Polycs::polycrystal &pcrys, double current_step);
+    void output_step_result(Polycs::polycrystal &pcrys);
     void loading(Polycs::polycrystal &);
 
     /////

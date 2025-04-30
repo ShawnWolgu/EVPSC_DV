@@ -19,7 +19,8 @@ polycrystal::polycrystal()
     ell_axisb = Euler_trans(ellip_ang);
     Fij_m = Matrix3d::Identity();
 
-    //initial the VP consistent
+    //initial the E & VP consistent
+    elasticModu_SC = Matrix6d::Zero();
     vPlasticCompli_SC = 1e-40 * Matrix5d::Identity();
     vPlasticModu_SC = vPlasticCompli_SC.inverse();
     D_vp_0 = Vector6d::Zero();
@@ -295,7 +296,7 @@ int polycrystal::Selfconsistent_E(int Istep, double ERRM, int ITMAX)
         CUB += Chg_basis6(C4SAS) * g[G_n].get_weight_g();
     }
 
-    if(Istep == 0)  elasticModu_SC = CUB;  //first step, use the volume average
+    if((Istep == 0) && (elasticModu_SC.norm() < 1e-10))  elasticModu_SC = CUB;  //first step, use the volume average
     elasticCompli = elasticModu_SC.inverse();
 
     //loop to make the guessed elastic stiffness CSC to the Eshelby calculated CNEW 
@@ -456,7 +457,7 @@ int polycrystal::Selfconsistent_P(int Istep, double ERRM, int ITMAX)
             double S4_EA[3][3][3][3] = {0}; 
             double R4_EA[3][3][3][3] = {0};
             int case_c = Eshelby_case(axis_t);
-            g[0].Eshelby_P(S4_EA,R4_EA,axis_t,C66,Gpsets[case_c].Gpaa6,Gpsets[case_c].Gpaaww6,\
+            g[0].Eshelby_VP(S4_EA,R4_EA,axis_t,C66,Gpsets[case_c].Gpaa6,Gpsets[case_c].Gpaaww6,\
                            Gpsets[case_c].Gpalpha,Gpsets[case_c].Gpaww,Gpsets[case_c].Gpww);
             //rotate the eshelby tensor back to the sample axes
             S55 = voigttoB5(rotate_C66(voigt(S4_EA), axisb_t));
@@ -485,7 +486,7 @@ int polycrystal::Selfconsistent_P(int Istep, double ERRM, int ITMAX)
                 double S4_EA[3][3][3][3] = {0}; 
                 double R4_EA[3][3][3][3] = {0};
                 int case_c = Eshelby_case(axis_t);
-                g[G_n].Eshelby_P(S4_EA,R4_EA,axis_t,C66,Gpsets[case_c].Gpaa6,Gpsets[case_c].Gpaaww6,\
+                g[G_n].Eshelby_VP(S4_EA,R4_EA,axis_t,C66,Gpsets[case_c].Gpaa6,Gpsets[case_c].Gpaaww6,\
                                  Gpsets[case_c].Gpalpha,Gpsets[case_c].Gpaww,Gpsets[case_c].Gpww);
                 //rotate the eshelby tensor back to the sample axes
                 S55 = voigttoB5(rotate_C66(voigt(S4_EA), axisb_t));
@@ -804,7 +805,7 @@ double polycrystal::Cal_Sig_g(double Tincr)
 {
     #pragma omp parallel for num_threads(Mtr)
     for(int G_n = 0; G_n < grains_num; G_n++){
-        g[G_n].grain_stress(Tincr, Wij_m, Dij_m, Dije_AV, Dijp_AV, Sig_m, Sig_m_old, therm_expansion_ave);
+        g[G_n].grain_stress_evp(Tincr, Wij_m, Dij_m, Dije_AV, Dijp_AV, Sig_m, Sig_m_old, therm_expansion_ave);
     }
     #pragma omp barrier
     int stress_count = 0;

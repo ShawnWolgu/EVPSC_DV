@@ -22,6 +22,8 @@ namespace Polycs{ class polycrystal; }
 #define Intn 10 //number of integral points in Eshelby calculation
 #define Mtr 8 //number of Multithread
 
+#define CRIT_SHAPE 25 //critical shape of ellipsoid
+
 typedef Matrix<int, 6, 1> Vector6i;
 typedef Matrix<int, 6, 6> Matrix6i;
 typedef Matrix<int, 6, 1> Vector6i;
