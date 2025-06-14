@@ -18,7 +18,7 @@ file(GLOB_RECURSE SRC_LIST
     ${PROJECT_SOURCE_DIR}/src/*.cpp
 )
 
-set(BIN_NAME "p-SCOPE")
+set(BIN_NAME "EVPSC")
 add_executable(${BIN_NAME} ${SRC_LIST})
 target_compile_options(${BIN_NAME} PUBLIC "SHELL:-Xclang -fopenmp")
 link_directories(/usr/local/lib)
